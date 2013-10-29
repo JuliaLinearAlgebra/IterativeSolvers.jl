@@ -14,6 +14,13 @@ println([k l])
 println("Deviation: ", abs(k-l))
 @test_approx_eq_eps k l sqrt(eps())
 
+println("Inverse iteration")
+ev_rand = v[int(rand()*n)] #Pick random eigenvalue
+l = ev_ii(A, ev_rand*(1+(rand()-.5)/n), 2000, sqrt(eps()))[1]
+println([ev_rand l])
+println("Deviation: ", abs(ev_rand-l))
+@test_approx_eq_eps ev_rand l sqrt(eps())
+
 println("Lanczos eigenvalues computation")
 w = eigvals_lanczos(A)
 println([v w])
