@@ -1,4 +1,6 @@
-ArnoldiLanczos
-==============
+IterativeSolvers
+================
 
-Implement Arnoldi and Lanczos methods for svds and eigs
+Implement various iterative solvers for solving linear systems,
+eigen systems, and preconditioners for these.
+
