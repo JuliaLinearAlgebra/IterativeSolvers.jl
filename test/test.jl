@@ -1,10 +1,12 @@
 include("../src/IterativeSolvers.jl")
 using IterativeSolvers
-
+using Base.Test
 n=10
 A=randn(n,n)
 A=A+A' #Real and symmetric
 
-evals = [eigvals(A) eigvals_lanczos(A, n, true)]
-println(evals)
-
+v = eigvals(A)
+w = eigvals_lanczos(A)
+println([v w])
+println("Deviation: ", norm(eigvals(A) - eigvals_lanczos(A)))
+@test_approx_eq v w

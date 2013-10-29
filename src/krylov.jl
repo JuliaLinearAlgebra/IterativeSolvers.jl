@@ -31,15 +31,17 @@ function initrand!{T<:Real}(K::KrylovSubspace{T})
     K.v = Vector{T}[v/norm(v)]
 end
 
-#Orthogonalize a vector v against the basis defined by the KrylovSubspace K
-function orthogonalize!{T}(v::Vector{T}, K::KrylovSubspace{T}; method::Symbol=:GramSchmidt)
+#Orthogonalize a vector v against the last p basis vectors defined by the KrylovSubspace K
+function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int; method::Symbol=:GramSchmidt)
     if method == :GramSchmidt
-        for e in K.v
-            v -= dot(v, e) * e
+        Kk = K.v[max(1,end-p+1):end]
+        cs = [dot(v, e) for e in Kk]
+        for (i, e) in enumerate(Kk)
+            v -= cs[i] * e
         end
     else
         error(string("Unsupported orthgonalization method: ", method))
     end
-    v /= norm(v) #Always return unit vector
+    v, cs #Return orthogonalized vector and its coefficients
 end
 
