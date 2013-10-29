@@ -28,7 +28,7 @@ function eigvals_lanczos{T<:BlasFloat}(A::AbstractMatrix{T}, neigs::Int, verbose
         if verbose println("Iteration ", iter, ": ", de) end
         if de < tol return e1 end
     end
-    warn("Not converged")
+    warn(string("Not converged: change in eigenvalues ", de, " exceeds specified tolerance of ", tol))
     e1
 end
 eigvals_lanczos{T<:BlasFloat}(A::AbstractMatrix{T}, neigs::Int=size(A,1), verbose=false, maxiter=size(A,1)) =eigvals_lanczos(A, neigs, verbose, size(A,1)^3*eps(T), maxiter)
