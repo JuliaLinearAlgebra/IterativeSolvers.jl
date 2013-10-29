@@ -11,11 +11,11 @@ function ev_power{T<:Number}(K::KrylovSubspace{T}, maxiter::Int, tol::T)
         y = nextvec(K)
         θ = dot(v, y)
         de = norm(y - θ*v)
-        if de <= tol * abs(θ) return θ, v end
+        if de <= tol * abs(θ) return Eigenpair(θ, v) end
         appendunit!(K, y)
     end
     warn(string("Not converged: change in eigenvector ", de, " exceeds specified tolerance of ", tol))
-    θ, v
+    Eigenpair(θ, v)
 end
 
 function ev_power{T<:Number}(A::AbstractMatrix{T}, maxiter::Int, tol::T)
@@ -31,14 +31,14 @@ function ev_ii{T<:Number}(K::KrylovSubspace{T}, σ::T, maxiter::Int, tol::T)
     v = Array(T, K.n)
     for k=1:maxiter
         v = lastvec(K)
-        y = (K.A-σ*diagm(ones(K.n)))\v
+        y = (K.A-σ*eye(K))\v
         θ = dot(v, y)
         de = norm(y - θ*v)
-        if de <= tol * abs(θ) return σ+1/θ, y/θ end
+        if de <= tol * abs(θ) return Eigenpair(σ+1/θ, y/θ) end
         appendunit!(K, y)
     end
     warn(string("Not converged: change in eigenvector ", de, " exceeds specified tolerance of ", tol))
-    σ+1/θ, y/θ
+    Eigenpair(σ+1/θ, y/θ)
 end
 
 function ev_ii{T<:Number}(A::AbstractMatrix{T}, σ::T, maxiter::Int, tol::T)
