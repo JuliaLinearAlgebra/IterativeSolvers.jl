@@ -5,8 +5,16 @@ n=10
 A=randn(n,n)
 A=A+A' #Real and symmetric
 
-println("Lanczos eigenvalues computation")
 v = eigvals(A)
+
+println("Power iteration")
+k = maximum(v) > abs(minimum(v)) ? maximum(v) : minimum(v)
+l = ev_power(A, 2000, sqrt(eps()))[1]
+println([k l])
+println("Deviation: ", abs(k-l))
+@test_approx_eq_eps k l sqrt(eps())
+
+println("Lanczos eigenvalues computation")
 w = eigvals_lanczos(A)
 println([v w])
 println("Deviation: ", norm(v-w))
