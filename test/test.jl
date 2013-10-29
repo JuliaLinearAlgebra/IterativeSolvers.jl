@@ -22,11 +22,23 @@ println([ev_rand l])
 println("Deviation: ", abs(ev_rand-l))
 @test_approx_eq_eps ev_rand l sqrt(eps())
 
+#XXX broken?
+#println("Rayleigh quotient iteration")
+#l = ev_rqi(A, ev_rand, 2000, sqrt(eps())).val
+#println([ev_rand l])
+#println("Deviation: ", abs(ev_rand-l))
+#@test_approx_eq_eps ev_rand l sqrt(eps())
+
+
+
+#Lanczos methods
 println("Lanczos eigenvalues computation")
 w = eigvals_lanczos(A)
 println([v w])
 println("Deviation: ", norm(v-w))
 @test_approx_eq v w
+
+
 
 m = 6
 B = randn(n, m)

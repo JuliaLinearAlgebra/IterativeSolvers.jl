@@ -1,6 +1,6 @@
 #Simple methods
 
-export ev_power, ev_ii
+export ev_power, ev_ii, ev_rqi
 
 #Power method for finding largest eigenvalue and its eigenvector
 function ev_power{T<:Number}(K::KrylovSubspace{T}, maxiter::Int, tol::T)
@@ -47,4 +47,26 @@ function ev_ii{T<:Number}(A::AbstractMatrix{T}, σ::T, maxiter::Int, tol::T)
     ev_ii(K, σ, maxiter, tol)
 end
 ev_ii{T<:BlasFloat}(A::AbstractMatrix{T}, σ::T, maxiter::Int=size(A,1)) = ev_ii(A, σ, maxiter, eps(T))
+
+#Rayleigh quotient iteration
+#XXX Doesn't work well
+function ev_rqi{T<:Number}(K::KrylovSubspace{T}, σ::T, maxiter::Int, tol::T)
+    v = lastvec(K)
+    ρ = dot(v, nextvec(K))
+    for k=1:maxiter
+        y = (K.A-ρ*eye(K))\v
+        θ = norm(y)
+        ρ += dot(y,v)/θ^2
+        v = y/θ
+        if θ >= 1/tol break end
+    end
+    Eigenpair(ρ, v)
+end
+function ev_rqi{T<:Number}(A::AbstractMatrix{T}, σ::T, maxiter::Int, tol::T)
+    K = KrylovSubspace(A, 1)
+    initrand!(K)
+    ev_rqi(K, σ, maxiter, tol)
+end
+ev_rqi{T<:BlasFloat}(A::AbstractMatrix{T}, σ::T, maxiter::Int=size(A,1)) = ev_rqi(A, σ, maxiter, eps(T))
+
 
