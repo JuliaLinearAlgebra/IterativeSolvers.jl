@@ -8,7 +8,7 @@ function pcg(A,b,tol=1e-2,maxIter=100,M=1,x=[])
         x = zeros(size(b,1))
         r = b
     else
-       r = b - Af(c)
+       r = b - Af(x)
     end
     z = Mf(r)
     p = z
