@@ -7,7 +7,7 @@ function getDivGrad(n1,n2,n3)
         # DIV from faces to cell-centers
         Div = [D1 D2 D3]
 
-        return Div*Div';
+        return Div*Div'
 end
 #----------------- 1D finite difference on staggered grid
 function ddx(n)
@@ -33,7 +33,7 @@ for k = 1:p
     a[(int(len[k])+1):int(len[k+1]),:] = [i i+d[k] B[i+(m>=n)*d[k],k]]
 end
 
-A = sparse(int(a[:,1]),int(a[:,2]),a[:,3],m,n);
+A = sparse(int(a[:,1]),int(a[:,2]),a[:,3],m,n)
 
 return A
 
