@@ -15,19 +15,19 @@ function pcg(A,b,tol=1e-2,maxIter=100,M=1,x=[])
     nr0  = norm(b)
     for i=1:maxIter
         Ap = Af(p)
-        gamma = r'*z
-        alpha = gamma./(p'*Ap)
+        gamma = dot(r,z)
+        alpha = gamma./dot(p,Ap)
 
-        x += alpha[1]*p
-        r -= alpha[1]*Ap
+        x += alpha*p
+        r -= alpha*Ap
         resvec[i]  = norm(r)/nr0
         if resvec[i] < tol
             return x,0,resvec[i],i,resvec[1:i]
         end
         z = Mf(r)
 
-        beta = z'*r/gamma[1]
-        p = z + beta[1]*p
+        beta = dot(z,r)/gamma[1]
+        p = z + beta*p
      end
     return x,-1,resvec[maxIter],maxIter,resvec
  end
