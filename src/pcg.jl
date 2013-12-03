@@ -2,7 +2,7 @@
 function pcg(A,b,tol=1e-2,maxIter=100,M=1,x=[])
     resvec = zeros(maxIter)
     Af(x) =  isa(A,Function) ? A(x) : A*x
-    Mf(x) =  isa(M,Function) ? M(x) : M*x
+    Mf(x) =  isa(M,Function) ? M(x) : M\x
 
     if isempty(x)
         x = zeros(size(b,1))
