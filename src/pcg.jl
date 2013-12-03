@@ -16,7 +16,7 @@ function pcg(A,b,tol=1e-2,maxIter=100,M=1,x=[])
     for i=1:maxIter
         Ap = Af(p)
         gamma = dot(r,z)
-        alpha = gamma./dot(p,Ap)
+        alpha = gamma/dot(p,Ap)
 
         x += alpha*p
         r -= alpha*Ap
