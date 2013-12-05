@@ -109,3 +109,5 @@ for iter = 1:maxIter
   return x, err
 
   end
+
+export bicgstb

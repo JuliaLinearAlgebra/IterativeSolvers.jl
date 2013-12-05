@@ -32,3 +32,4 @@ function pcg(A,b,tol=1e-2,maxIter=100,M=1,x=[])
     return x,-1,resvec[maxIter],maxIter,resvec
  end
 
+export pcg
