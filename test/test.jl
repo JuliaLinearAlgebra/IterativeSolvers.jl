@@ -1,4 +1,3 @@
-include("../src/IterativeSolvers.jl")
 using IterativeSolvers
 using Base.Test
 n=10

@@ -3,9 +3,17 @@ import Base.LinAlg.BlasFloat
 import Base.append!
 import Base.eye
 
+export ConvergenceHistory
+
 type Eigenpair{S,T}
     val::S
     vec::Vector{T}
+end
+
+type ConvergenceHistory{T}
+    isconverged::Bool
+    threshold::T
+    residuals::Vector{T}
 end
 
 type KrylovSubspace{T}
@@ -14,12 +22,12 @@ type KrylovSubspace{T}
     maxdim::Int          #Maximum size of subspace
     v::Union(Vector{Vector{T}}, Vector{Matrix{T}}) #The Krylov vectors
 end
-function KrylovSubspace{T}(A::AbstractMatrix{T}, maxdim::Int)
+
+function KrylovSubspace{T}(A::AbstractMatrix{T}, maxdim::Int=size(A, 2))
     n = size(A, 2)
     v = Vector{T}[]
     K = KrylovSubspace(A, n, maxdim, v)
 end
-KrylovSubspace(A::AbstractMatrix) = KrylovSubspace(A, size(A, 2))
 
 lastvec(K::KrylovSubspace) = K.v[end]
 nextvec(K::KrylovSubspace) = K.A * K.v[end]
@@ -36,6 +44,12 @@ appendunit!{T}(K::KrylovSubspace{T}, w::Vector{T}) = append!(K, w/norm(w))
 function initrand!{T<:Real}(K::KrylovSubspace{T})
     v = convert(Vector{T}, randn(K.n))
     K.v = Vector{T}[v/norm(v)]
+end
+
+#Initialize the KrylovSubspace K with a specified nonunit vector
+#If nonzero, try to normalize it
+function init!{T<:Real}(K::KrylovSubspace{T}, v::Vector{T})
+    K.v = Vector{T}[all(v.==0) ? v : v/norm(v)]
 end
 
 #Orthogonalize a vector v against the last p basis vectors defined by the KrylovSubspace K

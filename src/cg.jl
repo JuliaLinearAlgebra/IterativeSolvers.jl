@@ -1,51 +1,45 @@
 export cg
 
-function cg(A,b,tol=1e-2,maxIter=100,M=1,x=[],out=0)
-    resvec = zeros(maxIter)
-    Af(x) =  isa(A,Function) ? A(x) : A*x
-    Mf(x) =  isa(M,Function) ? M(x) : M\x
-    if isempty(x)
-        x = zeros(size(b,1))
-        r = b
+function cg(A, b, x=nothing; tol=size(A,2)*eps(), maxIter=size(A,2),
+        Preconditioner=1)
+    K = KrylovSubspace(A, 1)
+    if x==nothing || isempty(x)
+        initrand!(K)
+        x = lastvec(K)
     else
-        r = b - Af(x)
+        init!(K, x)
     end
-    z = Mf(r)
-    p = z
-    nr0  = norm(b)
+    cg(K, b, x; tol=tol, maxIter=maxIter, Preconditioner=Preconditioner)
+end
 
-    flag = 0
-    i = 0
-    for i=1:maxIter
-        Ap = Af(p)
-        gamma = dot(r,z)
-        alpha = gamma/dot(p,Ap)
-        if alpha == Inf || alpha <0
-            flag = -2; break
+function cg(K::KrylovSubspace, b, x; tol::Real=size(A,2)*eps(),
+        maxIter::Integer=size(A,2), Preconditioner=1)
+    precondition(x) = isa(Preconditioner, Function) ? Preconditioner(x) :
+        Preconditioner\x
+    resnorms = zeros(maxIter)
+ 
+    r = b - nextvec(K)
+    p = z = precondition(r)
+    γ = dot(r, z)
+    for iter=1:maxIter
+        append!(K, p)
+        q = nextvec(K)
+        α = γ/dot(p, q)
+        α>=0 || throw(PosSemidefException("α=$α"))
+        x += α*p
+        r -= α*q
+
+        resnorms[iter] = norm(r)
+        if resnorms[iter] < tol #Converged?
+            resnorms = resnorms[1:iter]
+            break
         end
-
-        x += alpha*p
-        r -= alpha*Ap
-        resvec[i]  = norm(r)/nr0
-        if out==2
-            println(@sprintf("%3d, rel. res = %1.2e",i,resvec[i]))
-        end
-        if resvec[i] < tol
-            flag = 0; break
-        end
-        z = Mf(r)
-
-        beta = dot(z,r)/gamma
-        p = z + beta*p
-     end
-
-     if flag==-1
-        println(@sprintf("cg iterated maxIter (=%d) times without achieving the desired tolerance.",maxIter))
-     elseif flag==-2
-        println("Matrix A in cg has to be positive definite.")
-     elseif out>=1
-        println(@sprintf("cg achieved desired tolerance at iteration %d. Residual norm is %1.2e.",i,resvec[i]))
-     end
-    return x,flag,resvec[1:i],i,resvec
- end
+        z = precondition(r)
+        oldγ = γ
+        γ = dot(r, z)
+        β = γ/oldγ
+        p = z + β*p
+      end
+    x, ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms)
+end
 
