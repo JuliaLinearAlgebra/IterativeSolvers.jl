@@ -1,5 +1,7 @@
 import Base.size
 import Base.LinAlg.BlasFloat
+import Base.LinAlg.BlasComplex
+import Base.LinAlg.BlasReal
 import Base.append!
 import Base.eye
 
