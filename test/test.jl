@@ -50,3 +50,26 @@ println([v w])
 println("Deviation: ", norm(v-w))
 @test_approx_eq v w
 
+#GMRES
+n = 10;
+for T in (Float64,Complex{Float64})
+    A = rand(T,n,n)
+    L = rand(T,n,n)
+    R = rand(T,n,n)
+    b = rand(T,n)
+
+    println("GMRES $T")
+    x = gmres(A, b; M1 = L, M2 = R)
+    println([A*x b])
+    println("Deviation: ", norm(A*x-b))
+    @test_approx_eq A*x b
+
+    println("GMRES Sparse $T")
+    A = sparse(A);
+    L = sparse(L);
+    R = sparse(R);
+    x = gmres(A, b; M1 = L, M2 = R)
+    println([A*x b])
+    println("Deviation: ", norm(A*x-b))
+    @test_approx_eq A*x b
+end
