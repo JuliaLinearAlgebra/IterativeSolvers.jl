@@ -17,22 +17,22 @@ type ConvergenceHistory{T}
 end
 
 type KrylovSubspace{T}
-    A::AbstractMatrix{T} #The matrix that generates the subspace 
-    n::Int               #Dimension of problem
-    maxdim::Int          #Maximum size of subspace
+    A           #The matrix that generates the subspace 
+    n::Int      #Dimension of problem
+    maxdim::Int #Maximum size of subspace
     v::Union(Vector{Vector{T}}, Vector{Matrix{T}}) #The Krylov vectors
 end
 
-function KrylovSubspace{T}(A::AbstractMatrix{T}, maxdim::Int=size(A, 2))
+function KrylovSubspace{T}(A, maxdim::Int=size(A, 2))
     n = size(A, 2)
     v = Vector{T}[]
     K = KrylovSubspace(A, n, maxdim, v)
 end
 
 lastvec(K::KrylovSubspace) = K.v[end]
-nextvec(K::KrylovSubspace) = K.A * K.v[end]
+nextvec(K::KrylovSubspace) = isa(K.A, Function) ? K.A(x) : K.A*x
 size(K::KrylovSubspace) = length(K.v)
-eye(K::KrylovSubspace) = eye(size(K.A)...)
+eye(K::KrylovSubspace) = isa(K.A, Function) ? x->x : eye(size(K.A)...)
 
 function append!{T}(K::KrylovSubspace{T}, w::Vector{T})
     if size(K) == K.maxdim; shift!(K.v) end
@@ -49,7 +49,7 @@ end
 #Initialize the KrylovSubspace K with a specified nonunit vector
 #If nonzero, try to normalize it
 function init!{T<:Real}(K::KrylovSubspace{T}, v::Vector{T})
-    K.v = Vector{T}[all(v.==0) ? v : v/norm(v)]
+    K.v = Vector{T}[all(v.==zero(T)) ? v : v/norm(v)]
 end
 
 #Orthogonalize a vector v against the last p basis vectors defined by the KrylovSubspace K
