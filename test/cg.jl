@@ -1,12 +1,12 @@
-using IterativeSolvers
-using Base.Test
 include("getDivGrad.jl")
 
 # small full system
-A = [4 1; 1 4]
-rhs = [2;2]
-x, = pcg(A,rhs,1e-15)
-@test norm(A*x-rhs) <= 1e-15
+N=10
+A = randn(N,N)
+A = A'*A
+rhs = randn(N)
+x, = cg(A,rhs,tol=1e-15)
+@test_approx_eq norm(A*x-rhs) N*sqrt(1e-15)
 
 # CG: test sparse Laplacian
 A = getDivGrad(32,32,32)
@@ -20,17 +20,17 @@ SGS(x) = L\(D.*(U\x))
 rhs = randn(size(A,2))
 tol = 1e-5
 # tests with A being matrix
-xCG, = pcg(A,rhs,tol,100)
-xJAC, = pcg(A,rhs,tol,100,JAC)
-xSGS, = pcg(A,rhs,tol,100,SGS)
+xCG, = cg(A,rhs,tol=tol,maxIter=100)
+xJAC, = cg(A,rhs,tol=tol,maxIter=100,Preconditioner=JAC)
+xSGS, = cg(A,rhs,tol=tol,maxIter=100,Preconditioner=SGS)
 # tests with A being function
-xCGmf, = pcg(Af,rhs,tol,100)
-xJACmf, = pcg(Af,rhs,tol,100,JAC)
-xSGSmf, = pcg(Af,rhs,tol,100,SGS)
+xCGmf, = cg(Af,rhs,tol=tol,maxIter=100)
+xJACmf, = cg(Af,rhs,tol=tol,maxIter=100,Preconditioner=JAC)
+xSGSmf, = cg(Af,rhs,tol=tol,maxIter=100,Preconditioner=SGS)
 # tests with random starting guess
-xCGr, = pcg(Af,rhs,tol,100,1,randn(size(rhs)))
-xJACr, = pcg(Af,rhs,tol,100,JAC,randn(size(rhs)))
-xSGSr, = pcg(Af,rhs,tol,100,SGS,randn(size(rhs)))
+xCGr, = cg(Af,rhs,tol=tol,maxIter=100,Preconditioner=1,x=randn(size(rhs)))
+xJACr, = cg(Af,rhs,tol=tol,maxIter=100,Preconditioner=JAC,x=randn(size(rhs)))
+xSGSr, = cg(Af,rhs,tol=tol,maxIter=100,Preconditioner=SGS,x=randn(size(rhs)))
 
 # test relative residuals
 @test norm(A*xCG-rhs) <= tol

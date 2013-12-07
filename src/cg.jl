@@ -1,7 +1,7 @@
 export cg
 
-function cg(A, b, x=nothing; tol=size(A,2)*eps(), maxIter=size(A,2),
-        Preconditioner=1)
+function cg(A, b; tol=size(A,2)*eps(), maxIter=size(A,2),
+        Preconditioner=1, x=nothing)
     K = KrylovSubspace(A, 1)
     if x==nothing || isempty(x)
         initrand!(K)
