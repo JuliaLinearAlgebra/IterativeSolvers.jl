@@ -1,9 +1,4 @@
-import Base.size
-import Base.LinAlg.BlasFloat
-import Base.LinAlg.BlasComplex
-import Base.LinAlg.BlasReal
-import Base.append!
-import Base.eye
+import Base: append!, eye, size
 
 export ConvergenceHistory, KrylovSubspace
 
@@ -26,11 +21,15 @@ type KrylovSubspace{T}
 end
 
 KrylovSubspace{T}(A::AbstractMatrix{T}, maxdim::Int=size(A,2))=KrylovSubspace(A, size(A,2), maxdim, Vector{T}[])
+function KrylovSubspace{T}(A::KrylovSubspace{T}, maxdim::Int=size(A,2), v=Vector{T}[]) #Reset an existing KrylovSubspace
+    A.maxdim = maxdim
+    A.v = v
+end
 
 lastvec(K::KrylovSubspace) = K.v[end]
 nextvec(K::KrylovSubspace) = isa(K.A, Function) ? K.A(lastvec(K)) : K.A*lastvec(K)
 size(K::KrylovSubspace) = length(K.v)
-eye(K::KrylovSubspace) = isa(K.A, Function) ? x->x : eye(size(K.A)...)
+eye{T}(K::KrylovSubspace{T}) = isa(K.A, Function) ? x->x : eye(T, size(K.A)...)
 
 function append!{T}(K::KrylovSubspace{T}, w::Vector{T})
     if size(K) == K.maxdim; shift!(K.v) end
@@ -56,14 +55,14 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int;
     method::Symbol=:ModifiedGramSchmidt, normalize::Bool=false)
     Kk = K.v[max(1,end-p+1):end]
     if method == :GramSchmidt
-        cs = [dot(v, e) for e in Kk]
+        cs = T[dot(v, e) for e in Kk]
         for (i, e) in enumerate(Kk)
             v -= cs[i] * e
         end
     elseif method == :ModifiedGramSchmidt || method== :Householder
-        #The numerical equivalence of ModifiedGramSchmidt and Householder was established in
-        #doi:10.1137/0613015
-        cs = zeros(p)
+        #The numerical equivalence of ModifiedGramSchmidt and Householder was
+        #established in doi:10.1137/0613015
+        cs = zeros(T, p)
         for (i, e) in enumerate(Kk)
             cs[i] = dot(v, e)
             v-= cs[i] * e
@@ -71,7 +70,7 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int;
     else
         error("Unsupported orthogonalization method: $(method)")
     end
-    normalize && (v /= norm(v))
+    normalize && (v /= convert(T, norm(v)))
     v, cs #Return orthogonalized vector and its coefficients
 end
 

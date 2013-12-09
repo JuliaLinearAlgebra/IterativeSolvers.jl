@@ -33,6 +33,7 @@ function ev_ii{T}(K::KrylovSubspace{T}, σ::Number=zero(T), maxiter::Int=K.n, to
     θ = zero(T)
     v = Array(T, K.n)
     y = Array(T, K.n)
+    σ = convert(T, σ)
     resnorms=zeros(maxiter)
     for iter=1:maxiter
         v = lastvec(K)
