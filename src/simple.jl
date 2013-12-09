@@ -3,7 +3,7 @@
 export ev_power, ev_ii, ev_rqi
 
 #Power method for finding largest eigenvalue and its eigenvector
-function ev_power{T}(K::KrylovSubspace{T}, maxiter::Int=K.n, tol::Real=eps(T)*K.n^3)
+function eigvals_power{T}(K::KrylovSubspace{T}, maxiter::Int=K.n, tol::Real=eps(T)*K.n^3)
     θ = zero(T)
     v = Array(T, K.n)
     resnorms=zeros(maxiter)
@@ -22,14 +22,14 @@ function ev_power{T}(K::KrylovSubspace{T}, maxiter::Int=K.n, tol::Real=eps(T)*K.
 
 end
 
-function ev_power(A, maxiter::Int=size(A,1), tol::Real=size(A,1)^3*eps())
+function eigvals_power(A, maxiter::Int=size(A,1), tol::Real=size(A,1)^3*eps())
     K = KrylovSubspace(A, 1)
     initrand!(K)
     ev_power(K, maxiter, tol)
 end
 
 #Inverse iteration/inverse power method
-function ev_ii{T}(K::KrylovSubspace{T}, σ::Number=zero(T), maxiter::Int=K.n, tol::Real=eps(T)*K.n^3)
+function eigvals_ii{T}(K::KrylovSubspace{T}, σ::Number=zero(T), maxiter::Int=K.n, tol::Real=eps(T)*K.n^3)
     θ = zero(T)
     v = Array(T, K.n)
     y = Array(T, K.n)
@@ -49,7 +49,7 @@ function ev_ii{T}(K::KrylovSubspace{T}, σ::Number=zero(T), maxiter::Int=K.n, to
     Eigenpair(σ+1/θ, y/θ), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms)
 end
 
-function ev_ii(A, σ::Number, maxiter::Int=size(A,1), tol::Real=eps())
+function eigvals_ii(A, σ::Number, maxiter::Int=size(A,1), tol::Real=eps())
     K = KrylovSubspace(A, 1)
     initrand!(K)
     ev_ii(K, σ, maxiter, tol)
@@ -57,7 +57,7 @@ end
 
 #Rayleigh quotient iteration
 #XXX Doesn't work well
-function ev_rqi(K::KrylovSubspace, σ::Number, maxiter::Int, tol::Real)
+function eigvals_rqi(K::KrylovSubspace, σ::Number, maxiter::Int, tol::Real)
     v = lastvec(K)
     ρ = dot(v, nextvec(K))
     resnorms=zeros(maxiter)
@@ -74,7 +74,7 @@ function ev_rqi(K::KrylovSubspace, σ::Number, maxiter::Int, tol::Real)
     end
     Eigenpair(ρ, v), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms)
 end
-function ev_rqi(A, σ::Number, maxiter::Int=size(A,1), tol::Real=eps())
+function eigvals_rqi(A, σ::Number, maxiter::Int=size(A,1), tol::Real=eps())
     K = KrylovSubspace(A, 1)
     initrand!(K)
     ev_rqi(K, σ, maxiter, tol)
