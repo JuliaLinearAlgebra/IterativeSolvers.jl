@@ -2,6 +2,8 @@ import Base: append!, eye, size
 
 export ConvergenceHistory, KrylovSubspace
 
+*(f::Function, v::AbstractVector)=f(v) #Syntax to mimic matvec product
+
 type Eigenpair{S,T}
     val::S
     vec::Vector{T}
@@ -21,14 +23,22 @@ type KrylovSubspace{T}
 end
 
 KrylovSubspace{T}(A::AbstractMatrix{T}, maxdim::Int=size(A,2))=KrylovSubspace(A, size(A,2), maxdim, Vector{T}[])
-function KrylovSubspace{T}(A::KrylovSubspace{T}, maxdim::Int=size(A,2), v=Vector{T}[]) #Reset an existing KrylovSubspace
+#Reset an existing KrylovSubspace
+function KrylovSubspace{T}(A::KrylovSubspace{T}, maxdim::Int=size(A,2), v=Vector{T}[])
     A.maxdim = maxdim
     A.v = v
 end
 
 lastvec(K::KrylovSubspace) = K.v[end]
-nextvec(K::KrylovSubspace) = isa(K.A, Function) ? K.A(lastvec(K)) : K.A*lastvec(K)
+nextvec(K::KrylovSubspace) = K.A*lastvec(K)
 size(K::KrylovSubspace) = length(K.v)
+function size(K::KrylovSubspace, n::Int)
+    if isa(K.A, AbstractMatrix)
+        return size(K.A, n)
+    else
+        return n==2 ? size(K) : error("Illegal dimension $n of KrylovSubspace")
+    end
+end
 eye{T}(K::KrylovSubspace{T}) = isa(K.A, Function) ? x->x : eye(T, size(K.A)...)
 
 function append!{T}(K::KrylovSubspace{T}, w::Vector{T})
