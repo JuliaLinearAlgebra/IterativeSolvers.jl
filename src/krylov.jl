@@ -50,9 +50,10 @@ function init!{T}(K::KrylovSubspace{T}, v::Vector{T})
     K.v = Vector{T}[all(v.==zero(T)) ? v : v/norm(v)]
 end
 
-#Orthogonalize a vector v against the last p basis vectors defined by the KrylovSubspace K
+#Orthogonalize a vector v against the last p basis vectors defined by the
+#KrylovSubspace K
 function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int;
-    method::Symbol=:ModifiedGramSchmidt, normalize::Bool=true)
+    method::Symbol=:ModifiedGramSchmidt, normalize::Bool=false)
     Kk = K.v[max(1,end-p+1):end]
     if method == :GramSchmidt
         cs = [dot(v, e) for e in Kk]
