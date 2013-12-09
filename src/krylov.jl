@@ -16,16 +16,21 @@ type ConvergenceHistory{T<:Real}
 end
 
 type KrylovSubspace{T}
-    A           #The matrix that generates the subspace 
-    n::Int      #Dimension of problem
-    maxdim::Int #Maximum size of subspace
+    A          #The linear operator that generates the subspace 
+    n::Int     #Dimension of problem
+    order::Int #Order (maximum size) of subspace
     v::Vector{Vector{T}} #The Krylov vectors
 end
 
-KrylovSubspace{T}(A::AbstractMatrix{T}, maxdim::Int=size(A,2))=KrylovSubspace(A, size(A,2), maxdim, Vector{T}[])
+KrylovSubspace{T}(A, n::Int, order::Int=maxdim, v::Vector{Vector{T}}=Vector{T}[])=
+    KrylovSubspace(A, n, order, v)
+
+KrylovSubspace{T}(A::AbstractMatrix{T}, order::Int=size(A,2), v::Vector{Vector{T}}=Vector{T}[])=
+    KrylovSubspace(A, size(A,2), order, v)
+
 #Reset an existing KrylovSubspace
-function KrylovSubspace{T}(A::KrylovSubspace{T}, maxdim::Int=size(A,2), v=Vector{T}[])
-    A.maxdim = maxdim
+function KrylovSubspace{T}(A::KrylovSubspace{T}, order::Int=size(A,2), v::Vector{Vector{T}}=Vector{T}[])
+    A.order = order
     A.v = v
 end
 
@@ -42,7 +47,7 @@ end
 eye{T}(K::KrylovSubspace{T}) = isa(K.A, Function) ? x->x : eye(T, size(K.A)...)
 
 function append!{T}(K::KrylovSubspace{T}, w::Vector{T})
-    if size(K) == K.maxdim; shift!(K.v) end
+    if size(K) == K.order; shift!(K.v) end
     push!(K.v, w)
 end
 appendunit!{T}(K::KrylovSubspace{T}, w::Vector{T}) = append!(K, w/norm(w))
