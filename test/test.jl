@@ -13,12 +13,12 @@ for T in (Float32, Float64, Complex64, Complex128)
     
     #Power iteration
     eval_big = maximum(v) > abs(minimum(v)) ? maximum(v) : minimum(v)
-    eval_pow = eigvals_power(A, 2000, sqrt(eps()))[1].val
+    eval_pow = eigvals_power(A; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
     @test_approx_eq_eps eval_big eval_pow (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
     
     #Inverse iteration
     eval_rand = v[1+int(rand()*(n-1))] #Pick random eigenvalue
-    eval_ii = eigvals_ii(A, eval_rand*(1+(rand()-.5)/n), 2000, sqrt(eps()))[1].val
+    eval_ii = eigvals_ii(A, eval_rand*(1+(rand()-.5)/n); tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
     @test_approx_eq_eps eval_rand eval_ii (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
     
     #Rayleigh quotient iteration
@@ -66,7 +66,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     end
     
     #GMRES
-    x_gmres = gmres(A, b; M1 = L, M2 = R)
+    x_gmres = gmres(A, b, L, R)
     @test_approx_eq A*x_gmres b
 end
 
@@ -82,7 +82,7 @@ for T in (Float64, Complex128)
         R += im*sprandn(n,n,0.5)
         b += im*randn(n)
     end
-    x_gmres = gmres(A, b; M1 = L, M2 = R)
+    x_gmres = gmres(A, b, L, R)
     @test_approx_eq A*x_gmres b
 end
 

@@ -1,6 +1,6 @@
 export gmres
 
-function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{T}; x::Array{T,1} = zeros(T,length(b)), restart::Int = min(20,length(b)), max_it::Int = 1, tol = 1e-6)
+function gmres{T}(A, b::Vector{T}, Pl=x->x, Pr=x->x, x=nothing; tol=sqrt(eps()), maxiter::Int=1, restart::Int=min(20,length(b)))
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
 #           2.3.4 Generalized Minimal Residual (GMRES)
@@ -10,22 +10,22 @@ function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{
 #
 #   Solve A*x=b using the Generalized Minimum RESidual Method with restarts
 #
-#   Effectively solves the equation inv(M1)*A*inv(M2)*y=b where x = inv(M2)*y
+#   Effectively solves the equation inv(Pl)*A*inv(Pr)*y=b where x = inv(Pr)*y
 #
 #   Required Arguments:
 #       A: Linear operator
 #       b: Right hand side
 #
 #   Named Arguments:
-#       M1:      Left Preconditioner
-#       M2:      Right Preconditioner
+#       Pl:      Left Preconditioner
+#       Pr:      Right Preconditioner
 #       restart: Number of iterations before restart (GMRES(restart))
-#       max_it:  Maximum number of outer iterations
+#       maxiter:  Maximum number of outer iterations
 #       tol:     Convergence Tolerance
 #
-#   The input A (resp. M1, M2) can be a matrix, a function returning A*x,
-#   (resp. inv(M1)*x, inv(M2)*x), or any type representing a linear operator
-#   which implements *(A,x) (resp. \(M1,x), \(M2,x)).
+#   The input A (resp. Pl, Pr) can be a matrix, a function returning A*x,
+#   (resp. inv(Pl)*x, inv(Pr)*x), or any type representing a linear operator
+#   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
 
     n = length(b)
     V = Array(Vector{T},restart+1) #Krylov subspace
@@ -34,11 +34,17 @@ function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,2)         #Givens rotation values
     a = zeros(T,restart)           #Subspace vector coefficients
-
-    tol = tol * norm(M1(b))
-    for i = 1:max_it
-        w    = b - A(x)
-        w    = M1(w)
+    if x==nothing
+        x = convert(Vector{T}, randn(n))
+        x /= norm(x)
+    end
+    A_(x) = isa(A, Function) ? A(x) : A*x 
+    Pl_(x) = isa(Pl, Function) ? Pl(x) : Pl\x 
+    Pr_(x) = isa(Pr, Function) ? Pr(x) : Pr\x 
+    tol = tol * norm(Pl_(b))
+    for iter = 1:maxiter
+        w    = b - A_(x)
+        w    = Pl_(w)
         rho  = norm(w)
         s[1] = rho
         V[1] = w / rho
@@ -46,9 +52,9 @@ function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{
         N = restart
         for j = 1:restart
             #Calculate next orthonormal basis vector in the Krylov subspace
-            w = M2(V[j])
-            w = A(w)
-            w = M1(w)
+            w = Pr_(V[j])
+            w = A_(w)
+            w = Pl_(w)
 
             #Gram-Schmidt
             for k = 1:j
@@ -113,7 +119,7 @@ function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{
         end
 
         #Right preconditioner
-        x += M2(w)
+        x += Pr_(w)
 
         if rho < tol
             break
@@ -122,7 +128,4 @@ function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{
 
     return x
 end
-gmres(A, b;M1 = (x->x), M2 = (x->x), args...) = gmres(M1,       A,       M2,       b;args...)
-gmres(M1,          A,          M2, b;args...) = gmres(x->(M1\x),A,       M2,       b;args...)
-gmres(M1::Function,A,          M2, b;args...) = gmres(M1,       x->(A*x),M2,       b;args...)
-gmres(M1::Function,A::Function,M2, b;args...) = gmres(M1,       A,       x->(M2\x),b;args...)
+

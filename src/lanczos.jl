@@ -18,7 +18,7 @@ function lanczos!{T}(K::KrylovSubspace{T})
     SymTridiagonal(αs, βs)
 end
 
-function eigvals_lanczos(A, neigs::Int=size(A,1), tol::Real=size(A,1)^3*eps(), maxiter::Int=size(A,1))
+function eigvals_lanczos(A, neigs::Int=size(A,1); tol::Real=size(A,1)^3*eps(), maxiter::Int=size(A,1))
     K = KrylovSubspace(A, 2) #In Lanczos, only remember the last two vectors
     initrand!(K)
     resnorms = zeros(maxiter)
@@ -36,9 +36,9 @@ end
 
 #Golub-Kahan-Lanczos algorithm for the singular values
 #TODO duck-type for A::Function
-function svdvals_gkl{T<:BlasFloat}(A::AbstractMatrix{T})
+function svdvals_gkl(A, Ap=A')
     n = size(A, 2)
-    α, β = Array(T, n), Array(T, n-1)
+    α, β = Array(eltype(A), n), Array(eltype(A), n-1)
     K = KrylovSubspace(A, 1)
     initrand!(K)
     u, v = nextvec(K), lastvec(K)
@@ -46,7 +46,7 @@ function svdvals_gkl{T<:BlasFloat}(A::AbstractMatrix{T})
         α[k]=norm(u)
         if k==n break end
         u/=α[k]
-        v=A'*u-α[k]*v
+        v=Ap*u-α[k]*v
         β[k]=norm(v)
         v/=β[k]
         u=A*v-β[k]*u

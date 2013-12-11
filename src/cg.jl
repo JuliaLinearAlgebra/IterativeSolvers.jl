@@ -1,7 +1,6 @@
 export cg
 
-function cg(A, b; tol=size(A,2)*eps(), maxIter=size(A,2),
-        Preconditioner=1, x=nothing)
+function cg(A, b, x=nothing, Pl=1; tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2))
     K = KrylovSubspace(A, 1)
     if x==nothing || isempty(x)
         initrand!(K)
@@ -9,13 +8,12 @@ function cg(A, b; tol=size(A,2)*eps(), maxIter=size(A,2),
     else
         init!(K, x)
     end
-    cg(K, b, x; tol=tol, maxIter=maxIter, Preconditioner=Preconditioner)
+    cg(K, b, x, Pl; tol=tol, maxiter=maxiter)
 end
 
-function cg(K::KrylovSubspace, b, x; tol::Real=size(A,2)*eps(),
-        maxIter::Integer=size(A,2), Preconditioner=1)
-    precondition(x) = isa(Preconditioner, Function) ? Preconditioner(x) :
-        Preconditioner\x
+function cg(K::KrylovSubspace, b, x, Pl=1; tol::Real=size(A,2)*eps(),
+        maxIter::Integer=size(A,2))
+    precondition(x) = isa(Pl, Function) ? Pl(x) : Pl\x
     resnorms = zeros(maxIter)
  
     r = b - nextvec(K)
