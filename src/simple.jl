@@ -1,6 +1,6 @@
 #Simple methods
 
-export ev_power, ev_ii, ev_rqi
+export eigvals_power, eigvals_ii, eigvals_rqi
 
 #Power method for finding largest eigenvalue and its eigenvector
 function eigvals_power{T}(K::KrylovSubspace{T}, maxiter::Int=K.n, tol::Real=eps(T)*K.n^3)
@@ -25,7 +25,7 @@ end
 function eigvals_power(A, maxiter::Int=size(A,1), tol::Real=size(A,1)^3*eps())
     K = KrylovSubspace(A, 1)
     initrand!(K)
-    ev_power(K, maxiter, tol)
+    eigvals_power(K, maxiter, tol)
 end
 
 #Inverse iteration/inverse power method
@@ -52,7 +52,7 @@ end
 function eigvals_ii(A, σ::Number, maxiter::Int=size(A,1), tol::Real=eps())
     K = KrylovSubspace(A, 1)
     initrand!(K)
-    ev_ii(K, σ, maxiter, tol)
+    eigvals_ii(K, σ, maxiter, tol)
 end
 
 #Rayleigh quotient iteration
@@ -77,6 +77,6 @@ end
 function eigvals_rqi(A, σ::Number, maxiter::Int=size(A,1), tol::Real=eps())
     K = KrylovSubspace(A, 1)
     initrand!(K)
-    ev_rqi(K, σ, maxiter, tol)
+    eigvals_rqi(K, σ, maxiter, tol)
 end
 
