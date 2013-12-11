@@ -42,6 +42,8 @@ function gmres{T}(A, b::Vector{T}, Pl=x->x, Pr=x->x, x=nothing; tol=sqrt(eps()),
     Pl_(x) = isa(Pl, Function) ? Pl(x) : Pl\x 
     Pr_(x) = isa(Pr, Function) ? Pr(x) : Pr\x 
     tol = tol * norm(Pl_(b))
+    resnorms = zeros(T, maxiter, restart)
+    isconverged = false
     for iter = 1:maxiter
         w    = b - A_(x)
         w    = Pl_(w)
@@ -96,7 +98,7 @@ function gmres{T}(A, b::Vector{T}, Pl=x->x, Pr=x->x, x=nothing; tol=sqrt(eps()),
             s[j+1] = -conj(J[j,2]) * s[j]
             s[j]   =       J[j,1]  * s[j]
 
-            rho = abs(s[j+1])
+            resnorms[iter, j] = rho = abs(s[j+1])
             if rho < tol
                 N = j
                 break
@@ -122,10 +124,12 @@ function gmres{T}(A, b::Vector{T}, Pl=x->x, Pr=x->x, x=nothing; tol=sqrt(eps()),
         x += Pr_(w)
 
         if rho < tol
+            resnorms = resnorms[1:iter, :]
+            isconverged = true
             break
         end
     end
 
-    return x
+    return x, ConvergenceHistory(isconverged, tol, resnorms) 
 end
 

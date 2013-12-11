@@ -67,7 +67,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     end
     
     #GMRES
-    x_gmres = gmres(A, b, L, R)
+    x_gmres, = gmres(A, b, L, R)
     @test_approx_eq A*x_gmres b
 end
 
@@ -83,7 +83,7 @@ for T in (Float64, Complex128)
         R += im*sprandn(n,n,0.5)
         b += im*randn(n)
     end
-    x_gmres = gmres(A, b, L, R)
+    x_gmres, = gmres(A, b, L, R)
     @test_approx_eq A*x_gmres b
 end
 

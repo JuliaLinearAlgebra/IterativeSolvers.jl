@@ -12,7 +12,7 @@ end
 type ConvergenceHistory{T}
     isconverged::Bool
     threshold::T
-    residuals::Vector{T}
+    residuals::Union(Array{T,1},Array{T,2})
 end
 
 type KrylovSubspace{T}
