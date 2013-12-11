@@ -9,7 +9,7 @@ type Eigenpair{S,T}
     vec::Vector{T}
 end
 
-type ConvergenceHistory{T<:Real}
+type ConvergenceHistory{T}
     isconverged::Bool
     threshold::T
     residuals::Vector{T}
@@ -66,7 +66,7 @@ end
 
 #Orthogonalize a vector v against the last p basis vectors defined by the
 #KrylovSubspace K
-function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int;
+function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
     method::Symbol=:ModifiedGramSchmidt, normalize::Bool=false)
     Kk = K.v[max(1,end-p+1):end]
     if method == :GramSchmidt
