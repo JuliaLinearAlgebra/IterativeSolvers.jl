@@ -24,7 +24,7 @@ type KrylovSubspace{T}
 end
 
 KrylovSubspace{T}(A::AbstractMatrix{T}, order::Int, v::Vector{Vector{T}}=Vector{T}[])=
-    KrylovSubspace(A, size(A,2), order, v)
+    KrylovSubspace{T}(A, size(A,2), order, v)
 
 #Reset an existing KrylovSubspace
 function KrylovSubspace{T}(A::KrylovSubspace{T}, order::Int=size(A,2), v::Vector{Vector{T}}=Vector{T}[])
