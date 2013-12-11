@@ -5,6 +5,9 @@ function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{
 #Reference: http://www.netlib.org/templates/templates.pdf
 #           2.3.4 Generalized Minimal Residual (GMRES)
 #
+#           http://www.netlib.org/lapack/lawnspdf/lawn148.pdf
+#           Givens rotation based on Algorithm 1
+#
 #   Solve A*x=b using the Generalized Minimum RESidual Method with restarts
 #
 #   Effectively solves the equation inv(M1)*A*inv(M2)*y=b where x = inv(M2)*y
@@ -65,17 +68,22 @@ function gmres{T<:BlasFloat}(M1::Function, A::Function, M2::Function, b::Vector{
             #Compute Givens rotation j
             p = abs(H[j,j])
             q = abs(H[j+1,j])
-            if p > q
-                m = q / p
+
+            if q == zero(T)
+                J[j,1] = one(T)
+                J[j,2] = zero(T)
+            elseif p == zero(T)
+                J[j,1] = zero(T)
+                J[j,2] = sign(conj(H[j+1,j]))
+                H[j,j] = q
             else
-                m = p / q
+                m      = hypot(p,q)
+                temp   = sign(H[j,j])
+                J[j,1] = p / m
+                J[j,2] = temp * conj(H[j+1,j]) / m
+                H[j,j] = temp * m
             end
 
-            m        = 1.0 / sqrt(1.0 + m^2)
-            J[j,1]   = p / m
-            J[j,2]   = sign(H[j,j]) * conj(H[j+1,j]) / m
-
-            H[j,j]   = J[j,1] * H[j,j] + J[j,2] * H[j+1,j]
             H[j+1,j] = zero(T)
 
             #Apply Givens rotation j to s,(assuming s[j+1] = 0)
