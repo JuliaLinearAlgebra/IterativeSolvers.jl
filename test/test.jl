@@ -2,6 +2,7 @@ using IterativeSolvers
 using Base.Test
 n=10
 m=6
+srand(1234321)
 
 for T in (Float32, Float64, Complex64, Complex128)
     A=convert(Matrix{T}, randn(n,n))
