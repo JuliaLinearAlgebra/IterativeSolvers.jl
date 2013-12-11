@@ -50,7 +50,7 @@ for T in (Float32, Float64)
 end
 
 #Conjugate gradients
-#XXX failing include("cg.jl")
+include("cg.jl")
 
 #GMRES
 for T in (Float32, Float64, Complex64, Complex128)
