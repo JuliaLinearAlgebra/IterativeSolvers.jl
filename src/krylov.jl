@@ -20,8 +20,9 @@ type KrylovSubspace{T}
     n::Int     #Dimension of problem
     order::Int #Order (maximum size) of subspace
     v::Vector{Vector{T}} #The Krylov vectors
-    #KrylovSubspace{T}(A::Any, n::Int, order::Int, v::Vector{Vector{T}}=Vector{T}[])=new(A, n, order, v)
 end
+
+KrylovSubspace{T}(A, n::Int, order::Int, v::Vector{Vector{T}}=Vector{T}[])=KrylovSubspace{T}(A, n, order, v)
 
 KrylovSubspace{T}(A::AbstractMatrix{T}, order::Int, v::Vector{Vector{T}}=Vector{T}[])=
     KrylovSubspace{T}(A, size(A,2), order, v)
