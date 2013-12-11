@@ -22,7 +22,7 @@ type KrylovSubspace{T}
     v::Vector{Vector{T}} #The Krylov vectors
 end
 
-KrylovSubspace{T}(A, n::Int, order::Int=maxdim, v::Vector{Vector{T}}=Vector{T}[])=
+KrylovSubspace{T}(A, n::Int, order::Int=order, v::Vector{Vector{T}}=Vector{T}[])=
     KrylovSubspace(A, n, order, v)
 
 KrylovSubspace{T}(A::AbstractMatrix{T}, order::Int=size(A,2), v::Vector{Vector{T}}=Vector{T}[])=
