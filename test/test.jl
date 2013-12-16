@@ -4,6 +4,37 @@ n=10
 m=6
 srand(1234321)
 
+##################
+# Linear solvers #
+##################
+
+#Stationary solvers
+for T in (Float32, Float64, Complex64, Complex128)
+    A=convert(Matrix{T}, randn(n,n))
+    T<:Complex && (A+=convert(Matrix{T}, im*randn(n,n)))
+    A+=A'
+    A+=n*maximum(abs(A[:]))*diagm(ones(T,n)) #Diagonally dominant
+    b=convert(Vector{T}, randn(n))
+    T<:Complex && (b+=convert(Vector{T}, randn(n)))
+    x0=convert(Vector{T}, randn(n))
+    T<:Complex && (x0+=convert(Vector{T}, randn(n)))
+    x = A\b
+    for guess in {nothing, x0}
+        for solver in [jacobi, gauss_seidel]
+            xi, ci=solver(A, b, guess, maxiter=n^4)
+            @test ci.isconverged
+            @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+        end
+
+        ω = 0.5
+        for solver in [sor, ssor]
+            xi, ci=solver(A, b, ω, guess, maxiter=n^4)
+            @test ci.isconverged
+            @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+        end
+    end
+end
+
 for T in (Float32, Float64, Complex64, Complex128)
     A=convert(Matrix{T}, randn(n,n))
     T<:Complex && (A+=convert(Matrix{T}, im*randn(n,n)))
