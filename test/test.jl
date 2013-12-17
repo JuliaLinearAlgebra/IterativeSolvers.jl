@@ -1,7 +1,8 @@
+include("../src/IterativeSolvers.jl")
 using IterativeSolvers
 using Base.Test
-n=10
-m=6
+const n=10
+const m=6
 srand(1234321)
 
 ##################
@@ -35,6 +36,49 @@ for T in (Float32, Float64, Complex64, Complex128)
     end
 end
 
+#Conjugate gradients
+include("cg.jl")
+
+#GMRES
+for T in (Float32, Float64, Complex64, Complex128)
+    A = convert(Matrix{T}, randn(n,n))
+    L = convert(Matrix{T}, randn(n,n))
+    R = convert(Matrix{T}, randn(n,n))
+    b = convert(Vector{T}, randn(n))
+    if T <: Complex
+        A += im*convert(Matrix{T}, randn(n,n))
+        L += im*convert(Matrix{T}, randn(n,n))
+        R += im*convert(Matrix{T}, randn(n,n))
+        b += im*convert(Vector{T}, randn(n))
+    end
+    
+    x_gmres, c_gmres= gmres(A, b, L, R)
+    @test c_gmres.isconverged
+    @test_approx_eq A*x_gmres b
+end
+
+for T in (Float64, Complex128)
+    #GMRES on sparse inputs
+    A = sprandn(n,n,0.5)
+    L = sprandn(n,n,0.5)
+    R = sprandn(n,n,0.5)
+    b = convert(Vector{T}, randn(n))
+    if T <: Complex
+        A += im*sprandn(n,n,0.5)
+        L += im*sprandn(n,n,0.5)
+        R += im*sprandn(n,n,0.5)
+        b += im*randn(n)
+    end
+    x_gmres, c_gmres= gmres(A, b, L, R)
+    @test c_gmres.isconverged
+    @test_approx_eq A*x_gmres b
+end
+
+#######################
+# Eigensystem solvers #
+#######################
+
+#Simple eigensolvers
 for T in (Float32, Float64, Complex64, Complex128)
     A=convert(Matrix{T}, randn(n,n))
     T<:Complex && (A+=convert(Matrix{T}, im*randn(n,n)))
@@ -59,62 +103,26 @@ for T in (Float32, Float64, Complex64, Complex128)
     #@test_approx_eq eigvals_rand l
 end
 
+#Lanczos methods
+    
+#Lanczos eigenvalues computation
 for T in (Float32, Float64)
     A=convert(Matrix{T}, randn(n,n))
     A=A+A' #Symmetric
     v = eigvals(A)
 
-    #Lanczos methods
-    
-    #Lanczos eigenvalues computation
-    eval_lanczos, = eigvals_lanczos(A)
+    eval_lanczos, c_lanczos = eigvals_lanczos(A)
+    @test c_lanczos.isconverged
     @test_approx_eq v eval_lanczos
 end
 
-
+#Golub-Kahan-Lanczos singular values computation
 for T in (Float32, Float64)
     B = convert(Matrix{T}, randn(n, m))
     v = svdvals(B)
 
-    #Golub-Kahan-Lanczos singular values computation
     sv_gkl = svdvals_gkl(B)
     @test_approx_eq v sv_gkl
 end
 
-#Conjugate gradients
-include("cg.jl")
-
-#GMRES
-for T in (Float32, Float64, Complex64, Complex128)
-    A = convert(Matrix{T}, randn(n,n))
-    L = convert(Matrix{T}, randn(n,n))
-    R = convert(Matrix{T}, randn(n,n))
-    b = convert(Vector{T}, randn(n))
-    if T <: Complex
-        A += im*convert(Matrix{T}, randn(n,n))
-        L += im*convert(Matrix{T}, randn(n,n))
-        R += im*convert(Matrix{T}, randn(n,n))
-        b += im*convert(Vector{T}, randn(n))
-    end
-    
-    #GMRES
-    x_gmres, = gmres(A, b, L, R)
-    @test_approx_eq A*x_gmres b
-end
-
-for T in (Float64, Complex128)
-    #GMRES on sparse inputs
-    A = sprandn(n,n,0.5)
-    L = sprandn(n,n,0.5)
-    R = sprandn(n,n,0.5)
-    b = convert(Vector{T}, randn(n))
-    if T <: Complex
-        A += im*sprandn(n,n,0.5)
-        L += im*sprandn(n,n,0.5)
-        R += im*sprandn(n,n,0.5)
-        b += im*randn(n)
-    end
-    x_gmres, = gmres(A, b, L, R)
-    @test_approx_eq A*x_gmres b
-end
 
