@@ -1,6 +1,7 @@
 export gmres
 
-function gmres{T}(A, b::Vector{T}, Pl=x->x, Pr=x->x, x=nothing; tol=sqrt(eps()), maxiter::Int=1, restart::Int=min(20,length(b)))
+function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
+        tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
 #           2.3.4 Generalized Minimal Residual (GMRES)
@@ -42,7 +43,7 @@ function gmres{T}(A, b::Vector{T}, Pl=x->x, Pr=x->x, x=nothing; tol=sqrt(eps()),
     Pl_(x) = isa(Pl, Function) ? Pl(x) : Pl\x 
     Pr_(x) = isa(Pr, Function) ? Pr(x) : Pr\x 
     tol = tol * norm(Pl_(b))
-    resnorms = zeros(T, maxiter, restart)
+    resnorms = zeros(typeof(real(b[1])), maxiter, restart)
     isconverged = false
     for iter = 1:maxiter
         w    = b - A_(x)
