@@ -29,6 +29,7 @@ function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
 #   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
 
     n = length(b)
+    T = eltype(b)
     V = Array(Vector{T},restart+1) #Krylov subspace
     H = zeros(T,n+1,restart)       #Hessenberg matrix
     w = zeros(T,n)                 #Working vector
