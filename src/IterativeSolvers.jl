@@ -6,6 +6,7 @@ include("krylov.jl")
 include("stationary.jl")
 include("cg.jl")
 include("gmres.jl")
+include("chebyshev.jl")
 
 #Eigensolvers
 include("simple.jl")

@@ -16,9 +16,9 @@ for T in (Float32, Float64, Complex64, Complex128)
     A+=A'
     A+=n*maximum(abs(A[:]))*diagm(ones(T,n)) #Diagonally dominant
     b=convert(Vector{T}, randn(n))
-    T<:Complex && (b+=convert(Vector{T}, randn(n)))
+    T<:Complex && (b+=convert(Vector{T}, im*randn(n)))
     x0=convert(Vector{T}, randn(n))
-    T<:Complex && (x0+=convert(Vector{T}, randn(n)))
+    T<:Complex && (x0+=convert(Vector{T}, im*randn(n)))
     x = A\b
     for guess in {nothing, x0}
         for solver in [jacobi, gauss_seidel]
@@ -74,6 +74,21 @@ for T in (Float64, Complex128)
     @test_approx_eq A*x_gmres b
 end
 
+#Chebyshev
+for T in (Float32, Float64, Complex64, Complex128)
+    A=convert(Matrix{T}, randn(n,n))
+    T<:Complex && (A+=convert(Matrix{T}, im*randn(n,n)))
+    A=A+A'
+    A=A'*A #Construct SPD matrix
+    b=convert(Vector{T}, randn(n))
+    T<:Complex && (b+=convert(Vector{T}, im*randn(n)))
+    tol = 0.1 #For some reason Chebyshev is very slow
+    v = eigvals(A)
+    x_cheby, c_cheby= chebyshev(A, b, minimum(v), maximum(v), tol=tol, maxiter=10^5)
+    @test c_cheby.isconverged
+    @test_approx_eq_eps A*x_cheby b tol
+end
+
 #######################
 # Eigensystem solvers #
 #######################
@@ -102,6 +117,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     #l = eigvals_rqi(A, eigvals_rand, 2000, sqrt(eps())).val
     #@test_approx_eq eigvals_rand l
 end
+
 
 #Lanczos methods
     
