@@ -1,7 +1,7 @@
 export chebyshev
 
 function chebyshev(A, b, λmin::Real, λmax::Real, Pr=1, x=nothing, n=size(A,2); tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3)
-	K = KrylovSubspace{eltype(b)}(A, n, 1, Vector{eltype(b)}[])
+	K = KrylovSubspace(A, n, 1, eltype(b))
 	x==nothing ? initrand!(K) : init!(K, x)
 	chebyshev(K, b, λmin, λmax, Pr; tol=tol, maxiter=maxiter)
 end
@@ -33,5 +33,5 @@ function chebyshev(K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol::Re
 			break
 		end
 	end
-	x, ConvergenceHistory(resnorms[end] < tol, convert(eltype(resnorms), tol), resnorms)
+	x, ConvergenceHistory(resnorms[end] < tol, convert(eltype(resnorms), tol), resnorms, K.mvps)
 end

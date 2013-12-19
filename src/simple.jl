@@ -18,7 +18,7 @@ function eigvals_power{T}(K::KrylovSubspace{T}; tol::Real=eps(T)*K.n^3, maxiter:
         end
         appendunit!(K, y)
     end
-    Eigenpair(θ, v), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms)
+    Eigenpair(θ, v), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms, K.mvps)
 
 end
 
@@ -46,7 +46,7 @@ function eigvals_ii{T}(K::KrylovSubspace{T}, σ::Number=zero(T); tol::Real=eps(T
         end
         appendunit!(K, y)
     end
-    Eigenpair(σ+1/θ, y/θ), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms)
+    Eigenpair(σ+1/θ, y/θ), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms, K.mvps)
 end
 
 function eigvals_ii(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=size(A,1))
@@ -72,7 +72,7 @@ function eigvals_rqi{T}(K::KrylovSubspace, σ::Number, x=nothing; tol::Real=eps(
             break
         end
     end
-    Eigenpair(ρ, v), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms)
+    Eigenpair(ρ, v), ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms, K.mvps)
 end
 function eigvals_rqi(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=size(A,1))
     K = KrylovSubspace(A, 1)

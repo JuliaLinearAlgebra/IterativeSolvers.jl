@@ -29,7 +29,7 @@ function jacobi(A::AbstractMatrix, b, x=nothing;
 		end
 		xold=x
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms)
+	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
 end	
 
 function gauss_seidel(A::AbstractMatrix, b, x=nothing;
@@ -62,7 +62,7 @@ function gauss_seidel(A::AbstractMatrix, b, x=nothing;
 		end
 		xold=x
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms)
+	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
 end
 
 #Successive overrelaxation
@@ -99,7 +99,7 @@ function sor(A::AbstractMatrix, b, ω::Real, x=nothing;
 		end
 		xold=x
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms)
+	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
 end
 
 #Symmetric successive overrelaxation
@@ -150,5 +150,5 @@ function ssor(A::AbstractMatrix, b, ω::Real, x=nothing;
 		end
 		xold = x
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms)
+	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
 end

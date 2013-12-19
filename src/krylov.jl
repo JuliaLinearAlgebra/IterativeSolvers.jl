@@ -13,6 +13,7 @@ type ConvergenceHistory{T}
     isconverged::Bool
     threshold::T
     residuals::Union(Array{T,1},Array{T,2})
+    mvps::Int  #Count of matrix-vector products
 end
 
 type KrylovSubspace{T}
@@ -20,21 +21,29 @@ type KrylovSubspace{T}
     n::Int     #Dimension of problem
     order::Int #Order (maximum size) of subspace
     v::Vector{Vector{T}} #The Krylov vectors
+    mvps::Int  #Count of matrix-vector products
 end
 
-KrylovSubspace{T}(A, n::Int, order::Int, v::Vector{Vector{T}}=Vector{T}[])=KrylovSubspace{T}(A, n, order, v)
+KrylovSubspace(A, n::Int, order::Int, T::Type)=KrylovSubspace{T}(A, n, order, Vector{T}[], 0)
+
+KrylovSubspace{T}(A, n::Int, order::Int, v::Vector{Vector{T}}=Vector{T}[])=KrylovSubspace{T}(A, n, order, v, 0)
 
 KrylovSubspace{T}(A::AbstractMatrix{T}, order::Int, v::Vector{Vector{T}}=Vector{T}[])=
-    KrylovSubspace{T}(A, size(A,2), order, v)
+    KrylovSubspace{T}(A, size(A,2), order, v, 0)
 
 #Reset an existing KrylovSubspace
 function KrylovSubspace{T}(A::KrylovSubspace{T}, order::Int=size(A,2), v::Vector{Vector{T}}=Vector{T}[])
     A.order = order
     A.v = v
+    A.mvps = 0
 end
 
 lastvec(K::KrylovSubspace) = K.v[end]
-nextvec(K::KrylovSubspace) = K.A*lastvec(K)
+function nextvec(K::KrylovSubspace)
+    K.mvps += 1
+    K.A*lastvec(K)
+end
+
 size(K::KrylovSubspace) = length(K.v)
 function size(K::KrylovSubspace, n::Int)
     if isa(K.A, AbstractMatrix)
