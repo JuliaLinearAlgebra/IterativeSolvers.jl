@@ -132,6 +132,6 @@ function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
         end
     end
 
-    return x, ConvergenceHistory(isconverged, tol, resnorms, length(resnorms)) 
+    return x, ConvergenceHistory(isconverged, tol, length(resnorms), resnorms)
 end
 

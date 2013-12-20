@@ -3,6 +3,32 @@ import Base: eltype, empty!, length, ndims, push!, size, *, A_mul_B, A_mul_B!, A
 #### Type-handling
 Abtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
 
+#### Reporting
+type ConvergenceHistory{T, R}
+    isconverged::Bool
+    threshold::T
+    mvps::Int
+    residuals::R
+end
+
+ConvergenceHistory{T}(isconverged::Bool, threshold::T, mvps::Int, resnorms::AbstractVector{T}) = ConvergenceHistory{T,Vector{T}}(isconverged, threshold, mvps, convert(Vector, resnorms))
+ConvergenceHistory{T}(isconverged::Bool, threshold, mvps::Integer, resnorms::AbstractVector{T}) = ConvergenceHistory{T,Vector{T}}(isconverged, convert(T, threshold), int(mvps), convert(Vector, resnorms))
+ConvergenceHistory{T}(::Type{T}) = ConvergenceHistory{T,Vector{T}}(false, zero(T), 0, T[])
+
+function empty!(ch::ConvergenceHistory)
+    ch.isconverged = false
+    ch.threshold = 0
+    ch.mvps = 0
+    empty!(ch.residuals)
+    ch
+end
+
+function push!(ch::ConvergenceHistory, resnorm::Number)
+    push!(ch.residuals, resnorm)
+    ch
+end
+push!(ch::ConvergenceHistory, residual::AbstractVector) = push!(ch, norm(residual))
+
 #### Errors
 export PosSemidefException
 

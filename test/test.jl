@@ -1,4 +1,4 @@
-include("../src/IterativeSolvers.jl")
+require("../src/IterativeSolvers.jl")
 using IterativeSolvers
 using Base.Test
 const n=10

@@ -31,7 +31,7 @@ function eigvals_lanczos(A, neigs::Int=size(A,1); tol::Real=size(A,1)^3*eps(), m
             break
         end
     end
-    e1, ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms, K.mvps)
+    e1, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)
 end
 
 #Golub-Kahan-Lanczos algorithm for the singular values

@@ -38,6 +38,6 @@ function cg(K::KrylovSubspace, b, Pl=x->x, x=nothing;
         β = γ/oldγ
         p = z + β*p
       end
-    x, ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms, K.mvps)
+    x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)
 end
 

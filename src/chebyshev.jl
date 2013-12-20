@@ -33,5 +33,5 @@ function chebyshev(K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol::Re
 			break
 		end
 	end
-	x, ConvergenceHistory(resnorms[end] < tol, convert(eltype(resnorms), tol), resnorms, K.mvps)
+	x, ConvergenceHistory(resnorms[end] < tol, tol, K.mvps, resnorms)
 end

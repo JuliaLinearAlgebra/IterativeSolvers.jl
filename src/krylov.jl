@@ -9,13 +9,6 @@ type Eigenpair{S,T}
     vec::Vector{T}
 end
 
-type ConvergenceHistory{T}
-    isconverged::Bool
-    threshold::T
-    residuals::Union(Array{T,1},Array{T,2})
-    mvps::Int  #Count of matrix-vector products
-end
-
 type KrylovSubspace{T, OpT}
     A::OpT     #The linear operator that generates the subspace
     n::Int     #Dimension of problem
