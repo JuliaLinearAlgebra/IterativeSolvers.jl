@@ -1,5 +1,5 @@
 module IterativeSolvers
-include("errors.jl")
+include("common.jl")
 include("krylov.jl")
 
 #Linear solvers
@@ -13,4 +13,3 @@ include("simple.jl")
 include("lanczos.jl")
 
 end
-
