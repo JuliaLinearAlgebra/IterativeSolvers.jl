@@ -1,7 +1,37 @@
 import Base: eltype, empty!, length, ndims, push!, size, *, A_mul_B, A_mul_B!, Ac_mul_B, Ac_mul_B!
 
 #### Type-handling
-Abtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
+Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
+Amultype(A, x) = typeof(one(eltype(A))*one(eltype(x)))
+
+function randx(A, b)
+    T = Adivtype(A, b)
+    x = initrand!(Array(T, size(A, 2)))
+end
+
+function zerox(A, b)
+    T = Adivtype(A, b)
+    x = zeros(T, size(A, 2))
+end
+
+#### Numerics
+function update!(x, α::Number, p::AbstractVector)
+    for i = 1:length(x)
+        x[i] += α*p[i]
+    end
+    x
+end
+
+function initrand!(v::Vector)
+    _randn!(v)
+    nv = norm(v)
+    for i = 1:length(v)
+        v[i] /= nv
+    end
+    v
+end
+_randn!(v::Array{Float64}) = randn!(v)
+_randn!(v) = copy!(v, randn(length(v)))
 
 #### Reporting
 type ConvergenceHistory{T, R}
@@ -65,6 +95,9 @@ type MatrixCFcn{T} <: AbstractMatrixFcn{T}
     mul::Function
     mulc::Function
 end
+
+MatrixFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)-> A_mul_B!(output, A, x))
+MatrixCFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)->A_mul_B!(output, A, x), (output, b) -> Ac_mul_B(output, A, b))
 
 eltype{T}(op::AbstractMatrixFcn{T}) = T
 

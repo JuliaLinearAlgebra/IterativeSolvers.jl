@@ -24,7 +24,7 @@ end
 
 function eigvals_power(A, x=nothing; tol::Real=size(A,1)^3*eps(), maxiter::Int=size(A,1))
     K = KrylovSubspace(A, 1)
-    x==nothing ? initrand!(K) : init!(K, x)
+    x==nothing ? initrand!(K) : init!(K, x/norm(x))
     eigvals_power(K; tol=tol, maxiter=maxiter)
 end
 
@@ -51,7 +51,7 @@ end
 
 function eigvals_ii(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=size(A,1))
     K = KrylovSubspace(A, 1)
-    x==nothing ? initrand!(K) : init!(K, x)
+    x==nothing ? initrand!(K) : init!(K, x/norm(x))
     eigvals_ii(K, σ; tol=tol, maxiter=maxiter)
 end
 
@@ -76,7 +76,7 @@ function eigvals_rqi{T}(K::KrylovSubspace, σ::Number, x=nothing; tol::Real=eps(
 end
 function eigvals_rqi(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=size(A,1))
     K = KrylovSubspace(A, 1)
-    x==nothing ? initrand!(K) : init!(K, x)
+    x==nothing ? initrand!(K) : init!(K, x/norm(x))
     eigvals_rqi(K, σ; tol=tol, maxiter=maxiter)
 end
 

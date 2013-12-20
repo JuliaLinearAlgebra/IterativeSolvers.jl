@@ -40,7 +40,7 @@ export lsqr, lsqr!
 #    - Allow an initial guess for x
 #    - Eliminate printing
 #-----------------------------------------------------------------------
-function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Abtype(A,b))), btol=sqrt(eps(Abtype(A,b))), conlim=one(Abtype(A,b))/sqrt(eps(Abtype(A,b))), maxiter::Int=max(size(A,1), size(A,2)))
+function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))), conlim=one(Adivtype(A,b))/sqrt(eps(Adivtype(A,b))), maxiter::Int=max(size(A,1), size(A,2)))
     # Sanity-checking
     m = size(A,1)
     n = size(A,2)
@@ -53,7 +53,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Abtype(A,b
     # Initialize
     empty!(ch)
     ch.threshold = (atol, btol, conlim)
-    T = Abtype(A, b)
+    T = Adivtype(A, b)
     itn = istop = 0
     ctol = conlim > 0 ? convert(T,1/conlim) : zero(T)
     Anorm = Acond = ddnorm = res2 = xnorm = xxnorm = z = sn2 = zero(T)
@@ -210,11 +210,12 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Abtype(A,b
     x
 end
 
-function lsqr(A, b; kwargs...)
-    T = Abtype(A, b)
+function lsqr!(x, A, b; kwargs...)
+    T = Adivtype(A, b)
     z = zero(T)
-    x = zeros(T, size(A, 2))
     ch = ConvergenceHistory(false, (z,z,z), 0, T[])
     lsqr!(x, ch, A, b; kwargs...)
     x, ch
 end
+
+lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)

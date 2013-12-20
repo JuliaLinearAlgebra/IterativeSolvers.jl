@@ -1,13 +1,16 @@
-export chebyshev
+export chebyshev, chebyshev!
 
-function chebyshev(A, b, λmin::Real, λmax::Real, Pr=1, x=nothing, n=size(A,2); tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3)
+chebyshev(A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2);
+          tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3) =
+    chebyshev!(randx(A, b), A, b, λmin, λmax, Pr, n; tol=tol,maxiter=maxiter)
+
+function chebyshev!(x, A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2); tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3)
 	K = KrylovSubspace(A, n, 1, eltype(b))
-	x==nothing ? initrand!(K) : init!(K, x)
-	chebyshev(K, b, λmin, λmax, Pr; tol=tol, maxiter=maxiter)
+	init!(K, x)
+	chebyshev!(x, K, b, λmin, λmax, Pr; tol=tol, maxiter=maxiter)
 end
 
-function chebyshev(K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=K.n^3)
-	x = lastvec(K)
+function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=K.n^3)
 	K.order=1
 	r = b - nextvec(K)
 	d::eltype(b) = (λmax+λmin)/2
@@ -24,7 +27,7 @@ function chebyshev(K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol::Re
 			p = z + β*p
 		end
 		append!(K, p)
-		x += α * p
+		update!(x, α, p)
 		r -= α * nextvec(K)
 		#Check convergence
 		resnorms[iter]=norm(r)

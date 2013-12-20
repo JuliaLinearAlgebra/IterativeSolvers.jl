@@ -55,14 +55,14 @@ appendunit!{T}(K::KrylovSubspace{T}, w::Vector{T}) = append!(K, w/norm(w))
 
 #Initialize the KrylovSubspace K with a random unit vector
 function initrand!{T}(K::KrylovSubspace{T})
-    v = convert(Vector{T}, randn(K.n))
-    K.v = Vector{T}[v/norm(v)]
+    K.v = Vector{T}[initrand!(Array(T, K.n))]
 end
 
 #Initialize the KrylovSubspace K with a specified nonunit vector
 #If nonzero, try to normalize it
 function init!{T}(K::KrylovSubspace{T}, v::Vector{T})
-    K.v = Vector{T}[all(v.==zero(T)) ? v : v/norm(v)]
+#    K.v = Vector{T}[all(v.==zero(T)) ? v : v/norm(v)]
+    K.v = Vector{T}[copy(v)]
 end
 
 #Orthogonalize a vector v against the last p basis vectors defined by the

@@ -5,6 +5,8 @@ const n=10
 const m=6
 srand(1234321)
 
+include("common.jl")
+
 ##################
 # Linear solvers #
 ##################
@@ -20,19 +22,27 @@ for T in (Float32, Float64, Complex64, Complex128)
     x0=convert(Vector{T}, randn(n))
     T<:Complex && (x0+=convert(Vector{T}, im*randn(n)))
     x = A\b
-    for guess in {nothing, x0}
-        for solver in [jacobi, gauss_seidel]
-            xi, ci=solver(A, b, guess, maxiter=n^4)
-            @test ci.isconverged
-            @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
-        end
+    for solver in [jacobi, gauss_seidel]
+        xi, ci=solver(A, b, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+    end
+    for solver in [jacobi!, gauss_seidel!]
+        xi, ci=solver(copy(x0), A, b, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+    end
 
-        ω = 0.5
-        for solver in [sor, ssor]
-            xi, ci=solver(A, b, ω, guess, maxiter=n^4)
-            @test ci.isconverged
-            @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
-        end
+    ω = 0.5
+    for solver in [sor, ssor]
+        xi, ci=solver(A, b, ω, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+    end
+    for solver in [sor!, ssor!]
+        xi, ci=solver(copy(x0), A, b, ω, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
     end
 end
 
@@ -142,3 +152,4 @@ for T in (Float32, Float64)
 end
 
 
+include("lsqr.jl")

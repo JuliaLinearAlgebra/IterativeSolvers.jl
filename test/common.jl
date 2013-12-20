@@ -4,7 +4,7 @@ using Base.Test
 
 A = rand(1:10, 5, 5)
 b = rand(Float32, 5)
-@test IterativeSolvers.Abtype(A, b) == Float32
+@test IterativeSolvers.Adivtype(A, b) == Float32
 
 #### Linear operator defined as a function
 # A = cycle-back operator
