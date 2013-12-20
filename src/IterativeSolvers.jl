@@ -12,4 +12,7 @@ include("chebyshev.jl")
 include("simple.jl")
 include("lanczos.jl")
 
+#Least-squares
+include("lsqr.jl")
+
 end
