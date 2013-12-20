@@ -9,12 +9,12 @@ N=10
 A = randn(N,N)
 A = A'*A
 rhs = randn(N)
-tol = 1e-14
+tol = 1e-12
 x,ch = cg(A,rhs;tol=tol, maxiter=2*N)
 @test_approx_eq_eps A*x rhs cond(A)*sqrt(tol)
 @test ch.isconverged
-# If you start from the previous solution, you should converge immediately
-x2,ch2 = cg!(copy(x), A, rhs; tol=tol)
+# If you start from the exact solution, you should converge immediately
+x2,ch2 = cg!(A\rhs, A, rhs; tol=tol*10)
 @test length(ch2.residuals) <= 1
 
 # CG: test sparse Laplacian
