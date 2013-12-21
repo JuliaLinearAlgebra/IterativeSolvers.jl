@@ -1,5 +1,5 @@
 module IterativeSolvers
-include("errors.jl")
+include("common.jl")
 include("krylov.jl")
 
 #Linear solvers
@@ -12,5 +12,7 @@ include("chebyshev.jl")
 include("simple.jl")
 include("lanczos.jl")
 
-end
+#Least-squares
+include("lsqr.jl")
 
+end

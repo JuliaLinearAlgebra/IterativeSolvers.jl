@@ -1,6 +1,10 @@
-export gmres
+export gmres, gmres!
 
-function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
+gmres(A, b, Pl=1, Pr=1;
+      tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b))) =
+    gmres!(randx(A, b), A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
+
+function gmres!(x, A, b, Pl=1, Pr=1;
         tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
@@ -36,19 +40,11 @@ function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,2)         #Givens rotation values
     a = zeros(T,restart)           #Subspace vector coefficients
-    if x==nothing
-        x = convert(Vector{T}, randn(n))
-        x /= norm(x)
-    end
-    A_(x) = isa(A, Function) ? A(x) : A*x 
-    Pl_(x) = isa(Pl, Function) ? Pl(x) : Pl\x 
-    Pr_(x) = isa(Pr, Function) ? Pr(x) : Pr\x 
-    tol = tol * norm(Pl_(b))
+    tol = tol * norm(Pl*b)  # FIXME: this is inconsistent
     resnorms = zeros(typeof(real(b[1])), maxiter, restart)
     isconverged = false
     for iter = 1:maxiter
-        w    = b - A_(x)
-        w    = Pl_(w)
+        w    = Pl*(b - A*x)
         rho  = norm(w)
         s[1] = rho
         V[1] = w / rho
@@ -56,9 +52,7 @@ function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
         N = restart
         for j = 1:restart
             #Calculate next orthonormal basis vector in the Krylov subspace
-            w = Pr_(V[j])
-            w = A_(w)
-            w = Pl_(w)
+            w = Pl*(A*(Pr*V[j]))
 
             #Gram-Schmidt
             for k = 1:j
@@ -123,7 +117,7 @@ function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
         end
 
         #Right preconditioner
-        x += Pr_(w)
+        update!(x, 1, Pr*w)
 
         if rho < tol
             resnorms = resnorms[1:iter, :]
@@ -132,6 +126,6 @@ function gmres(A, b, Pl=x->x, Pr=x->x, x=nothing;
         end
     end
 
-    return x, ConvergenceHistory(isconverged, tol, resnorms, length(resnorms)) 
+    return x, ConvergenceHistory(isconverged, tol, length(resnorms), resnorms)
 end
 

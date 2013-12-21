@@ -1,25 +1,25 @@
 #Stationary iterative methods
 #Templates, section 2.2
-export jacobi, gauss_seidel, sor, ssor
+export jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 
-function jacobi(A::AbstractMatrix, b, x=nothing;
+jacobi(A::AbstractMatrix, b;
+       tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2) =
+    jacobi!(zerox(A, b), A, b; tol=tol, maxiter=maxiter)
+
+function jacobi!(x, A::AbstractMatrix, b;
         tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2)
 	n = size(A,2)
-	if x==nothing
-		xold = zeros(eltype(b), n)
-		x = Array(eltype(b), n)
-	else
-		xold = x
-	end
+    xold = copy(x)
+    z = zero(Amultype(A, x))
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
-			x[i]=zero(eltype(b))
+			xi = z
 			for j=[1:i-1;i+1:n]
-				x[i] += A[i,j]*xold[j]
+				xi += A[i,j]*xold[j]
 			end
 			A[i,i]==0 && throw(SingularError())
-			x[i]=(b[i]-x[i])/A[i,i]
+			x[i]=(b[i]-xi)/A[i,i]
 		end
 		#check convergence
 		resnorms[iter] = norm(A*x-b)
@@ -27,24 +27,24 @@ function jacobi(A::AbstractMatrix, b, x=nothing;
 			resnorms=resnorms[1:iter]
 			break
 		end
-		xold=x
+		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
+	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
 end	
 
-function gauss_seidel(A::AbstractMatrix, b, x=nothing;
+gauss_seidel(A::AbstractMatrix, b;
+        tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2) =
+    gauss_seidel!(zerox(A, b), A, b; tol=tol, maxiter=maxiter)
+
+function gauss_seidel!(x, A::AbstractMatrix, b;
         tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2)
 	n = size(A,2)
-	if x==nothing
-		xold = zeros(eltype(b), n)
-		x = Array(eltype(b), n)
-	else
-		xold = x
-	end
+    xold = copy(x)
+    z = zero(Amultype(A, x))
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
-			σ=zero(eltype(b))
+			σ=z
 			for j=1:i-1
 				σ+=A[i,j]*x[j]
 			end
@@ -60,27 +60,27 @@ function gauss_seidel(A::AbstractMatrix, b, x=nothing;
 			resnorms=resnorms[1:iter]
 			break
 		end
-		xold=x
+		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
+	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
 end
 
 #Successive overrelaxation
-function sor(A::AbstractMatrix, b, ω::Real, x=nothing;
+sor(A::AbstractMatrix, b, ω::Real;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2) =
+    sor!(zerox(A, b), A, b, ω; tol=tol, maxiter=maxiter)
+
+function sor!(x, A::AbstractMatrix, b, ω::Real;
         tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2)
 	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
 
 	n = size(A,2)
-	if x==nothing
-		xold = zeros(eltype(b), n)
-		x = Array(eltype(b), n)
-	else
-		xold = x
-	end
+    xold = copy(x)
+    z = zero(Amultype(A, x))
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
-			σ=0.
+			σ=z
 			for j=1:i-1
 				σ+=A[i,j]*x[j]
 			end
@@ -97,28 +97,28 @@ function sor(A::AbstractMatrix, b, ω::Real, x=nothing;
 			resnorms=resnorms[1:iter]
 			break
 		end
-		xold=x
+		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
+	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
 end
 
 #Symmetric successive overrelaxation
 #A must be symmetric
-function ssor(A::AbstractMatrix, b, ω::Real, x=nothing;
+ssor(A::AbstractMatrix, b, ω::Real;
+     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)) =
+    ssor!(zerox(A, b), A, b, ω; tol=tol, maxiter=maxiter)
+
+function ssor!(x, A::AbstractMatrix, b, ω::Real;
         tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2))
 	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
 
 	n = size(A,2)
-	if x==nothing
-		xold = zeros(eltype(b), n)
-		x = Array(eltype(b), n)
-	else
-		xold = x
-	end
+    xold = copy(x)
+    z = zero(Amultype(A, x))
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n #Do a SOR sweep
-			σ=0.
+			σ=z
 			for j=1:i-1
 				σ+=A[i,j]*x[j]
 			end
@@ -129,9 +129,9 @@ function ssor(A::AbstractMatrix, b, ω::Real, x=nothing;
 			σ=(b[i]-σ)/A[i,i]
 			x[i]=xold[i]+ω*(σ-xold[i])
 		end
-		xold = x
+		copy!(xold, x)
 		for i=n:-1:1 #Do a backward SOR sweep
-			σ=0.
+			σ=z
 			for j=1:i-1
 				σ+=A[i,j]*xold[j]
 			end
@@ -148,7 +148,7 @@ function ssor(A::AbstractMatrix, b, ω::Real, x=nothing;
 			resnorms=resnorms[1:iter]
 			break
 		end
-		xold = x
+		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, resnorms, length(resnorms))
+	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
 end

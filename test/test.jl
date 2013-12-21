@@ -1,9 +1,11 @@
-include("../src/IterativeSolvers.jl")
+require("../src/IterativeSolvers.jl")
 using IterativeSolvers
 using Base.Test
 const n=10
 const m=6
 srand(1234321)
+
+include("common.jl")
 
 ##################
 # Linear solvers #
@@ -20,19 +22,27 @@ for T in (Float32, Float64, Complex64, Complex128)
     x0=convert(Vector{T}, randn(n))
     T<:Complex && (x0+=convert(Vector{T}, im*randn(n)))
     x = A\b
-    for guess in {nothing, x0}
-        for solver in [jacobi, gauss_seidel]
-            xi, ci=solver(A, b, guess, maxiter=n^4)
-            @test ci.isconverged
-            @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
-        end
+    for solver in [jacobi, gauss_seidel]
+        xi, ci=solver(A, b, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+    end
+    for solver in [jacobi!, gauss_seidel!]
+        xi, ci=solver(copy(x0), A, b, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+    end
 
-        ω = 0.5
-        for solver in [sor, ssor]
-            xi, ci=solver(A, b, ω, guess, maxiter=n^4)
-            @test ci.isconverged
-            @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
-        end
+    ω = 0.5
+    for solver in [sor, ssor]
+        xi, ci=solver(A, b, ω, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
+    end
+    for solver in [sor!, ssor!]
+        xi, ci=solver(copy(x0), A, b, ω, maxiter=n^4)
+        @test ci.isconverged
+        @test_approx_eq_eps x xi n^3*eps(typeof(real(b[1])))
     end
 end
 
@@ -84,7 +94,9 @@ for T in (Float32, Float64, Complex64, Complex128)
     T<:Complex && (b+=convert(Vector{T}, im*randn(n)))
     tol = 0.1 #For some reason Chebyshev is very slow
     v = eigvals(A)
-    x_cheby, c_cheby= chebyshev(A, b, minimum(v), maximum(v), tol=tol, maxiter=10^5)
+    mxv = maximum(v)
+    mnv = minimum(v)
+    x_cheby, c_cheby= chebyshev(A, b, mxv+(mxv-mnv)/100, mnv-(mxv-mnv)/100, tol=tol, maxiter=10^5)
     @test c_cheby.isconverged
     @test_approx_eq_eps A*x_cheby b tol
 end
@@ -108,8 +120,12 @@ for T in (Float32, Float64, Complex64, Complex128)
     @test_approx_eq_eps eval_big eval_pow (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
     
     #Inverse iteration
-    eval_rand = v[1+int(rand()*(n-1))] #Pick random eigenvalue
-    eval_ii = eigvals_ii(A, eval_rand*(1+(rand()-.5)/n); tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
+    irnd = iceil(rand()*(n-2))
+    eval_rand = v[1+irnd] #Pick random eigenvalue
+    # Perturb the eigenvalue by < 1/4 of the distance to the nearest eigenvalue
+    eval_diff = min(abs(v[irnd]-eval_rand), abs(v[irnd+2]-eval_rand))
+    σ = eval_rand + eval_diff/2*(rand()-.5)
+    eval_ii = eigvals_ii(A, σ; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
     @test_approx_eq_eps eval_rand eval_ii (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
     
     #Rayleigh quotient iteration
@@ -142,3 +158,4 @@ for T in (Float32, Float64)
 end
 
 
+include("lsqr.jl")

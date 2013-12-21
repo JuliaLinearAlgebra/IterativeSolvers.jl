@@ -1,43 +1,38 @@
-export cg
+export cg, cg!
 
-function cg(A, b, Pl=x->x, x=nothing; tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2))
-    K = KrylovSubspace(A, length(b), 1, Vector{eltype(b)}[])
-    if x==nothing || isempty(x)
-        initrand!(K)
-        x = lastvec(K)
-    else
-        init!(K, x)
-    end
-    cg(K, b, Pl; tol=tol, maxiter=maxiter)
+cg(A, b, Pl=1; kwargs...) =  cg!(randx(A, b), A, b, Pl; kwargs...)
+
+function cg!(x, A, b, Pl=1; tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2))
+    K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
+    init!(K, x)
+    cg!(x, K, b, Pl; tol=tol, maxiter=maxiter)
 end
 
-function cg(K::KrylovSubspace, b, Pl=x->x, x=nothing;
-        tol::Real=size(A,2)*eps(), maxiter::Integer=size(A,2))
-    precondition(x) = isa(Pl, Function) ? Pl(x) : Pl\x
+function cg!(x, K::KrylovSubspace, b, Pl=1;
+        tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2))
     resnorms = zeros(maxiter)
- 
-    x = lastvec(K)
+
     r = b - nextvec(K)
-    p = z = precondition(r)
+    p = z = Pl*r
     γ = dot(r, z)
     for iter=1:maxiter
         append!(K, p)
         q = nextvec(K)
         α = γ/dot(p, q)
         α>=0 || throw(PosSemidefException("α=$α"))
-        x += α*p
+        update!(x, α, p)
         r -= α*q
         resnorms[iter] = norm(r)
         if resnorms[iter] < tol #Converged?
             resnorms = resnorms[1:iter]
             break
         end
-        z = precondition(r)
+        z = Pl*r
         oldγ = γ
         γ = dot(r, z)
         β = γ/oldγ
         p = z + β*p
       end
-    x, ConvergenceHistory(0<resnorms[end]<tol, tol, resnorms, K.mvps)
+    x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)
 end
 

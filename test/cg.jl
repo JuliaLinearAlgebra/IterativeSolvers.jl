@@ -1,3 +1,7 @@
+require("../src/IterativeSolvers.jl")
+using IterativeSolvers
+using Base.Test
+
 include("getDivGrad.jl")
 
 # small full system
@@ -5,12 +9,17 @@ N=10
 A = randn(N,N)
 A = A'*A
 rhs = randn(N)
-x, = cg(A,rhs;tol=1e-15)
-@test_approx_eq_eps A*x rhs cond(A)*sqrt(1e-15)
+tol = 1e-12
+x,ch = cg(A,rhs;tol=tol, maxiter=2*N)
+@test_approx_eq_eps A*x rhs cond(A)*sqrt(tol)
+@test ch.isconverged
+# If you start from the exact solution, you should converge immediately
+x2,ch2 = cg!(A\rhs, A, rhs; tol=tol*10)
+@test length(ch2.residuals) <= 1
 
 # CG: test sparse Laplacian
 A = getDivGrad(32,32,32)
-Af(x) = A*x
+Af = MatrixFcn(A)
 L = tril(A)
 D = diag(A)
 U = triu(A)
@@ -27,10 +36,11 @@ xSGS, = cg(A,rhs,SGS;tol=tol,maxiter=100)
 xCGmf, = cg(Af,rhs;tol=tol,maxiter=100)
 xJACmf, = cg(Af,rhs,JAC;tol=tol,maxiter=100)
 xSGSmf, = cg(Af,rhs,SGS;tol=tol,maxiter=100)
-# tests with random starting guess
-xCGr, hCGr = cg(Af,rhs,x->x,randn(size(rhs));tol=tol,maxiter=100)
-xJACr, hJACr = cg(Af,rhs,JAC,randn(size(rhs));tol=tol,maxiter=100)
-xSGSr, hSGSr = cg(Af,rhs,SGS,randn(size(rhs));tol=tol,maxiter=100)
+# tests with specified starting guess
+x0 = randn(size(rhs))
+xCGr, hCGr = cg!(copy(x0),Af,rhs,x->x;tol=tol,maxiter=100)
+xJACr, hJACr = cg!(copy(x0),Af,rhs,JAC;tol=tol,maxiter=100)
+xSGSr, hSGSr = cg!(copy(x0),Af,rhs,SGS;tol=tol,maxiter=100)
 
 # test relative residuals
 @test_approx_eq_eps A*xCG rhs tol
@@ -48,4 +58,3 @@ iterJAC = length(hJACr.residuals)
 iterSGS = length(hSGSr.residuals)
 @test iterJAC==iterCG
 @test iterSGS<=iterJAC
-
