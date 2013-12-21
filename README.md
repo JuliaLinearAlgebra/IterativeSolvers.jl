@@ -1,6 +1,6 @@
 # Iterative Solvers
 
-[https://api.travis-ci.org/JuliaLang/IterativeSolvers.jl.png](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
+[![Build Status](https://api.travis-ci.org/JuliaLang/IterativeSolvers.jl.png?branch=master)](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
 
 &copy; 2013 Jiahao Chen and [other contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
 
