@@ -11,6 +11,7 @@ function jacobi!(x, A::AbstractMatrix, b;
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
+    tol = tol * norm(b)
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
@@ -41,6 +42,7 @@ function gauss_seidel!(x, A::AbstractMatrix, b;
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
+    tol = tol * norm(b)
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
@@ -77,6 +79,7 @@ function sor!(x, A::AbstractMatrix, b, ω::Real;
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
+    tol = tol * norm(b)
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
@@ -115,6 +118,7 @@ function ssor!(x, A::AbstractMatrix, b, ω::Real;
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
+    tol = tol * norm(b)
 	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n #Do a SOR sweep

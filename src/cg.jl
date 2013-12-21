@@ -1,6 +1,6 @@
 export cg, cg!
 
-cg(A, b, Pl=1; kwargs...) =  cg!(randx(A, b), A, b, Pl; kwargs...)
+cg(A, b, Pl=1; kwargs...) =  cg!(zerox(A,b), A, b, Pl; kwargs...)
 
 function cg!(x, A, b, Pl=1; tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2))
     K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
@@ -12,8 +12,9 @@ function cg!(x, K::KrylovSubspace, b, Pl=1;
         tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2))
     resnorms = zeros(maxiter)
 
+    tol = tol * norm(b)
     r = b - nextvec(K)
-    p = z = Pl*r
+    p = z = Pl\r
     γ = dot(r, z)
     for iter=1:maxiter
         append!(K, p)
@@ -27,7 +28,7 @@ function cg!(x, K::KrylovSubspace, b, Pl=1;
             resnorms = resnorms[1:iter]
             break
         end
-        z = Pl*r
+        z = Pl\r
         oldγ = γ
         γ = dot(r, z)
         β = γ/oldγ

@@ -16,6 +16,10 @@ x,ch = cg(A,rhs;tol=tol, maxiter=2*N)
 # If you start from the exact solution, you should converge immediately
 x2,ch2 = cg!(A\rhs, A, rhs; tol=tol*10)
 @test length(ch2.residuals) <= 1
+# Test with cholfact should converge immediately
+F = cholfact(A)
+x2,ch2 = cg(A, rhs, F)
+@test length(ch2.residuals) <= 2
 
 # CG: test sparse Laplacian
 A = getDivGrad(32,32,32)
@@ -27,6 +31,7 @@ JAC(x) = D.\x
 SGS(x) = L\(D.*(U\x))
 
 rhs = randn(size(A,2))
+rhs = rhs / norm(rhs)
 tol = 1e-5
 # tests with A being matrix
 xCG, = cg(A,rhs;tol=tol,maxiter=100)
