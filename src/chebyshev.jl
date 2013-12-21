@@ -2,7 +2,7 @@ export chebyshev, chebyshev!
 
 chebyshev(A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2);
           tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3) =
-    chebyshev!(randx(A, b), A, b, λmin, λmax, Pr, n; tol=tol,maxiter=maxiter)
+    chebyshev!(zerox(A, b), A, b, λmin, λmax, Pr, n; tol=tol,maxiter=maxiter)
 
 function chebyshev!(x, A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2); tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3)
 	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
@@ -12,6 +12,7 @@ end
 
 function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=K.n^3)
 	K.order=1
+    tol = tol * norm(b)
 	r = b - nextvec(K)
 	d::eltype(b) = (λmax+λmin)/2
 	c::eltype(b) = (λmax-λmin)/2

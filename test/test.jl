@@ -19,6 +19,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     A+=n*maximum(abs(A[:]))*diagm(ones(T,n)) #Diagonally dominant
     b=convert(Vector{T}, randn(n))
     T<:Complex && (b+=convert(Vector{T}, im*randn(n)))
+    b=b/norm(b)
     x0=convert(Vector{T}, randn(n))
     T<:Complex && (x0+=convert(Vector{T}, im*randn(n)))
     x = A\b
@@ -61,15 +62,23 @@ for T in (Float32, Float64, Complex64, Complex128)
         R += im*convert(Matrix{T}, randn(n,n))
         b += im*convert(Vector{T}, randn(n))
     end
-    
-    x_gmres, c_gmres= gmres(A, b, L, R)
+    F = lufact(A)
+    b = b/norm(b)
+
+    x_gmres, c_gmres = gmres(A, b, L, R)
     @test c_gmres.isconverged
     @test_approx_eq A*x_gmres b
+
+    x_gmres, c_gmres = gmres(A, b, F; maxiter=1, restart=1)
+    @test c_gmres.isconverged
+
+    x_gmres, c_gmres = gmres(A, b, 1, F; maxiter=1, restart=1)
+    @test c_gmres.isconverged
 end
 
 for T in (Float64, Complex128)
     #GMRES on sparse inputs
-    A = sprandn(n,n,0.5)
+    A = sprandn(n,n,0.5)+0.001*eye(T,n,n)
     L = sprandn(n,n,0.5)
     R = sprandn(n,n,0.5)
     b = convert(Vector{T}, randn(n))
@@ -79,9 +88,18 @@ for T in (Float64, Complex128)
         R += im*sprandn(n,n,0.5)
         b += im*randn(n)
     end
+    F = lufact(A)
+    b = b / norm(b)
+
     x_gmres, c_gmres= gmres(A, b, L, R)
     @test c_gmres.isconverged
     @test_approx_eq A*x_gmres b
+
+    x_gmres, c_gmres = gmres(A, b, F; maxiter=1, restart=1)
+    @test c_gmres.isconverged
+
+    x_gmres, c_gmres = gmres(A, b, 1, F; maxiter=1, restart=1)
+    @test c_gmres.isconverged
 end
 
 #Chebyshev
@@ -92,6 +110,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     A=A'*A #Construct SPD matrix
     b=convert(Vector{T}, randn(n))
     T<:Complex && (b+=convert(Vector{T}, im*randn(n)))
+    b=b/norm(b)
     tol = 0.1 #For some reason Chebyshev is very slow
     v = eigvals(A)
     mxv = maximum(v)
@@ -156,6 +175,5 @@ for T in (Float32, Float64)
     sv_gkl = svdvals_gkl(B)
     @test_approx_eq v sv_gkl
 end
-
 
 include("lsqr.jl")

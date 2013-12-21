@@ -2,7 +2,7 @@ export gmres, gmres!
 
 gmres(A, b, Pl=1, Pr=1;
       tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b))) =
-    gmres!(randx(A, b), A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
+    gmres!(zerox(A,b), A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
 
 function gmres!(x, A, b, Pl=1, Pr=1;
         tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
@@ -40,11 +40,11 @@ function gmres!(x, A, b, Pl=1, Pr=1;
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,2)         #Givens rotation values
     a = zeros(T,restart)           #Subspace vector coefficients
-    tol = tol * norm(Pl*b)  # FIXME: this is inconsistent
+    tol = tol * norm(Pl\b)         #Relative tolerance
     resnorms = zeros(typeof(real(b[1])), maxiter, restart)
     isconverged = false
     for iter = 1:maxiter
-        w    = Pl*(b - A*x)
+        w    = Pl\(b - A*x)
         rho  = norm(w)
         s[1] = rho
         V[1] = w / rho
@@ -52,7 +52,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
         N = restart
         for j = 1:restart
             #Calculate next orthonormal basis vector in the Krylov subspace
-            w = Pl*(A*(Pr*V[j]))
+            w = Pl\(A*(Pr\V[j]))
 
             #Gram-Schmidt
             for k = 1:j
@@ -117,7 +117,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
         end
 
         #Right preconditioner
-        update!(x, 1, Pr*w)
+        update!(x, 1, Pr\w)
 
         if rho < tol
             resnorms = resnorms[1:iter, :]
