@@ -5,7 +5,7 @@ chebyshev(A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2);
     chebyshev!(randx(A, b), A, b, λmin, λmax, Pr, n; tol=tol,maxiter=maxiter)
 
 function chebyshev!(x, A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2); tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3)
-	K = KrylovSubspace(A, n, 1, eltype(b))
+	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
 	init!(K, x)
 	chebyshev!(x, K, b, λmin, λmax, Pr; tol=tol, maxiter=maxiter)
 end

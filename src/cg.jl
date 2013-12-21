@@ -3,7 +3,7 @@ export cg, cg!
 cg(A, b, Pl=1; kwargs...) =  cg!(randx(A, b), A, b, Pl; kwargs...)
 
 function cg!(x, A, b, Pl=1; tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2))
-    K = KrylovSubspace(A, length(b), 1, Vector{eltype(b)}[])
+    K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
     init!(K, x)
     cg!(x, K, b, Pl; tol=tol, maxiter=maxiter)
 end
