@@ -71,7 +71,7 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
     method::Symbol=:ModifiedGramSchmidt, normalize::Bool=false)
     Kk = K.v[max(1,end-p+1):end]
     if method == :GramSchmidt
-        cs = T[dot(v, e) for e in Kk]
+        cs = T[dot(e, v) for e in Kk]
         for (i, e) in enumerate(Kk)
             v -= cs[i] * e
         end
@@ -80,7 +80,7 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
         #established in doi:10.1137/0613015
         cs = zeros(T, p)
         for (i, e) in enumerate(Kk)
-            cs[i] = dot(v, e)
+            cs[i] = dot(e, v)
             v-= cs[i] * e
         end
     else

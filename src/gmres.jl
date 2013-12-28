@@ -1,5 +1,18 @@
 export gmres, gmres!
 
+#One Arnoldi iteration
+#Optionally takes a truncation parameter l
+function arnoldi!(K::KrylovSubspace; l=K.order)
+    v = nextvec(K)
+    n = min(length(K.v), l)
+    h = zeros(eltype(v), n+1)
+    v, h[1:n] = orthogonalize(v, K, n)
+    h[n+1] = norm(v)
+    (h[n+1]==0) && error("Arnoldi iteration terminated")
+    append!(K, v/h[n+1]) #save latest Arnoldi vector, i.e. newest column of Q in the AQ=QH factorization 
+    h #Return current Arnoldi coefficients, i.e. newest column of in the AQ=QH factorization
+end
+
 gmres(A, b, Pl=1, Pr=1;
       tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b))) =
     gmres!(zerox(A,b), A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
@@ -34,7 +47,6 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 
     n = length(b)
     T = eltype(b)
-    V = Array(Vector{T},restart+1) #Krylov subspace
     H = zeros(T,n+1,restart)       #Hessenberg matrix
     w = zeros(T,n)                 #Working vector
     s = zeros(T,restart+1)         #Residual history
@@ -43,24 +55,18 @@ function gmres!(x, A, b, Pl=1, Pr=1;
     tol = tol * norm(Pl\b)         #Relative tolerance
     resnorms = zeros(typeof(real(b[1])), maxiter, restart)
     isconverged = false
+    K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
     for iter = 1:maxiter
         w    = Pl\(b - A*x)
         rho  = norm(w)
         s[1] = rho
-        V[1] = w / rho
+        init!(K, w / rho)
 
         N = restart
         for j = 1:restart
             #Calculate next orthonormal basis vector in the Krylov subspace
-            w = Pl\(A*(Pr\V[j]))
-
-            #Gram-Schmidt
-            for k = 1:j
-                H[k,j] = dot(V[k],w)
-                w     -= H[k,j] * V[k]
-            end
-            H[j+1,j] = norm(w)
-            V[j+1]   = w / H[j+1,j]
+            w = nextvec(K)
+            H[1:j+1, j] = arnoldi!(K)
 
             #Apply Givens rotation to H
             for k = 1:(j-1)
@@ -103,7 +109,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 
         #Solve Ha=s, compute w = sum(a[i]*K.v[i])
         a[N] = s[N] / H[N,N]
-        w    = a[N] * V[N]
+        w    = a[N] * K.v[N]
 
         for j = (N-1):-1:1
             a[j] = s[j]
@@ -113,7 +119,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
             end
 
             a[j] = a[j] / H[j,j]
-            w   += a[j] * V[j]
+            w   += a[j] * K.v[j]
         end
 
         #Right preconditioner
