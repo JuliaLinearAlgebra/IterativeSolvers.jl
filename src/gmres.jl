@@ -13,6 +13,30 @@ function arnoldi!(K::KrylovSubspace; l=K.order)
     h #Return current Arnoldi coefficients, i.e. newest column of in the AQ=QH factorization
 end
 
+function apply_givens!(H, J, j)
+    for k = 1:(j-1)
+        temp     =       J[k,1]  * H[k,j] + J[k,2] * H[k+1,j]
+        H[k+1,j] = -conj(J[k,2]) * H[k,j] + J[k,1] * H[k+1,j]
+        H[k,j]   = temp
+    end
+end
+
+function compute_givens(a, b, i, j)
+    T = eltype(a)
+    p = abs(a)
+    q = abs(b)
+
+    if q == zero(T)
+        return [one(T), zero(T), a]
+    elseif p == zero(T)
+        return [zero(T), sign(conj(b)), q]
+    else
+        m      = hypot(p,q)
+        temp   = sign(a)
+        return [p / m, temp * conj(b) / m, temp * m]
+    end
+end
+
 gmres(A, b, Pl=1, Pr=1;
       tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b))) =
     gmres!(zerox(A,b), A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
@@ -44,22 +68,19 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 #   The input A (resp. Pl, Pr) can be a matrix, a function returning A*x,
 #   (resp. inv(Pl)*x, inv(Pr)*x), or any type representing a linear operator
 #   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
-
+    println("New problem")
     n = length(b)
     T = eltype(b)
     H = zeros(T,n+1,restart)       #Hessenberg matrix
-    w = zeros(T,n)                 #Working vector
     s = zeros(T,restart+1)         #Residual history
-    J = zeros(T,restart,2)         #Givens rotation values
-    a = zeros(T,restart)           #Subspace vector coefficients
+    J = zeros(T,restart,3)         #Givens rotation values
     tol = tol * norm(Pl\b)         #Relative tolerance
     resnorms = zeros(typeof(real(b[1])), maxiter, restart)
     isconverged = false
     K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
     for iter = 1:maxiter
         w    = Pl\(b - A*x)
-        rho  = norm(w)
-        s[1] = rho
+        s[1] = rho = norm(w)
         init!(K, w / rho)
 
         N = restart
@@ -68,37 +89,20 @@ function gmres!(x, A, b, Pl=1, Pr=1;
             w = nextvec(K)
             H[1:j+1, j] = arnoldi!(K)
 
-            #Apply Givens rotation to H
-            for k = 1:(j-1)
-                temp     =       J[k,1]  * H[k,j] + J[k,2] * H[k+1,j]
-                H[k+1,j] = -conj(J[k,2]) * H[k,j] + J[k,1] * H[k+1,j]
-                H[k,j]   = temp
-            end
-
-            #Compute Givens rotation j
-            p = abs(H[j,j])
-            q = abs(H[j+1,j])
-
-            if q == zero(T)
-                J[j,1] = one(T)
-                J[j,2] = zero(T)
-            elseif p == zero(T)
-                J[j,1] = zero(T)
-                J[j,2] = sign(conj(H[j+1,j]))
-                H[j,j] = q
-            else
-                m      = hypot(p,q)
-                temp   = sign(H[j,j])
-                J[j,1] = p / m
-                J[j,2] = temp * conj(H[j+1,j]) / m
-                H[j,j] = temp * m
-            end
-
+            #Update QR factorization of H
+            #The Q is stored as a series of Givens rotations in J 
+            #The R is stored in H
+            #- Compute Givens rotation that zeros out bottom right entry of H
+            apply_givens!(H, J, j)
+            J[j,1:3] = compute_givens(H[j,j], H[j+1,j], j, j+1)
+            #G = Base.LinAlg.Givens(restart+1, j, j+1, J[j,1], J[j,2], J[j,3])
+            #- Zero out bottom right entry of H
+            H[j,j]   = J[j,3]
             H[j+1,j] = zero(T)
-
-            #Apply Givens rotation j to s,(assuming s[j+1] = 0)
+            #- Apply Givens rotation j to s, given that s[j+1] = 0
             s[j+1] = -conj(J[j,2]) * s[j]
-            s[j]   =       J[j,1]  * s[j]
+            #-conj(G.s) * s[j]
+            s[j]  *= J[j,1] #G.c
 
             resnorms[iter, j] = rho = abs(s[j+1])
             if rho < tol
@@ -107,23 +111,9 @@ function gmres!(x, A, b, Pl=1, Pr=1;
             end
         end
 
-        #Solve Ha=s, compute w = sum(a[i]*K.v[i])
-        a[N] = s[N] / H[N,N]
-        w    = a[N] * K.v[N]
-
-        for j = (N-1):-1:1
-            a[j] = s[j]
-
-            for k = (j+1):1:N
-                a[j] -= H[j,k] * a[k]
-            end
-
-            a[j] = a[j] / H[j,j]
-            w   += a[j] * K.v[j]
-        end
-
-        #Right preconditioner
-        update!(x, 1, Pr\w)
+        a = Triangular(H[1:N, 1:N]) \ s[1:N]
+        w = a[1:N] * K
+        update!(x, 1, Pr\w) #Right preconditioner
 
         if rho < tol
             resnorms = resnorms[1:iter, :]
@@ -134,4 +124,3 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 
     return x, ConvergenceHistory(isconverged, tol, length(resnorms), resnorms)
 end
-

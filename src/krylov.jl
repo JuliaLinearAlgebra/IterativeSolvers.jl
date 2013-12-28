@@ -90,3 +90,14 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
     v, cs #Return orthogonalized vector and its coefficients
 end
 
+#Return a vector in the Krylov basis, i.e. compute a linear combination of Krylov vectors
+#Index 1 = oldest remembered vector
+function *(a::AbstractVector, K::KrylovSubspace)
+    N = length(a)
+    N==length(K.v) && throw(DimensionMismatch("Tried to compute linear combination of $N Krylov vectors but only $(length(K.v)) are present."))
+    w = a[N] * K.v[N]
+    for j = (N-1):-1:1
+        w += a[j] * K.v[j]
+    end
+    w
+end
