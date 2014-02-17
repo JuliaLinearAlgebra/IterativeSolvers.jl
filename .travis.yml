@@ -13,5 +13,5 @@ before_install:
 script:
     - julia -e 'Pkg.init(); run(`ln -s $(pwd()) $(Pkg.dir("IterativeSolvers"))`); Pkg.pin("IterativeSolvers"); Pkg.resolve()'
     - julia -e 'Pkg.build(); using IterativeSolvers; @assert isdefined(:IterativeSolvers); @assert typeof(IterativeSolvers) === Module'
-    - cd ~/.julia/IterativeSolvers/test; julia test.jl
+    - julia test/test.jl
 
