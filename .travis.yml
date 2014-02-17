@@ -3,9 +3,13 @@ compiler:
     - clang
 notifications:
     email: false
+env:
+    matrix: 
+        - JULIAVERSION="juliareleases" 
+        - JULIAVERSION="julianightlies" 
 before_install:
     - sudo add-apt-repository ppa:staticfloat/julia-deps -y
-    - sudo add-apt-repository ppa:staticfloat/julianightlies -y
+    - sudo add-apt-repository ppa:staticfloat/${JULIAVERSION} -y
     - sudo apt-get update -qq -y
     - sudo apt-get install libpcre3-dev julia -y
     - git config --global user.name "Dummy Travis User"
@@ -13,5 +17,5 @@ before_install:
 script:
     - julia -e 'Pkg.init(); run(`ln -s $(pwd()) $(Pkg.dir("IterativeSolvers"))`); Pkg.pin("IterativeSolvers"); Pkg.resolve()'
     - julia -e 'Pkg.build(); using IterativeSolvers; @assert isdefined(:IterativeSolvers); @assert typeof(IterativeSolvers) === Module'
-    - cd ~/.julia/IterativeSolvers/test; julia test.jl
+    - julia test.jl
 
