@@ -68,7 +68,6 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 #   The input A (resp. Pl, Pr) can be a matrix, a function returning A*x,
 #   (resp. inv(Pl)*x, inv(Pr)*x), or any type representing a linear operator
 #   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
-    println("New problem")
     n = length(b)
     T = eltype(b)
     H = zeros(T,n+1,restart)       #Hessenberg matrix
