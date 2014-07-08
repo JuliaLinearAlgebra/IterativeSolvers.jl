@@ -6,6 +6,8 @@ srand(1234321)
 
 include("common.jl")
 
+include("qr.jl")
+
 ##################
 # Linear solvers #
 ##################
