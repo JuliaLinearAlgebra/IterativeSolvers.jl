@@ -44,7 +44,7 @@ This package provides iterative algorithms for solving linear systems, eigensyst
 
 ### Krylov subspaces
 
-The `KrylovSubspace` type collects information on the [http://en.wikipedia.org/wiki/Krylov_subspace](Krylov subspace) generated over the course of an iterative Krylov solver.
+The `KrylovSubspace` type collects information on the [Krylov subspace](http://en.wikipedia.org/wiki/Krylov_subspace) generated over the course of an iterative Krylov solver.
 
 Recall that the Krylov subspace of order `r` given a starting vector `b` and a linear operator `A` is spanned by the vectors `[b, A*b, A^2*b,... A^(r-1)*b]`. Many modern iterative solvers work on Krylov spaces which expand until they span enough of the range of `A` for the solution vector to converge. Most practical algorithms, however, will truncate the order of the Krylov subspace to save memory and control the accumulation of roundoff errors. Additionally, they do not work directly with the raw iterates `A^n*b`, but will orthogonalize subsequent vectors as they are computed so as to improve numerical stability. `KrylovSubspace`s provide a natural framework to express operations such as a (possibly non-orthonormalized) basis for the Krylov subspace, retrieving the next vector in the subspace, and orthogonalizing an arbitrary vector against (part or all of) the subspace.
 
