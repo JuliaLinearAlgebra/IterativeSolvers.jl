@@ -66,4 +66,38 @@ end
 #Support qrfact!(A, cmgs) call
 qrfact!(A, ::Type{ColumnwiseModifiedGramSchmidtAlg}) = qrfact!(A, cmgs()) 
 
+#Normalization methods
+abstract NormalizationAlg <: Algorithm
+normalize!(v) = normalize!(v, norm_naive) #Default is naive normalization
+
+#No normalization
+immutable norm_none <: NormalizationAlg end
+normalize!(v::AbstractVector, ::Type{norm_none}) = v, 1.0
+
+#Naive normalization
+immutable norm_naive <: NormalizationAlg end
+function normalize!(v::AbstractVector, ::Type{norm_naive})
+    nrm = norm(v)
+    v/nrm, nrm
+end
+
+#Pythagorean normalization
+#Ref: doi:10.1007/s00211-006-0042-1
+immutable norm_pythag <: NormalizationAlg
+    u::AbstractVector
+end
+
+#This looks a little weird, but if you don't call the Pythagorean algorithm with
+#any previously computed data, then the algorithm reduces to the naive one.
+#So the default constructor will simply reassign the normalization algorithm to
+#the naive one.
+norm_pythag() = norm_naive
+
+function normalize!(v::AbstractVector, parameters::norm_pythag)
+    s = norm(v)
+    p = norm(parameters.u)
+    nrm = √(s-p)*√(s+p)
+    v/nrm, nrm
+end
+
 include("../test/qr.jl")
