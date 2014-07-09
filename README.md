@@ -16,6 +16,27 @@ This package provides iterative algorithms for solving linear systems, eigensyst
 - [Issue #1](https://github.com/JuliaLang/IterativeSolvers.jl/issues/1) documents the implementation roadmap.
 - The interfaces between the various algorithms are still in flux, but aim to be consistent.
 
+## Orthogonalization methods for `qrfact!`
+
+This package provides new methods for `qrfact!` and uses an abstract algorithm interface that inherits from `Base.Algorithm`. The method signature looks like
+
+    qrfact!(A, alg(params...))
+
+Valid values for `alg` are:
+
+- `cgs`: classical Gram-Schmidt
+- `cmgs`: columnwise modified Gram-Schmidt
+
+### Normalization algorithms
+
+    normalize!(v, alg)
+
+Valid values for `alg` are:
+
+- `norm_none`: no normalization
+- `norm_naive`: naïve normalization using `norm()` (default)
+- `norm_pythag`: Pythagorean normalization ([doi:10.1007/s00211-006-0042-1](http://dx.doi.org/10.1007/s00211-006-0042-1)) - takes as parameter an `AbstractVector` which represent a column of previously computed `R` factors.
+
 ## Consistent interface
 
 ### Nomenclature
