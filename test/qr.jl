@@ -15,8 +15,8 @@ for algorithm in (cgs, cmgs), normalization in (norm_none, norm_naive, norm_pyth
 	@test_approx_eq QRgs.Q*QRgs.R A
 	normalization == norm_none && continue
 	debug && @show QRhouseholder[1], QRgs.Q
-	debug && @show norm(QRhouseholder[1] - QRgs.Q) - iround(norm(QRhouseholder[1] - QRgs.Q)), m*n*eps()
-	@test norm(QRhouseholder[1] - QRgs.Q) - iround(norm(QRhouseholder[1] - QRgs.Q)) < m*n*eps()
+	debug && @show norm(QRhouseholder[1] - QRgs.Q) - iround(norm(QRhouseholder[1] - QRgs.Q)), m^2*n^2*eps()
+	@test abs(norm(QRhouseholder[1] - QRgs.Q) - iround(norm(QRhouseholder[1] - QRgs.Q))) < m^2*n^2*eps()
 	debug && @show QRhouseholder[2], QRgs.R
 	@test_approx_eq abs(QRhouseholder[2]) abs(QRgs.R)
 end

@@ -67,19 +67,34 @@ function qrfact!(Q, parameters::ClassicalGramSchmidtAlg)
     ncols = parameters.n===nothing ? size(Q, 2) : parameters.n
     R=zeros(ncols, ncols)
     for k=1:ncols
-        parameters.normalize===norm_pythag && (s=norm(Q[:,k]))
+        s=norm(Q[:,k])
         for i=1:k-1
             R[i,k] = Q[:,i]⋅Q[:,k]
         end
         for i=1:k-1
             Q[:,k]-= R[i,k]*Q[:,i]
         end
-        Q[:,k], R[k,k] = parameters.normalize===norm_pythag ?
-            normalize!(Q[:,k], s, R[1:k-1,k], norm_pythag) :
-            normalize!(Q[:,k], parameters.normalize)
+        Q[:,k], R[k,k] = normalize!(Q[:,k], parameters.normalize)
     end
     QRPair(Q, Triangular(R, :U))
 end
+
+function qrfact!(Q, parameters::ClassicalGramSchmidtAlg{norm_pythag})
+    ncols = parameters.n===nothing ? size(Q, 2) : parameters.n
+    R=zeros(ncols, ncols)
+    for k=1:ncols
+        s=norm(Q[:,k])
+        for i=1:k-1
+            R[i,k] = Q[:,i]⋅Q[:,k]
+        end
+        for i=1:k-1
+            Q[:,k]-= R[i,k]*Q[:,i]
+        end
+        Q[:,k], R[k,k] = normalize!(Q[:,k], s, R[1:k-1,k], norm_pythag)
+    end
+    QRPair(Q, Triangular(R, :U))
+end
+
 #Support qrfact!(A, cgs) call
 qrfact!(A, ::Type{ClassicalGramSchmidtAlg}) = qrfact!(A, cgs()) 
 
@@ -99,17 +114,29 @@ function qrfact!(Q, parameters::ColumnwiseModifiedGramSchmidtAlg)
     ncols = parameters.n===nothing ? size(Q, 2) : parameters.n
     R=zeros(ncols, ncols)
     for k=1:ncols
-        parameters.normalize===norm_pythag && (s=norm(Q[:,k]))
     	for i=1:k-1
     	    R[i,k] = Q[:,i]⋅Q[:, k]
     	    Q[:, k]-= R[i, k]*Q[:, i]
     	end
-        Q[:,k], R[k,k] = parameters.normalize===norm_pythag ?
-            normalize!(Q[:,k], s, R[1:k-1,k], norm_pythag) :
-            normalize!(Q[:,k], parameters.normalize)
+        Q[:,k], R[k,k] = normalize!(Q[:,k], parameters.normalize)
     end
     QRPair(Q, Triangular(R, :U))
 end
+
+function qrfact!(Q, parameters::ColumnwiseModifiedGramSchmidtAlg{norm_pythag})
+    ncols = parameters.n===nothing ? size(Q, 2) : parameters.n
+    R=zeros(ncols, ncols)
+    for k=1:ncols
+        s=norm(Q[:,k])
+        for i=1:k-1
+            R[i,k] = Q[:,i]⋅Q[:, k]
+            Q[:, k]-= R[i, k]*Q[:, i]
+        end
+        Q[:,k], R[k,k] = normalize!(Q[:,k], s, R[1:k-1,k], norm_pythag)
+    end
+    QRPair(Q, Triangular(R, :U))
+end
+
 #Support qrfact!(A, cmgs) call
 qrfact!(A, ::Type{ColumnwiseModifiedGramSchmidtAlg}) = qrfact!(A, cmgs()) 
 
