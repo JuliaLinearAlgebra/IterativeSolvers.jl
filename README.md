@@ -1,10 +1,13 @@
 # Iterative Solvers
 
-[![Build Status](https://api.travis-ci.org/JuliaLang/IterativeSolvers.jl.png?branch=master)](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
+[![Build Status](https://travis-ci.org/JuliaLang/IterativeSolvers.jl.png?branch=master)](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
+[![IterativeSolvers on Julia 0.2](http://pkg.julialang.org/badges/IterativeSolvers_0.2.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=0.2)
+[![IterativeSolvers on Julia 0.3](http://pkg.julialang.org/badges/IterativeSolvers_0.3.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=0.3)
+[![Coverage Status](https://img.shields.io/coveralls/JuliaLang/IterativeSolvers.jl.svg)](https://img.shields.io/coveralls/JuliaLang/IterativeSolvers.jl.svg)
 
-&copy; 2013 Jiahao Chen and [other contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
+&copy; 2013---2014 Jiahao Chen and [other contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
 
-IterativeSolvers is a [Julia](http://julialang.org) package that provides flexible iterative algorithms for linear algebra.
+`IterativeSolvers` is a [Julia](http://julialang.org) package that provides flexible iterative algorithms for linear algebra.
 
 This package provides iterative algorithms for solving linear systems, eigensystems, and singular value problems which are implemented with maximal flexibility without sacrificing performance.
 
