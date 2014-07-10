@@ -1,7 +1,7 @@
 using IterativeSolvers
 using Base.Test
-const n=10
-const m=6
+n=10
+m=6
 srand(1234321)
 
 include("common.jl")
