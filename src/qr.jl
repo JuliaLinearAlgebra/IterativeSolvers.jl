@@ -36,6 +36,58 @@ normalize!{T}(v::AbstractVector{T}, s::Real, u::AbstractVector{T}, ::Type{norm_p
 
 const NORM_DEFAULT = norm_naive #Default is naive normalization
 
+#######################
+# Reorthogonalization #
+#######################
+
+#Define some commonly used criteria for checking whether to reorthogonalize
+
+abstract Criterion
+immutable never <: Criterion end
+immutable always <: Criterion end
+
+immutable rutishauser{T<:Real} <: Criterion
+    K :: T
+end
+
+immutable giraudlangou{T<:Real} <: Criterion
+    K :: T
+end
+
+immutable ReorthogonalizationAlg{C<:Criterion} <: Algorithm
+    criterion::C
+    isforward::Bool
+    maxiter::Int
+end
+
+ReorthogonalizationAlg(criterion::Criterion,
+        isforward::Bool=true, maxiter::Integer=1) = (@show 1;
+    ReorthogonalizationAlg{C}(criterion, isforward, int(maxiter)))
+#Support calls like ReorthogonalizationAlg(never) and ReorthogonalizationAlg(always)
+ReorthogonalizationAlg{C<:Criterion}(criterion::Type{C}) = 
+    ReorthogonalizationAlg(criterion())
+ReorthogonalizationAlg()=ReorthogonalizationAlg(never)
+
+#Check if reorthogonalization is necessary and do it if it is
+function reorthogonalize!(alg::ReorthogonalizationAlg, Q, R, k::Int)
+    for iter = 1:alg.maxiter
+        #Check if criterion is triggered
+        do_reorth = !isa(alg.criterion, never) || isa(alg.criterion, always)
+        if isa(alg.criterion, rutishauser)
+            do_reorth = R[k,k] > alg.criterion.K*norm(Q[:,k])
+        elseif isa(alg.criterion, giraudlangou)
+            do_reorth = norm(R[1:k-1,k], 1) > criterion.K*norm(Q[:,k])
+        end
+        do_reorth || continue
+
+        #Reorthogonalize
+        for i = (alg.isforward ? (1:k) : (k:-1:1))
+            Q[:, k]-= R[i, k]*Q[:, i]
+        end
+    end
+    nothing
+end
+
 ################################
 # Orthogonalization algorithms #
 ################################
@@ -53,12 +105,15 @@ abstract OrthogonalizationAlg <: Algorithm
 
 #Classical Gram-Schmidt
 
-immutable ClassicalGramSchmidtAlg{A<:NormalizationAlg} <: OrthogonalizationAlg
+immutable ClassicalGramSchmidtAlg{Norm<:NormalizationAlg, Reorth<:ReorthogonalizationAlg} <: OrthogonalizationAlg
     n::Union(Int, Nothing) #Number of Gram-Schmidt columns to compute
-    normalize::Type{A}
+    normalize::Type{Norm}
+    reorth::Reorth
 end
 
 typealias cgs ClassicalGramSchmidtAlg
+cgs{Norm<:NormalizationAlg}(n, norm::Type{Norm},
+    reorth::ReorthogonalizationAlg=ReorthogonalizationAlg()) = cgs(n, norm, reorth)
 cgs(n::Nothing) = cgs(n, NORM_DEFAULT)
 cgs(n::Integer) = cgs(int(n), NORM_DEFAULT)
 cgs() = cgs(nothing)
@@ -74,6 +129,7 @@ function qrfact!(Q, parameters::ClassicalGramSchmidtAlg)
         for i=1:k-1
             Q[:,k]-= R[i,k]*Q[:,i]
         end
+        reorthogonalize!(parameters.reorth, Q, R, k)
         Q[:,k], R[k,k] = normalize!(Q[:,k], parameters.normalize)
     end
     QRPair(Q, Triangular(R, :U))
@@ -90,6 +146,7 @@ function qrfact!(Q, parameters::ClassicalGramSchmidtAlg{norm_pythag})
         for i=1:k-1
             Q[:,k]-= R[i,k]*Q[:,i]
         end
+        reorthogonalize!(parameters.reorth, Q, R, k)
         Q[:,k], R[k,k] = normalize!(Q[:,k], s, R[1:k-1,k], norm_pythag)
     end
     QRPair(Q, Triangular(R, :U))
@@ -100,12 +157,15 @@ qrfact!(A, ::Type{ClassicalGramSchmidtAlg}) = qrfact!(A, cgs())
 
 #Columnwise modified Gram-Schmidt
 
-immutable ColumnwiseModifiedGramSchmidtAlg{A<:NormalizationAlg} <: OrthogonalizationAlg
+immutable ColumnwiseModifiedGramSchmidtAlg{Norm<:NormalizationAlg, Reorth<:ReorthogonalizationAlg} <: OrthogonalizationAlg
     n::Union(Int, Nothing) #Number of Gram-Schmidt columns to compute
-    normalize::Type{A}
+    normalize::Type{Norm}
+    reorth::Reorth
 end
 
 typealias cmgs ColumnwiseModifiedGramSchmidtAlg
+cmgs{Norm<:NormalizationAlg}(n, norm::Type{Norm},
+    reorth::ReorthogonalizationAlg=ReorthogonalizationAlg()) = cmgs(n, norm, reorth)
 cmgs(n::Nothing) = cmgs(n, NORM_DEFAULT)
 cmgs(n::Integer) = cmgs(int(n), NORM_DEFAULT)
 cmgs() = cmgs(nothing)
@@ -115,9 +175,10 @@ function qrfact!(Q, parameters::ColumnwiseModifiedGramSchmidtAlg)
     R=zeros(ncols, ncols)
     for k=1:ncols
     	for i=1:k-1
-    	    R[i,k] = Q[:,i]⋅Q[:, k]
-    	    Q[:, k]-= R[i, k]*Q[:, i]
+    	    R[i,k] = Q[:,i]⋅Q[:,k]
+    	    Q[:,k]-= R[i,k]*Q[:,i]
     	end
+        reorthogonalize!(parameters.reorth, Q, R, k)
         Q[:,k], R[k,k] = normalize!(Q[:,k], parameters.normalize)
     end
     QRPair(Q, Triangular(R, :U))
@@ -129,9 +190,10 @@ function qrfact!(Q, parameters::ColumnwiseModifiedGramSchmidtAlg{norm_pythag})
     for k=1:ncols
         s=norm(Q[:,k])
         for i=1:k-1
-            R[i,k] = Q[:,i]⋅Q[:, k]
-            Q[:, k]-= R[i, k]*Q[:, i]
+            R[i,k] = Q[:,i]⋅Q[:,k]
+            Q[:,k]-= R[i,k]*Q[:,i]
         end
+        reorthogonalize!(parameters.reorth, Q, R, k)
         Q[:,k], R[k,k] = normalize!(Q[:,k], s, R[1:k-1,k], norm_pythag)
     end
     QRPair(Q, Triangular(R, :U))
