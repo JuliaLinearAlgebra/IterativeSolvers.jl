@@ -59,8 +59,8 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 #       b: Right hand side
 #
 #   Named Arguments:
-#       Pl:      Left Preconditioner
-#       Pr:      Right Preconditioner
+#       Pl:      Left preconditioner
+#       Pr:      Right preconditioner
 #       restart: Number of iterations before restart (GMRES(restart))
 #       maxiter:  Maximum number of outer iterations
 #       tol:     Convergence Tolerance
@@ -110,9 +110,9 @@ function gmres!(x, A, b, Pl=1, Pr=1;
             end
         end
 
-        a = Triangular(H[1:N, 1:N]) \ s[1:N]
+        a = Triangular(H[1:N, 1:N], :U) \ s[1:N]
         w = a[1:N] * K
-        update!(x, 1, Pr\w) #Right preconditioner
+        update!(x, 1, isa(Pr, Function) ? Pr(w) : Pr\w) #Right preconditioner
 
         if rho < tol
             resnorms = resnorms[1:iter, :]
