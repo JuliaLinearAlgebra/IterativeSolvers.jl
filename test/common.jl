@@ -1,4 +1,3 @@
-require("../src/IterativeSolvers.jl")
 using IterativeSolvers
 using Base.Test
 
@@ -10,7 +9,7 @@ b = rand(Float32, 5)
 # A = cycle-back operator
 function shiftback!(output, b)
     n = length(b)
-    length(output) == n || error("Dimension mismatch")
+    length(output) == n || throw(DimensionMismatch())
     for i = 1:n-1
         output[i+1] = b[i]
     end
@@ -21,7 +20,7 @@ end
 # A' = cycle-forward operator
 function shiftfwd!(output, b)
     n = length(b)
-    length(output) == n || error("Dimension mismatch")
+    length(output) == n || throw(DimensionMismatch())
     for i = 2:n
         output[i-1] = b[i]
     end
@@ -41,7 +40,7 @@ A = MatrixFcn{Int}(5, 5, shiftback!)
 @test A*b == Atimesb
 output = similar(b)
 @test A_mul_B!(output, A, b) == Atimesb
-@test_throws A'*b
+@test A'*b == Atimesb
 
 A = MatrixCFcn{Int}(5, 5, shiftback!, shiftfwd!)
 @test eltype(A) == Int
