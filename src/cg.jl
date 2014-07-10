@@ -14,7 +14,7 @@ function cg!(x, K::KrylovSubspace, b, Pl=1;
 
     tol = tol * norm(b)
     r = b - nextvec(K)
-    p = z = Pl\r
+    p = z = isa(Pl, Function) ? Pl(r) : Pl\r
     γ = dot(r, z)
     for iter=1:maxiter
         append!(K, p)
@@ -28,7 +28,7 @@ function cg!(x, K::KrylovSubspace, b, Pl=1;
             resnorms = resnorms[1:iter]
             break
         end
-        z = Pl\r
+        z = isa(Pl, Function) ? Pl(r) : Pl\r
         oldγ = γ
         γ = dot(r, z)
         β = γ/oldγ

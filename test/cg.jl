@@ -1,5 +1,3 @@
-require("../src/IterativeSolvers.jl")
-using IterativeSolvers
 using Base.Test
 
 include("getDivGrad.jl")
