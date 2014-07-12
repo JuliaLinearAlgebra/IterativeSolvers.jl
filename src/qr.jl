@@ -105,10 +105,18 @@ end
 ################################
 
 #Type to store the output
-immutable QRPair{T}
-    Q::Matrix{T}
-    R::Triangular{T, Matrix{T}, :U}
-    ϵ::Float64 #Residual
+if v"0.2" <= VERSION <= v"0.3-"
+    immutable QRPair{T}
+        Q::Matrix{T}
+        R::Triangular{T}
+        ϵ::Float64 #Residual
+    end
+else
+    immutable QRPair{T}
+        Q::Matrix{T}
+        R::Triangular{T, Matrix{T}, :U}
+        ϵ::Float64 #Residual
+    end
 end
 QRPair(Q, R, ϵ::Real=0) = size(Q,2)==size(R,1)==size(R,2) ? QRPair(Q, R, float64(ϵ)) : throw(DimensionMismatch(""))
 
