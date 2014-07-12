@@ -33,7 +33,7 @@ JAC(x) = D.\x
 SGS(x) = L\(D.*(U\x))
 
 rhs = randn(size(A,2))
-rhs = rhs / norm(rhs)
+rhs/= norm(rhs)
 tol = 1e-5
 # tests with A being matrix
 xCG, = cg(A,rhs;tol=tol,maxiter=100)
