@@ -22,9 +22,17 @@ function eigvals_lanczos(A, neigs::Int=size(A,1); tol::Real=size(A,1)^3*eps(), m
     K = KrylovSubspace(A, 2) #In Lanczos, only remember the last two vectors
     initrand!(K)
     resnorms = zeros(maxiter)
-    e1 = eigvals(lanczos!(K), 1:neigs)
+    if v"0.2" <= VERSION <= v"0.3-"
+        e1 = eigvals(lanczos!(K), 1, neigs)
+    else
+        e1 = eigvals(lanczos!(K), 1:neigs)
+    end
     for iter=1:maxiter
-        e0, e1 = e1, eigvals(lanczos!(K), 1:neigs)
+        if v"0.2" <= VERSION <= v"0.3-"
+            e0, e1 = e1, eigvals(lanczos!(K), 1, neigs)
+        else
+            e0, e1 = e1, eigvals(lanczos!(K), 1:neigs)
+        end
         resnorms[iter] = norm(e1-e0)
         if resnorms[iter] < tol
             resnorms = resnorms[1:iter]
