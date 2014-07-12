@@ -23,7 +23,11 @@ x2,ch2 = cg(A, rhs, F)
 A = getDivGrad(32,32,32)
 Af = MatrixFcn(A)
 L = tril(A)
-D = diag(A)
+if v"0.2.0" <= VERSION < v"0.3-"
+    D = float(diag(A))
+else #Type instability is fixed in 0.3
+    D = diag(A)
+end
 U = triu(A)
 JAC(x) = D.\x
 SGS(x) = L\(D.*(U\x))
