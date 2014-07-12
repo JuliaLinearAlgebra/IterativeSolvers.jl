@@ -7,7 +7,11 @@ srand(1)
 m=n=3
 A=randn(m, n) |> float32
 
-QRhouseholder = qr(A, thin=false)
+if v"0.2" <= VERSION < v"0.3-"
+    QRhouseholder = qr(A, false)
+else
+    QRhouseholder = qr(A, thin=false)
+end
 debug && @show QRhouseholder
 
 for algorithm in (cgs, cmgs)
