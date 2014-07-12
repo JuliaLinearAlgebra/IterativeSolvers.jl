@@ -6,7 +6,7 @@ srand(1234321)
 
 include("common.jl")
 
-include("qr.jl")
+VERSION <= v"0.3-" || include("qr.jl")
 
 ##################
 # Linear solvers #
