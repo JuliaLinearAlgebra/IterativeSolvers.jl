@@ -16,7 +16,7 @@ debug && @show QRhouseholder
 
 for algorithm in (cgs, cmgs)
 	for normalization in (norm_none, norm_naive, norm_pythag)
-		for reorth_criterion in (never, always, rutishauser(√2), giraudlangou(10.0))
+		for reorth_criterion in (never, always, rutishauser(sqrt(2)), giraudlangou(10.0))
 			debug && println(algorithm(nothing, normalization, ReorthogonalizationAlg(reorth_criterion)))
 			QRgs = qrfact!(copy(A), algorithm(nothing, normalization, ReorthogonalizationAlg(reorth_criterion)))
 			@test_approx_eq QRgs.Q*QRgs.R A
