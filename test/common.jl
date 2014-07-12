@@ -40,7 +40,7 @@ A = MatrixFcn{Int}(5, 5, shiftback!)
 @test A*b == Atimesb
 output = similar(b)
 @test A_mul_B!(output, A, b) == Atimesb
-if v"0.2" <= VERSION <= v"0.2.1"
+if v"0.2" <= VERSION <= v"0.3-"
     @test_throws A'*b
 else
     @test A'*b == Atimesb
