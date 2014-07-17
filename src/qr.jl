@@ -20,7 +20,7 @@ normalize!(v::AbstractVector, ::Type{norm_none}) = v, 1.0
 immutable norm_naive <: NormalizationAlg end
 function normalize!(v::AbstractVector, ::Type{norm_naive})
     nrm = norm(v)
-    v/nrm, nrm
+    scale!(v, one(nrm)/nrm), nrm
 end
 
 #Pythagorean normalization
@@ -29,7 +29,7 @@ immutable norm_pythag <: NormalizationAlg end
 
 function normalize!{T}(v::AbstractVector{T}, s::Real, p::Real, ::Type{norm_pythag})
     nrm = √(s-p)*√(s+p)
-    v/nrm, nrm
+    scale!(v, one(nrm)/nrm), nrm
 end
 
 normalize!{T}(v::AbstractVector{T}, s::Real, u::AbstractVector{T}, ::Type{norm_pythag}) =
