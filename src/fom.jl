@@ -11,6 +11,17 @@ function fom(A, b, x₀=nothing)
 	x₀ + β*δx̂
 end
 
+function gmres(A, b, x₀=nothing)
+	(x₀==nothing) && (x₀=convert(typeof(b), randn(length(b))))
+	r₀ = b - A*x₀
+	β = norm(r₀)
+	v₁ = r₀ / β #Normalized form
+
+	VH = Arnoldi(A, v₁)
+	δx̂ = solve₂(VH)
+	x₀ + β*δx̂
+end
+
 type HessenbergMatrix{T} <: AbstractMatrix{T}
 	H :: Matrix{T}
 end
@@ -49,32 +60,43 @@ function Arnoldi{T}(A, v::Vector{T}, m::Int=length(v)) #with MGS
 		V[:,j+1] = w/nw
 		H[j+1,j]=nw
 	end
-	@show V[:,1:mend], H[1:mend,1:mend]
-	#mend==m ? HessenbergFact(V, H) : HessenbergFact(V[:,1:mend], H[1:mend,1:mend])
-	VH = HessenbergFact(V[:,1:mend], H[1:mend,1:mend])	
-	nVH = norm(A*VH.V - VH.V*VH.H.H)
-	nVH < mend*eps(T) || warn("Error in Hessenberg factorization has norm $nVH")
+	VH = mend==m ? HessenbergFact(V, H) : HessenbergFact(V[:,1:mend], H[1:(mend+1),1:mend])
+	nVH = norm(A*VH.V - VH.V*VH.H.H[1:mend,1:mend])
+	nVH < mend^2*eps(T) || warn("Error in Hessenberg factorization has norm $nVH > $(mend*eps(T))")
 	VH
 end
 
-function updatesolutiondirection(VH::HessenbergFact)
+function solve(VH::HessenbergFact)
+	n = size(VH.H,2)
+	e₁ = zeros(eltype(VH.V), n)
+	e₁[1] = 1
+	y = VH.H.H[1:n,:] \ e₁ #First column of H⁻¹
+	VH.V * y
+end
+
+function solve₂(VH::HessenbergFact)
+	QR = qrfact(VH.H.H)
 	e₁ = zeros(eltype(VH.V), size(VH.H,1))
 	e₁[1] = 1
-	y = VH.H.H \ e₁ #First column of H⁻¹
+	y = QR[:R] \ (QR[:Q]'*e₁)[1:end-1]
 	VH.V * y
 end
 
 function test()
-	n = 4
+	n = 140
 	srand(123)
 	A = float32(randn(n,n))
 	b = float32(randn(n))
-	x = fom(A, b)
 
-	nr = norm(A*x-b)
-	if nr > n*eps(eltype(x))
-		@show A*x, b
-		@assert false
+	for solver in [fom, gmres]
+		x = solver(A, b)
+
+		nr = norm(A*x-b)
+		if nr > n*n*eps(eltype(x))
+			@show A*x, b
+			@show solver, nr, n*n*eps(eltype(x))
+			@assert false
+		end
 	end
 end
 
