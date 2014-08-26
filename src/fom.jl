@@ -1,22 +1,23 @@
-#Full orthogonalization method
-
-function fom(A, b, x₀=nothing)
+#Compute an initial residual and iterate vetion
+function initialize(A, b, x₀)
 	(x₀==nothing) && (x₀=convert(typeof(b), randn(length(b))))
 	r₀ = b - A*x₀
 	β = norm(r₀)
 	v₁ = r₀ / β #Normalized form
+	x₀, v₁, β
+end
 
+#Full orthogonalization method
+function fom(A, b, x₀=nothing)
+	x₀, v₁, β = initialize(A, b, x₀)
 	VH = Arnoldi(A, v₁)
 	δx̂ = solve(VH)
 	x₀ + β*δx̂
 end
 
+#GMRES
 function gmres(A, b, x₀=nothing)
-	(x₀==nothing) && (x₀=convert(typeof(b), randn(length(b))))
-	r₀ = b - A*x₀
-	β = norm(r₀)
-	v₁ = r₀ / β #Normalized form
-
+	x₀, v₁, β = initialize(A, b, x₀)
 	VH = Arnoldi(A, v₁)
 	δx̂ = solve₂(VH)
 	x₀ + β*δx̂
@@ -47,13 +48,13 @@ function mgs(w, V)
 	w, h
 end	
 
-function Arnoldi{T}(A, v::Vector{T}, m::Int=length(v)) #with MGS
+function Arnoldi{T}(A, v::Vector{T}, m::Int=length(v), orthogonalize=mgs) #with MGS
 	V = Array(T, length(v), m)
 	H = zeros(T, m+1, m)
 	mend = m
 	V[:,1] = v
 	for j=1:m
-		w, H[1:j, j] = mgs(A*V[:,j], V[:,1:j])
+		w, H[1:j, j] = orthogonalize(A*V[:,j], V[:,1:j])
 		nw = norm(w)
 		m==j && break
 		nw < length(w)*eps(T) && (mend=j; info("BREAKDOWN IN ITERATION $j"); break) #Breakdown
