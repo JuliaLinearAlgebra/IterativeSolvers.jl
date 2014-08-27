@@ -1,4 +1,5 @@
-import Base: eltype, empty!, length, ndims, push!, size, *, A_mul_B, A_mul_B!, Ac_mul_B, Ac_mul_B!
+import Base: eltype, empty!, length, ndims, push!, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
+export A_mul_B
 
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
@@ -96,13 +97,8 @@ type MatrixCFcn{T} <: AbstractMatrixFcn{T}
     mulc::Function
 end
 
-if v"0.2.0" <= VERSION <= v"0.3-"
-    MatrixFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)-> A*x)
-    MatrixCFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)->A*x, (output, b) -> A*b)
-else
-    MatrixFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)-> A_mul_B!(output, A, x))
-    MatrixCFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)->A_mul_B!(output, A, x), (output, b) -> Ac_mul_B(output, A, b))
-end
+MatrixFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)-> A_mul_B!(output, A, x))
+MatrixCFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)->A_mul_B!(output, A, x), (output, b) -> Ac_mul_B(output, A, b))
 
 eltype{T}(op::AbstractMatrixFcn{T}) = T
 
