@@ -2,7 +2,8 @@
 
 [![IterativeSolvers on Julia release](http://pkg.julialang.org/badges/IterativeSolvers_release.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=release)
 [![IterativeSolvers on Julia nightly](http://pkg.julialang.org/badges/IterativeSolvers_nightly.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=nightly)
-[![Build Status](https://travis-ci.org/JuliaLang/IterativeSolvers.jl.png?branch=master)](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
+[![Build Status on Linux](https://travis-ci.org/JuliaLang/IterativeSolvers.jl.png?branch=master)](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
+[![Build status on Windows](https://ci.appveyor.com/api/projects/status/eaoi7dw2j6qqfskf/branch/master)](https://ci.appveyor.com/project/jiahao/iterativesolvers-jl/branch/master)
 [![Coverage Status](https://img.shields.io/coveralls/JuliaLang/IterativeSolvers.jl.svg)](https://img.shields.io/coveralls/JuliaLang/IterativeSolvers.jl.svg)
 
 &copy; 2013---2014 Jiahao Chen and [other contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
