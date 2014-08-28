@@ -117,6 +117,8 @@ end
 done{T<:FloatingPoint}(L::BiCG{T}, S::BiCGState{T}) = S.iter==length(S.p) || abs(S.α)*norm(S.p) < length(S.p)^2 * eps(T)
 done{T}(L::BiCG{T}, S::BiCGState{T}) = S.r == zeros(S.r)
 
+#Tests
+
 n=4
 A=randn(n,n)
 b=randn(n)
@@ -129,13 +131,16 @@ L = BiLanczos(K(A,b),K(A',b̃),⋅)
 for it in L
 	@show it
 end
+
+println("Biconjugate gradients")
 L = BiCG(A, b, b̃=b̃)
 for it in L
 	@show it
 end
 
 #Conjugate gradients
-Asym = A+A'
+println("Biconjugate gradients emulating conjugate gradients on SPD A")
+Asym = A'A
 LCG = BiCG(Asym, b, Aᵀ=Asym, b̃=A*b, innerprod=(x,y)->x⋅(A*y))
 for it in LCG
 	@show it
