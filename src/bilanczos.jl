@@ -57,6 +57,10 @@ function next{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})
 		Tri = Tridiagonal([S.T.dl, R′.δ], [S.T.d, 0.0], [S.T.du, R′.β])
 	end
 	S′ = BiLanczosStateFull(j, [S.W R′.w], [S.V R′.v], Tri)
+	println(j)
+	println(S′.W)
+	println(Tri)
+	println(S′.V)
 	S′, S′
 end
 
@@ -142,6 +146,15 @@ println("Raw biorthogonal Lanczos")
 L = BiLanczos(K(A,b),K(A',b̃),⋅)
 for it in L
 	@show it
+end
+
+A = reshape([1:16],4,4)
+b=[1.,0,0,0]
+b̃=[1.,0,0,0]
+println("Raw biorthogonal Lanczos (full)")
+L = BiLanczos(K(A,b),K(A',b̃),⋅,true)
+for S in L
+	@show S.iter, norm(S.W[:,1:S.iter]'*L.K.A*S.V[:,1:S.iter] - full(S.T)[1:S.iter,1:S.iter])
 end
 
 println("Biconjugate gradients")
