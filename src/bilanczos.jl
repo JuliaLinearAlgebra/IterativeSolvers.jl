@@ -10,11 +10,11 @@ immutable BiLanczos{T}
 	K:: K{T}
 	K̃:: K{T}
 	⋅ :: Function
-	thin :: Bool #Controls output type
+	full :: Bool #Controls output type
 end
 
-BiLanczos{T}(K::K{T}, K̃::K{T}, ⋅::Function = ⋅, thin::Bool=true) =
-		BiLanczos{T}(K, K̃, ⋅, thin)
+BiLanczos{T}(K::K{T}, K̃::K{T}, ⋅::Function = ⋅, full::Bool=false) =
+		BiLanczos{T}(K, K̃, ⋅, full)
 
 immutable BiLanczosState{T}
 	iter :: Int
@@ -34,20 +34,30 @@ immutable BiLanczosStateFull{U}
 	T::Tridiagonal{U}
 end
 
-start{T}(L::BiLanczos{T}) = L.thin ? 
-	BiLanczosState(0, L.K̃.b, zeros(L.K̃.b), L.K.b, zeros(L.K.b), zeros(T,3)...) :
-	BiLanczosStateFull(0, reshape(L.K̃.b, length(L.K̃.b), 1),
-		reshape(L.K̃.b, length(L.K̃.b), 1), Tridiagonal(T[0], T[0,0], T[0]))
+function start{T}(L::BiLanczos{T})
+	v₁, w₁ = L.K.b, L.K̃.b
+	L.full ? 
+	  BiLanczosStateFull(0, reshape(w₁, length(w₁), 1),
+		reshape(v₁, length(v₁), 1), Tridiagonal(T[0], T[0, 0], T[0])) : #Hack to initialize a 1x1 Tridiagonal matrix
+	  BiLanczosState(0, w₁, zeros(w₁), v₁, zeros(v₁), zeros(T,3)...)
+end
 
-function next(L::BiLanczos, S::BiLanczosStateFull)
-	@show j = S.iter
-	Sthin = BiLanczosState(j, S.W[:,j], S.W[:,j-1], S.V[:,j], S.V[:,j-1], T[j-1,j], T[j,j-1])
-	item, thinstate = next(L, Sthin)
-	Snew = BiLanczosStateFull(j+1, [S.W thinstate.w], [S.V thinstate.v],
-		j==1 ? Tridiagonal(S.T.dl, S.T.d, S.T.du) : 
-			   Tridiagonal([S.T.dl, Sthin.δ], [S.T.d, Sthin.α], [S.T.du, Sthin.β])
-		)
-	item, Snew
+function next{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})
+	j = S.iter
+	R = j==0 ? BiLanczosState(j, S.W[:,j+1], zeros(L.K̃.b), S.V[:,j+1], zeros(L.K.b), zeros(T,3)...) :
+			BiLanczosState(j, S.W[:,j+1], S.W[:,j], S.V[:,j+1], S.V[:,j], S.T[j+1,j+1], S.T[j,j+1], S.T[j+1,j])
+
+	_, R′ = next(L, R)
+
+	j+= 1
+	if j==1
+		Tri = Tridiagonal([R′.δ], [R′.α, 0], [R′.β])
+	else
+		S.T.d[end] = R′.α
+		Tri = Tridiagonal([S.T.dl, R′.δ], [S.T.d, 0.0], [S.T.du, R′.β])
+	end
+	S′ = BiLanczosStateFull(j, [S.W R′.w], [S.V R′.v], Tri)
+	S′, S′
 end
 
 function next(L::BiLanczos, S::BiLanczosState)
@@ -56,21 +66,23 @@ function next(L::BiLanczos, S::BiLanczosState)
 	w′ = L.K̃.A * S.w
 
 	α = v′⋅ S.w
-	v̂ = v′ - α*S.v - S.β*S.v₋
-	ŵ = w′ - α*S.w - S.δ*S.w₋
+	v̂ = v′ - S.α*S.v - S.β*S.v₋
+	ŵ = w′ - S.α*S.w - S.δ*S.w₋
 	c = v̂ ⋅ ŵ
 	δ = √abs(c)
 	β = c / δ
 	w = ŵ / β
 	v = v̂ / δ
 
-	(α,S.β,S.δ,S.w,S.v), BiLanczosState(S.iter+1, w, S.w, v, S.v, α, β, δ)
+	S′= BiLanczosState(S.iter+1, w, S.w, v, S.v, α, β, δ)
+
+	S′,S′
 end
 
 done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.δ) < eps(T))
 done{T}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter>0 && S.δ == 0
 
-done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.T[end, end-1]) < eps(T))
+done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter==size(S.W,1) || (S.iter>0 && abs(S.T[end, end-1]) < eps(T))
 done{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter>0 && S.T[end, end-1] == 0
 
 #Biconjugate gradients
