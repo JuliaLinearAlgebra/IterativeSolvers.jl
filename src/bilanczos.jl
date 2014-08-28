@@ -5,6 +5,42 @@ immutable K{T}
 	b :: AbstractVector{T}
 end
 
+#Biorthogonal Lanczos
+immutable BiLanczos{T}
+	K:: K{T}
+	K̃:: K{T}
+	⋅ :: Function
+immutable BiLanczosState{T}
+	iter :: Int
+	w :: AbstractVector{T}
+	w₋ :: AbstractVector{T}
+	v :: AbstractVector{T}
+	v₋ :: AbstractVector{T}
+	α :: T
+	β :: T
+	δ :: T
+end
+
+function next(L::BiLanczos, S::BiLanczosState)
+	⋅ = L.⋅
+	v′ = L.K.A * S.v
+	w′ = L.K̃.A * S.w
+
+	α = v′⋅ S.w
+	v̂ = v′ - α*S.v - S.β*S.v₋
+	ŵ = w′ - α*S.w - S.δ*S.w₋
+	c = v̂ ⋅ ŵ
+	δ = √abs(c)
+	β = c / δ
+	w = ŵ / β
+	v = v̂ / δ
+
+	(α,S.β,S.δ,S.w,S.v), BiLanczosState(S.iter+1, w, S.w, v, S.v, α, β, δ)
+end
+
+done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.δ) < eps(T))
+done{T}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter>0 && S.δ == 0
+
 #Biconjugate gradients
 
 immutable BiCG{T}
@@ -56,6 +92,11 @@ b/=norm(b)
 b̃=randn(n)
 b̃/=norm(b̃)
 
+println("Raw biorthogonal Lanczos")
+L = BiLanczos(K(A,b),K(A',b̃),⋅)
+for it in L
+	@show it
+end
 L = BiCG(A, b, b̃=b̃)
 for it in L
 	@show it
