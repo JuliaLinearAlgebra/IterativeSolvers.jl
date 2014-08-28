@@ -151,9 +151,10 @@ b/=norm(b)
 b̃=randn(n)
 b̃/=norm(b̃)
 
-A = reshape([1:36],6,6)
-b=[1.,0,0,0,0,0]
-b̃=[1.,0,0,0,0,0]
+#n=12
+#A = reshape([1:n^2],n,n)
+#b=[1.,zeros(n-1)...]
+#b̃=[1.,zeros(n-1)...]
 
 println("Raw biorthogonal Lanczos (full)")
 L = BiLanczos(K(A,b),K(A',b̃),⋅,true)
@@ -187,8 +188,11 @@ for S in L
 	#Check that WᵀAV = T
 	nrm = vecnorm(W'*A*V - T)
 	println("Norm of WᵀAV - T = $nrm")
+	println(float32(W'*A*V))
+	println(float32(T))
+	println(float32(W'*A*V - T))
 
-	println("Termination criterion: ", S.T[end,end-1], " ? ", size(S.T,1)^3*eps())
+	println("Termination criterion: ", S.T[end,end-1], " ? ", sqrt(eps()))
 end
 
 #println("Biconjugate gradients")
