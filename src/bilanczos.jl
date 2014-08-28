@@ -79,10 +79,10 @@ function next(L::BiLanczos, S::BiLanczosState)
 	S′,S′
 end
 
-done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.δ) < size(S.T,1)^2*eps(T))
+done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.δ) < √eps(T))
 done{T}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter>0 && S.δ == 0
 
-done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter==5size(S.W,1) || (S.iter>0 && abs(S.T[end, end-1]) < size(S.T,1)^2*eps(T))
+done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter==size(S.W,1) || (S.iter>0 && abs(S.T[end, end-1]) < √eps(T))
 done{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter>0 && S.T[end, end-1] == 0
 
 #Biconjugate gradients
@@ -126,7 +126,7 @@ function next(L::BiCG, S::BiCGState)
 	α*p, BiCGState(S.iter+1, α, β, r, r̃, p, p̃)
 end
 
-done{T<:FloatingPoint}(L::BiCG{T}, S::BiCGState{T}) = S.iter==length(S.p) || abs(S.α)*norm(S.p) < length(S.p)^2 * eps(T)
+done{T<:FloatingPoint}(L::BiCG{T}, S::BiCGState{T}) = S.iter==length(S.p) || abs(S.α)*norm(S.p) < √eps(T)
 done{T}(L::BiCG{T}, S::BiCGState{T}) = S.r == zeros(S.r)
 
 #Tests
