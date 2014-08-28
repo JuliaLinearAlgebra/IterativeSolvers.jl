@@ -65,13 +65,13 @@ function next{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})
 end
 
 function next(L::BiLanczos, S::BiLanczosState)
-	⋅ = L.⋅
+	const ⋅ = L.⋅
 	v′ = L.K.A * S.v
 	w′ = L.K̃.A * S.w
 
 	α = v′⋅ S.w
-	v̂ = v′ - S.α*S.v - S.β*S.v₋
-	ŵ = w′ - S.α*S.w - S.δ*S.w₋
+	v̂ = v′ - α*S.v - S.β*S.v₋
+	ŵ = w′ - α*S.w - S.δ*S.w₋
 	c = v̂ ⋅ ŵ
 	δ = √abs(c)
 	β = c / δ
