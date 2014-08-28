@@ -57,10 +57,6 @@ function next{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})
 		Tri = Tridiagonal([S.T.dl, R′.δ], [S.T.d, 0.0], [S.T.du, R′.β])
 	end
 	S′ = BiLanczosStateFull(j, [S.W R′.w], [S.V R′.v], Tri)
-	println(j)
-	println(S′.W)
-	println(Tri)
-	println(S′.V)
 	S′, S′
 end
 
@@ -83,10 +79,10 @@ function next(L::BiLanczos, S::BiLanczosState)
 	S′,S′
 end
 
-done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.δ) < eps(T))
+done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.δ) < size(S.T,1)^2*eps(T))
 done{T}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter>0 && S.δ == 0
 
-done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter==size(S.W,1) || (S.iter>0 && abs(S.T[end, end-1]) < eps(T))
+done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter==5size(S.W,1) || (S.iter>0 && abs(S.T[end, end-1]) < size(S.T,1)^2*eps(T))
 done{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter>0 && S.T[end, end-1] == 0
 
 #Biconjugate gradients
@@ -142,31 +138,69 @@ b/=norm(b)
 b̃=randn(n)
 b̃/=norm(b̃)
 
-println("Raw biorthogonal Lanczos")
-L = BiLanczos(K(A,b),K(A',b̃),⋅)
-for it in L
-	@show it
-end
+#println("Raw biorthogonal Lanczos")
+#L = BiLanczos(K(A,b),K(A',b̃),⋅)
+#for it in L
+	#@show it
+#end
 
-A = reshape([1:16],4,4)
-b=[1.,0,0,0]
-b̃=[1.,0,0,0]
+n=6
+A=randn(n,n)
+b=randn(n)
+b/=norm(b)
+b̃=randn(n)
+b̃/=norm(b̃)
+
+A = reshape([1:36],6,6)
+b=[1.,0,0,0,0,0]
+b̃=[1.,0,0,0,0,0]
+
 println("Raw biorthogonal Lanczos (full)")
 L = BiLanczos(K(A,b),K(A',b̃),⋅,true)
 for S in L
-	@show S.iter, norm(S.W[:,1:S.iter]'*L.K.A*S.V[:,1:S.iter] - full(S.T)[1:S.iter,1:S.iter])
+	j=S.iter
+	println("Iteration $j")
+
+	eₘ = zeros(j)
+	eₘ[end] = 1
+
+	A, Aᵀ, W, T, V = L.K.A, L.K̃.A, S.W[:,1:j], full(S.T)[1:j,1:j], S.V[:,1:j]
+	βw, δv = S.T[j,j+1]*S.W[:, j+1], S.T[j+1,j]*S.V[:, j+1]
+
+	#println("W=\n",W)
+	#println("T=\n",T)
+	#println("V=\n",V)
+	#println("βw=\n",βw)
+	#println("δv=\n",δv)
+
+	#Check that AV = VT + δv e′
+	#@show A*V
+	#@show V*T
+	#@show δv
+	nrm = vecnorm(A*V - V*T - δv*eₘ')
+	println("Norm of AV - VT - δv e′ = $nrm")
+
+	#Check that A′W = WTᵀ + βw e′
+	nrm = vecnorm(Aᵀ*W - W*T' - βw*eₘ')
+	println("Norm of A′W - WTᵀ - βw e′ = $nrm")
+
+	#Check that WᵀAV = T
+	nrm = vecnorm(W'*A*V - T)
+	println("Norm of WᵀAV - T = $nrm")
+
+	println("Termination criterion: ", S.T[end,end-1], " ? ", size(S.T,1)^3*eps())
 end
 
-println("Biconjugate gradients")
-L = BiCG(A, b, b̃=b̃)
-for it in L
-	@show it
-end
+#println("Biconjugate gradients")
+#L = BiCG(A, b, b̃=b̃)
+#for it in L
+#	@show it
+#end
 
 #Conjugate gradients
-println("Biconjugate gradients emulating conjugate gradients on SPD A")
-Asym = A'A
-LCG = BiCG(Asym, b, Aᵀ=Asym, b̃=A*b, innerprod=(x,y)->x⋅(A*y))
-for it in LCG
-	@show it
-end
+#println("Biconjugate gradients emulating conjugate gradients on SPD A")
+#Asym = A'A
+#LCG = BiCG(Asym, b, Aᵀ=Asym, b̃=A*b, innerprod=(x,y)->x⋅(A*y))
+#for it in LCG
+#	@show it
+#end
