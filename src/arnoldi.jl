@@ -190,6 +190,11 @@ for (iter, Ar) in enumerate(Restarted(Arnoldi(K, Terminator(1e-9, n)), n))
     @assert abs(norm(K.A*Ar.V-Ar.V*Ar.H) - norm(Ar.r)) < sqrt(eps())
 end
 
+function eigfact!(Ar::ArnoldiFact)
+    fact = eigfact!(Ar.H)
+    fact.values, Ar.V*fact.Q
+end
+
 # # References
 #
 # 1. D. C. Sorensen, "Implicit application of polynomial filters in a $k$-step Arnoldi method", _SIAM J. Matrix Anal. Appl._ 13 (1), pp. 357-385, January 1992. [doi:10.1137/0613025](http://epubs.siam.org/doi/abs/10.1137/0613025)
