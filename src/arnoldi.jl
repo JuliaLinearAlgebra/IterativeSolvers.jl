@@ -1,4 +1,4 @@
-import Base: start, next, done
+import Base: start, next, done, eigfact!, eigvals
 
 #The usual Krylov space machinery
 type Krylov{T}
@@ -194,6 +194,8 @@ function eigfact!(Ar::ArnoldiFact)
     fact = eigfact!(Ar.H)
     fact.values, Ar.V*fact.Q
 end
+
+eigvals(Ar::ArnoldiFact) = eigvals(Ar.H)
 
 # # References
 #
