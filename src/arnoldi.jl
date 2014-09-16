@@ -1,4 +1,4 @@
-import Base: start, next, done, eigfact!, eigvals
+import Base: start, next, done, eigfact!, eigfact, eigvals
 
 #The usual Krylov space machinery
 type Krylov{T}
@@ -214,6 +214,8 @@ function eigfact!(Ar::ArnoldiFact; purge::Bool=false)
     Base.Eigen(evals, evecs)
 end
 
+eigfact(Ar::ArnoldiFact; purge::Bool=false) =
+    eigfact!(ArnoldiFact(Ar.V, copy(Ar.H), Ar.r), purge=purge)
 eigvals(Ar::ArnoldiFact) = eigvals(Ar.H)
 
 # Test of implicitly and explicitly restarted Arnoldi iterators
