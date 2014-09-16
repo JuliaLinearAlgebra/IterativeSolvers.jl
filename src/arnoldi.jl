@@ -184,6 +184,38 @@ for i=1:5, j=1:min(5,i+1); H[j,i]=randn(); end
 println(round(H,3))
 Shifts(H, 3)
 
+
+# Get approximate eigenvalues and eigenvectors
+# The usual method is to approximate them with the Ritz vectors and values
+# satisfying the Galerkin condition
+#
+#     w⋅(Ax - xθ) = 0 ∀w ∈Krylov(A,v) of size k
+#
+# The Ritz values are just the eigenvalues of Ar.H
+# and the Ritz vectors can be formed by lifting the eigenvectors of Ar.H
+# back into the original basis (essentially undoing the projection into the
+# Krylov subspace).
+#
+# Par80 gives additional rigorous error bounds on the eigenvalues.
+#
+# purge=false (default) performs an additional correction to the eigenvectors
+# known as purging as suggested in Ericsson and Ruhe, 1980.
+# Use purge only if the computed eigenvalues are suspected to be large
+# (purge=true recommended for shift-and-invert transformed problems)
+function eigfact!(Ar::ArnoldiFact; purge::Bool=false)
+    fact = eigfact!(Ar.H)
+    evals, evecs = fact.values, Ar.V*fact.vectors
+    if purge
+        for i in 1:length(evals)
+            evecs[:,i] += fact.vectors[end,i]/evals[i]*Ar.r
+            evecs[:,i] /= norm(evecs[:,i])
+        end
+    end
+    Base.Eigen(evals, evecs)
+end
+
+eigvals(Ar::ArnoldiFact) = eigvals(Ar.H)
+
 # Test of implicitly and explicitly restarted Arnoldi iterators
 n=15
 M=randn(n,n)+im*randn(n,n)
@@ -200,12 +232,6 @@ for (iter, Ar) in enumerate(Restarted(Arnoldi(K, Terminator(1e-9, n)), n))
     @assert abs(norm(K.A*Ar.V-Ar.V*Ar.H) - norm(Ar.r)) < sqrt(eps())
 end
 
-function eigfact!(Ar::ArnoldiFact)
-    fact = eigfact!(Ar.H)
-    fact.values, Ar.V*fact.Q
-end
-
-eigvals(Ar::ArnoldiFact) = eigvals(Ar.H)
 
 # # References
 #
