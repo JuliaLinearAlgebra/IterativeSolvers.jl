@@ -19,15 +19,18 @@ end
 # where $V \in \mathbb{R}^{n\times k}$, $V^T V = I_k$, $H \in \mathbb{R}^{k\times k}$ is upper Hessenberg, $r \in \mathbb{R}^n$ with $0=V^T r$.
 
 type ArnoldiFact{T} <: Factorization{T}
-    V :: Matrix{T}
+    V :: Matrix{T} #An orthogonal basis for the kth Krylov subspace
     H :: Matrix{T}
     r :: Vector{T}
 end
 
-function ArnoldiFact{T}(V::Matrix{T}, H::Matrix{T}, r::Vector{T})
+function ArnoldiFact{T}(V::Matrix{T}, H::Matrix{T}, r::Vector{T}; docheck::Bool=true)
     #Check dimensions
     @assert size(V,2) == size(H,1)
     @assert size(V,1) == size(r,1)
+    if docheck #Check Arnoldi projection identities
+	#XXX TODO
+    end
     ArnoldiFact{T}(V, H, r)
 end
 
@@ -63,6 +66,8 @@ function next{T}(P::Arnoldi{T}, F::ArnoldiFact{T})
     v = r / β
     V = [V v]
 
+    #Construct next Krylov vector iterate and project into orthogonal
+    #complement of existing Krylov subspace
     w = K.A*v
 
     h = V'w
@@ -70,10 +75,11 @@ function next{T}(P::Arnoldi{T}, F::ArnoldiFact{T})
 
     r = w - V*h
     #Gram-Schmidt
+    #Iterative reorthogonalization of Daniel, Gragg, Kaufman and Stewart, 1976
     for i=1:2
       s = V'r
-      r-= V*s
-      h+= s
+      r-= V*s #orthogonalize r
+      h+= s   #update orthogonalization coefficients
       norm(s) < P.term.tol*norm(r) && break
     end
     @assert abs(norm(K.A*V-V*H) - norm(r)) < P.term.tol
@@ -111,6 +117,9 @@ function ImplicitlyRestarted{Alg<:Factorizer}(P::Alg, k::Int, p::Int, getshifts:
 end
 
 #Explicitly restarted
+#See Saad, 1992
+#Use Chebyshev polynomials?
+#THis is the dumb restart where you just drop all the old vectors
 type Restarted{Alg<:Factorizer} <: Factorizer
     P :: Alg
     k :: Int #Maximum size of Arnoldi factorization
@@ -135,7 +144,7 @@ function next{T}(P::ImplicitlyRestarted{Arnoldi{T}}, F::ArnoldiFact{T})
         k, p = P.k, P.p
         H, V, r = F.H, F.V, F.r
 
-        u = P.getshifts(H, P.p)
+        u = P.getshifts(H, P.p) #also roots of the so-called filter polynomial
 
         Q = I
         for j=1:p
@@ -161,6 +170,7 @@ done(P::Union(ImplicitlyRestarted,Restarted), F::ArnoldiFact) = done(P.P, F)
 function Shifts(H, p, by::Function=x->real(x))
     #by: Keep eigenvalues by algebraically largest real part
 
+    #Use exact shifts
     evals = eigvals(H)
     #Select p unwanted eigenvalues
     0≤p≤size(H,1) || throw(ArgumentError("Asked for p=$p eigenvalues but only $(size(H,1)) are available"))
