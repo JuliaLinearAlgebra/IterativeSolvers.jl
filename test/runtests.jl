@@ -176,3 +176,6 @@ for T in (Float32, Float64)
 end
 
 include("lsqr.jl")
+
+include("matrixmarket.jl")
+include("matrixcollection.jl")

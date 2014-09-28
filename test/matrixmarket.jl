@@ -1,9 +1,7 @@
 #Tests using the NIST Matrix Market
 
-Pkg.clone("https://github.com/dpo/HarwellBoeing.jl.git")
-
 using IterativeSolvers, MatrixMarket
-
+info("Testing matrices from the NIST Matrix Market")
 for (setname, matname) in [("cylshell", "s3dkq4m2")]
     dl_filename = string(setname, "_", filename)
     isfile(dl_filename) || download("ftp://math.nist.gov/pub/MatrixMarket2/misc/$setname/$matname.mtx.gz", dl_filename)
@@ -21,7 +19,7 @@ for (setname, matname) in [("cylshell", "s3dkq4m2")]
     @show Aisposdef = isposdef(A)
     solvers = {}
     Aissym && Aisposdef && push!(solvers, cg)
-    push!(solvers, gmres)
+    #push!(solvers, gmres)
     for solver in solvers
         println("$dl_filename: Iterative solve using $solver")
         tic()

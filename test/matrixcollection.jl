@@ -3,6 +3,7 @@
 
 using IterativeSolvers, MAT
 
+info("Testing matrices from the University of Florida Sparse Matrix Collection")
 for (dirname, filename) in [("ACUSIM", "Pres_Poisson.mat")]
     dl_filename = string(dirname, "_", filename)
     isfile(dl_filename) || download("http://www.cise.ufl.edu/research/sparse/mat/$dirname/$filename", dl_filename)
