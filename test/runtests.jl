@@ -1,10 +1,12 @@
 using IterativeSolvers
 using Base.Test
-const n=10
-const m=6
+n=10
+m=6
 srand(1234321)
 
 include("common.jl")
+
+VERSION <= v"0.3-" || include("qr.jl")
 
 ##################
 # Linear solvers #

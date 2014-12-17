@@ -17,6 +17,34 @@ This package provides iterative algorithms for solving linear systems, eigensyst
 - [Issue #1](https://github.com/JuliaLang/IterativeSolvers.jl/issues/1) documents the implementation roadmap.
 - The interfaces between the various algorithms are still in flux, but aim to be consistent.
 
+## Orthogonalization algorithms
+
+This package provides new methods for `qrfact!` and uses an abstract algorithm interface that inherits from `Base.Algorithm`. The method signature looks like
+
+    qrfact!(A, alg(params...))
+
+`alg` is a type of subtype `OrthogonalizationAlg` (unexported). Valid types are:
+
+- `cgs`: classical Gram-Schmidt
+- `cmgs`: columnwise modified Gram-Schmidt
+
+Each `OrthogonalizationAlg` wraps the following parameters
+
+- `n`: the number of orthogonal vectors to compute. If `nothing`, computes all of them.
+- `normalize`: choice of normalization algorithm. Valid types are:
+  - `norm_none`: no normalization
+  - `norm_naive`: naïve normalization using `norm()` (default)
+  - `norm_pythag`: Pythagorean normalization ([doi:10.1007/s00211-006-0042-1](http://dx.doi.org/10.1007/s00211-006-0042-1))
+
+- `reorth`: choice of reorthogonalization algorithm. This is specified as an (unexported) `ReorthogonalizationAlg` type wrapping the following parameters:
+  - `criterion`: specifies when reorthogonalization is carried out. Valid values are:
+    - `never`: never reorthogonalize (default)
+    - `always`: always reorthgonalize
+    - `rutishauser(K)`: use Rutishauser's criterion for adaptive reorthogonalization with threshold `K` (default `K = 10.0`, which is Rutishauser's original choice, but `K = √2` is also a popular choice).
+    - `giraudlangou(K)`: use Giraud and Langou's criterion for adaptive reorthogonalization with threshold `K`. 
+  - `isforward`: whether to reorthogonalize from first to last vector (`true`, default) or not (`false`)
+  - `maxiter`: the maximum number of reorthogonalization passes to carry out. (Default: 1)
+
 ## Consistent interface
 
 ### Nomenclature

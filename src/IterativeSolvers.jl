@@ -2,6 +2,9 @@ module IterativeSolvers
 include("common.jl")
 include("krylov.jl")
 
+#Orthogonalization routines
+include("qr.jl")
+
 #Linear solvers
 include("stationary.jl")
 include("cg.jl")
