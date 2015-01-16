@@ -178,6 +178,7 @@ end
 include("lsqr.jl")
 
 #Randomized algorithms
+include("rlinalg.jl")
 include("rsvd.jl")
 
 #Expensive tests - don't run by default

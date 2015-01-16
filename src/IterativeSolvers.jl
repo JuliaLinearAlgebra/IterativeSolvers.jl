@@ -16,6 +16,7 @@ include("lanczos.jl")
 include("lsqr.jl")
 
 #Randomized algorithms
+include("rlinalg.jl")
 include("rsvd.jl")
 
 end
