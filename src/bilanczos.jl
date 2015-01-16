@@ -1,82 +1,82 @@
 import Base: start, next, done
 
 immutable K{T}
-	A
-	b :: AbstractVector{T}
+    A
+    b :: AbstractVector{T}
 end
 
 #Biorthogonal Lanczos
 immutable BiLanczos{T}
-	K:: K{T}
-	K̃:: K{T}
-	⋅ :: Function
-	full :: Bool #Controls output type
+    K:: K{T}
+    K̃:: K{T}
+    ⋅ :: Function
+    full :: Bool #Controls output type
 end
 
 BiLanczos{T}(K::K{T}, K̃::K{T}, ⋅::Function = ⋅, full::Bool=false) =
-		BiLanczos{T}(K, K̃, ⋅, full)
+        BiLanczos{T}(K, K̃, ⋅, full)
 
 immutable BiLanczosState{T}
-	iter :: Int
-	w :: AbstractVector{T}
-	w₋ :: AbstractVector{T}
-	v :: AbstractVector{T}
-	v₋ :: AbstractVector{T}
-	α :: T
-	β :: T
-	δ :: T
+    iter :: Int
+    w :: AbstractVector{T}
+    w₋ :: AbstractVector{T}
+    v :: AbstractVector{T}
+    v₋ :: AbstractVector{T}
+    α :: T
+    β :: T
+    δ :: T
 end
 
 immutable BiLanczosStateFull{U}
-	iter :: Int
-	W::AbstractMatrix{U}
-	V::AbstractMatrix{U}
-	T::Tridiagonal{U}
+    iter :: Int
+    W::AbstractMatrix{U}
+    V::AbstractMatrix{U}
+    T::Tridiagonal{U}
 end
 
 function start{T}(L::BiLanczos{T})
-	v₁, w₁ = L.K.b, L.K̃.b
-	L.full ? 
-	  BiLanczosStateFull(0, reshape(w₁, length(w₁), 1),
-		reshape(v₁, length(v₁), 1), Tridiagonal(T[0], T[0, 0], T[0])) : #Hack to initialize a 1x1 Tridiagonal matrix
-	  BiLanczosState(0, w₁, zeros(w₁), v₁, zeros(v₁), zeros(T,3)...)
+    v₁, w₁ = L.K.b, L.K̃.b
+    L.full ? 
+      BiLanczosStateFull(0, reshape(w₁, length(w₁), 1),
+        reshape(v₁, length(v₁), 1), Tridiagonal(T[0], T[0, 0], T[0])) : #Hack to initialize a 1x1 Tridiagonal matrix
+      BiLanczosState(0, w₁, zeros(w₁), v₁, zeros(v₁), zeros(T,3)...)
 end
 
 function next{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})
-	j = S.iter
-	R = j==0 ? BiLanczosState(j, S.W[:,j+1], zeros(L.K̃.b), S.V[:,j+1], zeros(L.K.b), zeros(T,3)...) :
-			BiLanczosState(j, S.W[:,j+1], S.W[:,j], S.V[:,j+1], S.V[:,j], S.T[j+1,j+1], S.T[j,j+1], S.T[j+1,j])
+    j = S.iter
+    R = j==0 ? BiLanczosState(j, S.W[:,j+1], zeros(L.K̃.b), S.V[:,j+1], zeros(L.K.b), zeros(T,3)...) :
+               BiLanczosState(j, S.W[:,j+1], S.W[:,j], S.V[:,j+1], S.V[:,j], S.T[j+1,j+1], S.T[j,j+1], S.T[j+1,j])
 
-	_, R′ = next(L, R)
+    _, R′ = next(L, R)
 
-	j+= 1
-	if j==1
-		Tri = Tridiagonal([R′.δ], [R′.α, 0], [R′.β])
-	else
-		S.T.d[end] = R′.α
-		Tri = Tridiagonal([S.T.dl, R′.δ], [S.T.d, 0.0], [S.T.du, R′.β])
-	end
-	S′ = BiLanczosStateFull(j, [S.W R′.w], [S.V R′.v], Tri)
-	S′, S′
+    j+= 1
+    if j==1
+        Tri = Tridiagonal([R′.δ], [R′.α, 0], [R′.β])
+    else
+        S.T.d[end] = R′.α
+        Tri = Tridiagonal([S.T.dl, R′.δ], [S.T.d, 0.0], [S.T.du, R′.β])
+    end
+    S′ = BiLanczosStateFull(j, [S.W R′.w], [S.V R′.v], Tri)
+    S′, S′
 end
 
 function next(L::BiLanczos, S::BiLanczosState)
-	const ⋅ = L.⋅
-	v′ = L.K.A * S.v
-	w′ = L.K̃.A * S.w
+    const ⋅ = L.⋅
+    v′ = L.K.A * S.v
+    w′ = L.K̃.A * S.w
 
-	α = v′⋅ S.w
-	v̂ = v′ - α*S.v - S.β*S.v₋
-	ŵ = w′ - α*S.w - S.δ*S.w₋
-	c = v̂ ⋅ ŵ
-	δ = √abs(c)
-	β = c / δ
-	w = ŵ / β
-	v = v̂ / δ
+    α = v′⋅ S.w
+    v̂ = v′ - α*S.v - S.β*S.v₋
+    ŵ = w′ - α*S.w - S.δ*S.w₋
+    c = v̂ ⋅ ŵ
+    δ = √abs(c)
+    β = c / δ
+    w = ŵ / β
+    v = v̂ / δ
 
-	S′= BiLanczosState(S.iter+1, w, S.w, v, S.v, α, β, δ)
+    S′= BiLanczosState(S.iter+1, w, S.w, v, S.v, α, β, δ)
 
-	S′,S′
+    S′,S′
 end
 
 done{T<:FloatingPoint}(L::BiLanczos{T}, S::BiLanczosState{T})= S.iter==length(S.w) || (S.iter>0 && abs(S.δ) < √eps(T))
@@ -88,42 +88,42 @@ done{T}(L::BiLanczos{T}, S::BiLanczosStateFull{T})= S.iter>0 && S.T[end, end-1] 
 #Biconjugate gradients
 
 immutable BiCG{T}
-	K:: K{T}
-	K̃:: K{T}
-	⋅ :: Function
+    K:: K{T}
+    K̃:: K{T}
+    ⋅ :: Function
 end
 
 BiCG(A, b; Aᵀ=A', b̃=conj(b), innerprod=⋅)=
-	BiCG(K(A, b), K(Aᵀ, b̃), innerprod)
+    BiCG(K(A, b), K(Aᵀ, b̃), innerprod)
 
 immutable BiCGState{T}
-	iter :: Int
-	α :: T
-	β :: T
-	r :: AbstractVector{T}
-	r̃ :: AbstractVector{T}
-	p :: AbstractVector{T}
-	p̃ :: AbstractVector{T}
+    iter :: Int
+    α :: T
+    β :: T
+    r :: AbstractVector{T}
+    r̃ :: AbstractVector{T}
+    p :: AbstractVector{T}
+    p̃ :: AbstractVector{T}
 end
 
 start{T}(L::BiCG{T}) = BiCGState(0, one(T), one(T), L.K.b, L.K̃.b, L.K.b, L.K̃.b)
 
 function next(L::BiCG, S::BiCGState)
-	q = L.K.A * S.p
-	q̃= L.K̃.A * S.p̃
-	⋅ = L.⋅
+    q = L.K.A * S.p
+    q̃= L.K̃.A * S.p̃
+    ⋅ = L.⋅
 
-	#Biorthogonality condition
-	α = S.r̃ ⋅ S.r / (S.p̃ ⋅ q)
-	r = S.r - α * q
-	r̃ = S.r̃ - α * q̃
+    #Biorthogonality condition
+    α = S.r̃ ⋅ S.r / (S.p̃ ⋅ q)
+    r = S.r - α * q
+    r̃ = S.r̃ - α * q̃
 
-	#Biconjugacy condition
-	β = r̃ ⋅ r / (S.r̃ ⋅ S.r)
-	p = r + β * S.p
-	p̃ = r̃ + β * S.p̃
+    #Biconjugacy condition
+    β = r̃ ⋅ r / (S.r̃ ⋅ S.r)
+    p = r + β * S.p
+    p̃ = r̃ + β * S.p̃
 
-	α*p, BiCGState(S.iter+1, α, β, r, r̃, p, p̃)
+    α*p, BiCGState(S.iter+1, α, β, r, r̃, p, p̃)
 end
 
 done{T<:FloatingPoint}(L::BiCG{T}, S::BiCGState{T}) = S.iter==length(S.p) || abs(S.α)*norm(S.p) < √eps(T)
@@ -131,24 +131,12 @@ done{T}(L::BiCG{T}, S::BiCGState{T}) = S.r == zeros(S.r)
 
 #Tests
 
-n=4
-A=randn(n,n)
-b=randn(n)
-b/=norm(b)
-b̃=randn(n)
-b̃/=norm(b̃)
-
-#println("Raw biorthogonal Lanczos")
-#L = BiLanczos(K(A,b),K(A',b̃),⋅)
-#for it in L
-	#@show it
-#end
-
+m=6
 n=6
-A=randn(n,n)
+A=randn(m,n)
 b=randn(n)
 b/=norm(b)
-b̃=randn(n)
+b̃=randn(m)
 b̃/=norm(b̃)
 
 #n=12
@@ -159,46 +147,41 @@ b̃/=norm(b̃)
 println("Raw biorthogonal Lanczos (full)")
 L = BiLanczos(K(A,b),K(A',b̃),⋅,true)
 for S in L
-	j=S.iter
-	println("Iteration $j")
+    j=S.iter
+    println("Iteration $j")
 
-	eₘ = zeros(j)
-	eₘ[end] = 1
+    eₘ = zeros(j)
+    eₘ[end] = 1
 
-	A, Aᵀ, W, T, V = L.K.A, L.K̃.A, S.W[:,1:j], full(S.T)[1:j,1:j], S.V[:,1:j]
-	βw, δv = S.T[j,j+1]*S.W[:, j+1], S.T[j+1,j]*S.V[:, j+1]
+    A, Aᵀ, W, T, V = L.K.A, L.K̃.A, S.W[:,1:j], full(S.T)[1:j,1:j], S.V[:,1:j]
+    βw, δv = S.T[j,j+1]*S.W[:, j+1], S.T[j+1,j]*S.V[:, j+1]
 
-	#println("W=\n",W)
-	#println("T=\n",T)
-	#println("V=\n",V)
-	#println("βw=\n",βw)
-	#println("δv=\n",δv)
+    #Check that AV = VT + δv e′
+    nrm = vecnorm(A*V - V*T - δv*eₘ')
+    println("Norm of AV - VT - δv e′ = $nrm")
+    @assert nrm<.1
 
-	#Check that AV = VT + δv e′
-	#@show A*V
-	#@show V*T
-	#@show δv
-	nrm = vecnorm(A*V - V*T - δv*eₘ')
-	println("Norm of AV - VT - δv e′ = $nrm")
+    #Check that A′W = WTᵀ + βw e′
+    nrm = vecnorm(Aᵀ*W - W*T' - βw*eₘ')
+    println("Norm of A′W - WTᵀ - βw e′ = $nrm")
+    @assert nrm<.1
 
-	#Check that A′W = WTᵀ + βw e′
-	nrm = vecnorm(Aᵀ*W - W*T' - βw*eₘ')
-	println("Norm of A′W - WTᵀ - βw e′ = $nrm")
-
-	#Check that WᵀAV = T
-	nrm = vecnorm(W'*A*V - T)
-	println("Norm of WᵀAV - T = $nrm")
-	println(float32(W'*A*V))
-	println(float32(T))
-	println(float32(W'*A*V - T))
-
-	println("Termination criterion: ", S.T[end,end-1], " ? ", sqrt(eps()))
+    #Check that WᵀAV = T
+    nrm = vecnorm(W'*A*V - T)
+    println("Norm of WᵀAV - T = $nrm")
+    @show map(size, (W, A, V))
+    nice(x)=round(x,3)
+    println(nice(W'*A*V))
+    println(nice(T))
+    println(nice(W'*A*V - T))
+    @assert nrm<.1
+    println("Termination criterion: ", S.T[end,end-1], " ? ", sqrt(eps()))
 end
 
 #println("Biconjugate gradients")
 #L = BiCG(A, b, b̃=b̃)
 #for it in L
-#	@show it
+#   @show it
 #end
 
 #Conjugate gradients
@@ -206,5 +189,5 @@ end
 #Asym = A'A
 #LCG = BiCG(Asym, b, Aᵀ=Asym, b̃=A*b, innerprod=(x,y)->x⋅(A*y))
 #for it in LCG
-#	@show it
+#   @show it
 #end
