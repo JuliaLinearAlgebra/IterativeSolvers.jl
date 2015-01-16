@@ -177,5 +177,6 @@ end
 
 include("lsqr.jl")
 
-include("matrixmarket.jl")
-include("matrixcollection.jl")
+#Expensive tests - don't run by default
+#include("matrixmarket.jl")
+#include("matrixcollection.jl")
