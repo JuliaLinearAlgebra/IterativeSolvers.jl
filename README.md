@@ -6,7 +6,7 @@
 [![Build status on Windows](https://ci.appveyor.com/api/projects/status/eaoi7dw2j6qqfskf/branch/master)](https://ci.appveyor.com/project/jiahao/iterativesolvers-jl/branch/master)
 [![Coverage Status](https://img.shields.io/coveralls/JuliaLang/IterativeSolvers.jl.svg)](https://img.shields.io/coveralls/JuliaLang/IterativeSolvers.jl.svg)
 
-&copy; 2013---2014 Jiahao Chen and [other contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
+&copy; 2013---2015 [The Contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
 
 `IterativeSolvers` is a [Julia](http://julialang.org) package that provides flexible iterative algorithms for linear algebra.
 
