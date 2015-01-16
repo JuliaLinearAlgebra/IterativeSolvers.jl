@@ -177,6 +177,9 @@ end
 
 include("lsqr.jl")
 
+#Randomized algorithms
+include("rsvd.jl")
+
 #Expensive tests - don't run by default
 #include("matrixmarket.jl")
 #include("matrixcollection.jl")
