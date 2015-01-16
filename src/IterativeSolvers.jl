@@ -15,4 +15,7 @@ include("lanczos.jl")
 #Least-squares
 include("lsqr.jl")
 
+#Randomized algorithms
+include("rsvd.jl")
+
 end
