@@ -2,6 +2,9 @@ module IterativeSolvers
 include("common.jl")
 include("krylov.jl")
 
+#Specialized Factorizations
+include("factorization.jl")
+
 #Linear solvers
 include("stationary.jl")
 include("cg.jl")
