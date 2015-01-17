@@ -2,7 +2,7 @@
 # Randomized estimators of elementary linear algebraic quantities
 #################################################################
 
-export rnorm, rnorms
+export rcond, reigmax, reigmin, rnorm, rnorms
 
 
 
@@ -127,4 +127,126 @@ function rnorms(A, j::Int=1, p::Real=0.05; At = A')
     ρ = √(norm(Ω)/norm(Ωold))
     α*ρ
 end
+
+
+
+"""
+Randomized condition number estimator
+
+Inputs:
+    A: Matrix whose condition number to estimate.
+       Must be square and support premultiply (A*⋅) and solve (A\⋅)
+    k: Number of power iterations to run. Default: 1 (Recommended: k ≤ 3)
+    p: Probability that estimate fails to hold as an upper bound
+       (Default: 0.05)
+
+Output:
+    The interval (x, y) which contains κ(A) with probability 1-p.
+
+Implementation note:
+    The reference originally describes this as a computation that can be done
+    by computing the necessary number of power iterations given p and the
+    desired accuracy parameter θ=y/x. However, these bounds were only derived
+    under the assumptions of exact arithmetic. Empirically, k≥4 has been seen
+    to result in incorrect results in that the computed interval does not
+    contain the true condition number. This implemention therefore makes k an
+    explicitly user-controllable parameter.
+
+Reference:
+    Theorem 2 of
+    @article{Dixon1983,
+        author = {Dixon, John D},
+        doi = {10.1137/0720053},
+        journal = {SIAM Journal on Numerical Analysis},
+        number = {4},
+        pages = {812--814},
+	title = {Estimating Extremal Eigenvalues and Condition Numbers of
+		Matrices},
+	volume = {20},
+        year = {1983}
+    }
+"""
+function rcond(A, k::Int=1, p::Real=0.05)
+    @assert 0<p≤1
+    m, n = size(A)
+    @assert m==n
+    θ = (8n/(π*p^2))^(1/k)
+    x = randnn(eltype(A), n)
+    for i=1:k
+        x = A*x
+    end
+    y = randnn(eltype(A), n)
+    for i=1:k
+        y = A\y
+    end
+    φ = ((x⋅x)*(y⋅y))^(1/(2k))
+    (φ, θ*φ)
+end
+
+
+
+"""
+Randomized maximal eigenvalue estimator
+
+Inputs:
+    A: Matrix whose maximal eigenvalue to estimate.
+       Must be square and support premultiply (A*⋅)
+    k: Number of power iterations to run. Default: 1 (Recommended: k ≤ 3)
+    p: Probability that estimate fails to hold as an upper bound
+       (Default: 0.05)
+
+Output:
+    The interval (x, y) which contains the maximal eigenvalue of A with
+    probability 1-p.
+
+Reference:
+    Corollary of Theorem 1 of Dixon1983.
+"""
+function reigmax(A, k::Int=1, p::Real=0.05)
+    @assert 0<p≤1
+    m, n = size(A)
+    @assert m==n
+    θ = (2n/(π*p^2))^(1/k)
+    y = x = randnn(eltype(A), n)
+    for i=1:k
+        x = A*x
+    end
+    φ = y⋅x
+    (φ, θ*φ)
+end
+
+
+
+"""
+Randomized minimal eigenvalue estimator
+
+Inputs:
+    A: Matrix whose minimal eigenvalue to estimate.
+       Must be square and support backslash (A\⋅)
+    k: Number of power iterations to run. Default: 1 (Recommended: k ≤ 3)
+    p: Probability that estimate fails to hold as an upper bound
+       (Default: 0.05)
+
+Output:
+    The interval (x, y) which contains the minimal eigenvalue of A with
+    probability 1-p.
+
+Reference:
+    Corollary of Theorem 1 of Dixon1983.
+"""
+function reigmin(A, k::Int=1, p::Real=0.05)
+    @assert 0<p≤1
+    m, n = size(A)
+    @assert m==n
+    θ = (2n/(π*p^2))^(1/k)
+    y = x = randnn(eltype(A), n)
+    for i=1:k
+        x = A\x
+    end
+    φ = y⋅x
+    (inv(θ*φ), inv(φ))
+end
+
+
+
 
