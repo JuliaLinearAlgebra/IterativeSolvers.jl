@@ -67,6 +67,7 @@ Comment:
     premultiplying by both A and A'
 """
 function rnorm(A, r::Int, p::Real=0.05)
+    @assert 0<p≤1
     α = p^(-1.0/r)
     m, n = size(A)
     Ω = randnn(eltype(A), n, r, false)
@@ -115,7 +116,8 @@ Comment:
     premultiplying by A'
 """
 function rnorms(A, j::Int=1, p::Real=0.05; At = A')
-    m, n = size(A)
+    @assert 0<p≤1
+     m, n = size(A)
     α = ((j-1)/n*(p/4)^2)^(-1/(4j))
 
     Ωold = Ω = randnn(eltype(A), n)
