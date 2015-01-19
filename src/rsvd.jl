@@ -99,6 +99,46 @@ function rrange(A, l::Int; p::Int=0)
     Q
 end
 
+
+"""
+Computes a basis for a subspace of A of dimension l using randomized rangefinding
+by subspace iteration.
+
+Inputs:
+
+    A: Input matrix. Must support size(A) and premultiply
+    l: The number of basis vectors to compute
+    At: (Optional) the transpose of A. Defaults to A'.
+    p: The oversampling parameter. The number of extra basis vectors to use
+       in the computation, which get discarded at the end. Default: 0
+    q: Number of subspace iterations. (Default: 0, which reduces to rrange())
+
+Output:
+    Q: A dense matrix of dimension size(A,1) x l containing the basis vectors
+       of the computed subspace of A
+
+Implementation note:
+
+    Whereas the Reference recommends classical Gram-Schmidt with double
+    reorthogonalization, we instead compute the basis with qrfact(), which
+    for dense A computes the QR factorization using Householder reflectors.
+"""
+function rrange_si(A, l::Integer; At=A', p::Int=0, q::Int=0)
+    const basis=_->full(qrfact(_)[:Q])
+    p>=0 || error()
+    n = size(A, 2)
+    Ω = randn(n,l+p)
+    Y = A*Ω
+    Q = basis(Y)
+    for iter=1:q #Do some power iterations
+        Ỹ=At*Q
+        Q̃=basis(Ỹ)
+        Y=A*Q̃
+        Q=basis(Y)
+    end
+    p==0 ? Q : Q[:,1:l]
+end
+
 """
 Computes the exact SVD factorization of A when restricted to the subspace
 spanned by Q.
