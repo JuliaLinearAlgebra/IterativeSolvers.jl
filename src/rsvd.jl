@@ -35,7 +35,7 @@ Inputs:
 
 Output:
 
-    `F`: An SVD factorization object
+    `F`: An `SVD` `Factorization` object
 
 Warning:
 
@@ -52,6 +52,11 @@ Implementation note:
     \cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
     exact SVD factorization on the restriction of `A` to this randomly selected
     subspace (Algorithm 5.1 of \cite{Halko2011}).
+
+    Alternatively, you can mix and match your own randomized algorithm using
+    any of the randomized range finding algorithms to find a suitable subspace
+    and feeding the result to one of the routines that computes the SVD
+    restricted to that subspace.
 """ ->
 function rsvd(A, n, p=0)
     Q = rrange(A, n, p=p)
@@ -213,7 +218,7 @@ Implementation note:
     reorthogonalization, we instead compute the basis with `qrfact()`, which
     for dense A computes the QR factorization using Householder reflectors.
 """ ->
-function rrange_si(A, l::Integer; At=A', p::Int=0, q::Int=0)
+function rrange_si(A, l::Int; At=A', p::Int=0, q::Int=0)
     const basis=_->full(qrfact(_)[:Q])
     p>=0 || error()
     n = size(A, 2)
@@ -261,7 +266,7 @@ Implementation note:
     for dense A computes the QR factorization using Householder reflectors.
 
 """ ->
-function rrange_f(A, l::Integer; p::Integer=0)
+function rrange_f(A, l::Int; p::Integer=0)
     p ≥ 0 || error()
     n = size(A, 2)
     Ω = srft(n,l+p)
@@ -273,8 +278,8 @@ end
 
 
 @doc doc"""
-Computes the exact SVD factorization of `A` when restricted to the subspace
-spanned by `Q`.
+Computes the SVD factorization of `A` restricted to the subspace spanned by `Q`
+using exact projection.
 
 Inputs:
 
@@ -297,8 +302,8 @@ function svdfact_restricted(A, Q)
 end
 
 @doc doc"""
-Computes the SVD factorization of `A` when restricted to the subspace
-spanned by `Q` using row extraction.
+Computes the SVD factorization of `A` restricted to the subspace spanned by `Q`
+using row extraction.
 
 Inputs:
 
@@ -308,7 +313,8 @@ Inputs:
 
 Note:
 
-    \cite{Halko2011} recommends input of `Q` of the form `Q=A*randn(n,l)`.
+    \cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
+    where `Ω` is a sample computed by `randn(n,l)` or even `srft(l)`.
 
 Output:
 
