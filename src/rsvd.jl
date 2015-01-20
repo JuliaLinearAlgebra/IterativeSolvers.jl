@@ -253,3 +253,38 @@ function svdfact_restricted(A, Q)
     SVD(Q*S[:U], S[:S], S[:Vt])
 end
 
+@doc doc"""
+Computes the SVD factorization of `A` when restricted to the subspace
+spanned by `Q` using row extraction.
+
+Inputs:
+
+    `A`: Input matrix. Must support postmultiply
+    `Q`: Matrix containing basis vectors of the subspace whose restriction to is
+         desired. Need not be orthogonal or normalized.
+
+Note:
+
+    \cite{Halko2011} recommends input of `Q` of the form `Q=A*randn(n,l)`.
+
+Output:
+
+    `F`: An `SVD` `Factorization` object
+
+Note:
+
+    A faster but less accurate variant of `svdfact_restricted()` which uses the
+    interpolative decomposition `idfact()`.
+
+Reference:
+
+    Algorithm 5.2 of \cite{Halko2011}
+""" ->
+function svdfact_re(A, Q)
+    F = idfact(Q)
+    X, J = F[:B], F[:P]
+    R′, W′= qr(A[J, :])
+    Z = X*R′
+    S=svdfact(Z)
+    SVD(S[:U], S[:S], S[:Vt]*W′)
+end
