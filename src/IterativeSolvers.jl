@@ -1,4 +1,8 @@
 module IterativeSolvers
+
+#Documentation support
+VERSION < v"0.4-" && using Docile
+
 include("common.jl")
 include("krylov.jl")
 
