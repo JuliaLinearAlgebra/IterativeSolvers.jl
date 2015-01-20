@@ -4,43 +4,58 @@
 
 export idfact
 
+@doc doc"""
+An interpolative decomposition.
+
+For a matrix `A`, the interpolative decomposition `F` contains the matrices `B`
+and `P` computed by `idfact()`. See the documentation of `idfact()` for details.
+
+References:
+
+    \cite{Cheng2005, Liberty2007}
+""" ->
 immutable Interpolative{T} <: Factorization{T}
     B :: AbstractMatrix{T}
     P :: AbstractMatrix{T}
 end
 
-"""
-Compute the interpolative decomposition of A
+@doc doc"""
+Compute the interpolative decomposition of `A`
 
+    $$
     A ≈ B * P
+    $$
 
-    B's columns are a subset of the columns of A
-    some subset of P's columns are the k x k identity,
-    no entry of P exceeds magnitude 2, and
-    ||B * P - A|| ≲ σ(A, k+1)
+    where:
+    - `B`'s columns are a subset of the columns of `A`
+    - some subset of `P`'s columns are the `k x k` identity,
+    no entry of `P` exceeds magnitude 2, and
+    - $$||B * P - A|| ≲ σ(A, k+1)$$, the (`k+1`)st singular value of `A`.
 
 Inputs:
-    A: Matrix to factorize
-    k: Number of columns of A to return in B
-    l: Length of random vectors to project onto
 
-Reference:
-
-    Algorithm I of Liberty2007
+    `A`: Matrix to factorize
+    `k`: Number of columns of A to return in B
+    `l`: Length of random vectors to project onto
 
 Implementation note:
 
-    This is a hacky version of the algorithms described in Liberty2007 and
-    Cheng2005. The former refers to the factorization (3.1) of the latter.
-    However, it is not actually necessary to compute this factorization in
-    its entirely to compute an interpolative decomposition. Instead, it
-    suffices to find some permutation of the first k columns of Y = R * A,
-    extract the subset of A into B, then compute the P matrix as B\A which
-    will automatically compute P using a suitable least-squares algorithm.
+    This is a hacky version of the algorithms described in \cite{Liberty2007}
+    and \cite{Cheng2005}. The former refers to the factorization (3.1) of the
+    latter.  However, it is not actually necessary to compute this
+    factorization in its entirely to compute an interpolative decomposition.
+    Instead, it suffices to find some permutation of the first k columns of Y =
+    R * A, extract the subset of A into B, then compute the P matrix as B\A
+    which will automatically compute P using a suitable least-squares
+    algorithm.
     
     The approximation we use here is to compute the column pivots of Y,
     rather then use the true column pivots as would be computed by a column-
     pivoted QR process.
+
+Reference:
+
+    \cite[Algorithm I]{Liberty2007}
 
     @article{Cheng2005,
         author = {Cheng, H and Gimbutas, Z and Martinsson, P G and Rokhlin, V},
@@ -54,7 +69,7 @@ Implementation note:
         volume = {26},
         year = {2005}
     }
-"""
+""" ->
 function idfact(A, k::Int, l::Int)
     m, n = size(A)
     R = randn(l, m)
