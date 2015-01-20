@@ -17,7 +17,7 @@ This package provides iterative algorithms for solving linear systems, eigensyst
 - [Issue #1](https://github.com/JuliaLang/IterativeSolvers.jl/issues/1) documents the implementation roadmap for iterative solvers.
 - The interfaces between the various algorithms are still in flux, but aim to be consistent.
 
-- [Issue #11](https://github.com/JuliaLang/IterativeSolvers.jl/issues/33) documents the implementation roadmap for randomized algorithms.
+- [Issue #33](https://github.com/JuliaLang/IterativeSolvers.jl/issues/33) documents the implementation roadmap for randomized algorithms.
 
 ## Consistent interface
 
