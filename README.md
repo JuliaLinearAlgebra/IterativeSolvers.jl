@@ -14,16 +14,19 @@ This package provides iterative algorithms for solving linear systems, eigensyst
 
 ## Current status
 
-- [Issue #1](https://github.com/JuliaLang/IterativeSolvers.jl/issues/1) documents the implementation roadmap.
+- [Issue #1](https://github.com/JuliaLang/IterativeSolvers.jl/issues/1) documents the implementation roadmap for iterative solvers.
 - The interfaces between the various algorithms are still in flux, but aim to be consistent.
+
+- [Issue #11](https://github.com/JuliaLang/IterativeSolvers.jl/issues/33) documents the implementation roadmap for randomized algorithms.
 
 ## Consistent interface
 
 ### Nomenclature
 
+- All randomized algorithms start with `r_`.
 - All linear solvers do not have a prefix. Routines that accept preconditioners do *not* take a `p` prefix, e.g. `cg` instead of `pcg`.
-- All eigenvalue solvers start with `eigvals_`.
-- All singular value solvers start with `svdvals_`.
+- All other eigenvalue solvers start with `eigvals_`.
+- All other singular value solvers start with `svdvals_`.
 
 ### Interface
 
