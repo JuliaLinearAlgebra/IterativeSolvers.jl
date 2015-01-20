@@ -271,3 +271,36 @@ end
 
 
 
+@doc doc"""
+A subsampled random Fourier transform
+
+Parameter:
+
+    l :: Number of vectors to return
+""" ->
+immutable srft
+    l :: Integer
+end
+
+@doc doc"""
+Applies a subsampled random Fourier transform to the columns of `A`
+
+Inputs:
+
+    `A`: A matrix to transform
+    `Ω`: A `srft` type
+
+Output:
+    `B`: A matrix of dimensions size(A,1) x Ω.l
+
+Reference:
+
+    \[Equation 4.6]{Halko2011}
+""" ->
+function *(A, Ω::srft)
+    m, n = size(A)
+    B = A*Diagonal(exp(2π*im*rand(n))/√Ω.l)
+    B = vcat([fft(A[i,:]) for i=1:m]...) #Factor of √n cancels out
+    B[:, randperm(n)[1:Ω.l]]
+end
+

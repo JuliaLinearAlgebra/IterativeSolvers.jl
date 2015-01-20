@@ -229,6 +229,49 @@ function rrange_si(A, l::Integer; At=A', p::Int=0, q::Int=0)
     p==0 ? Q : Q[:,1:l]
 end
 
+
+
+@doc doc"""
+Computes an orthonormal basis for a subspace of `A` of dimension `l` using
+naive randomized rangefinding using stochastic randomized Fourier transforms.
+
+Inputs:
+
+    `A` : Input matrix. Must support `size(A)` and premultiply
+    `l` : The number of basis vectors to compute
+    `p` : The oversampling parameter. The number of extra basis vectors to use
+          in the computation, which get discarded at the end. (Default: 0)
+
+Output:
+    `Q`: A dense matrix of dimension `size(A,1)` x `l` containing the basis
+         vectors of the computed subspace of `A`
+
+Note:
+
+    Similar to `rrange()`, but does not use Gaussian random matrices.
+
+Reference:
+
+    Algorithm 4.5 of \cite{Halko2011}
+
+Implementation note:
+
+    Whereas the Reference recommends classical Gram-Schmidt with double
+    reorthogonalization, we instead compute the basis with `qrfact()`, which
+    for dense A computes the QR factorization using Householder reflectors.
+
+""" ->
+function rrange_f(A, l::Integer; p::Integer=0)
+    p ≥ 0 || error()
+    n = size(A, 2)
+    Ω = srft(n,l+p)
+    Y = A*Ω
+    Q = full(qrfact!(Y)[:Q])
+    p==0 ? Q : Q[:,1:l]
+end
+
+
+
 @doc doc"""
 Computes the exact SVD factorization of `A` when restricted to the subspace
 spanned by `Q`.
