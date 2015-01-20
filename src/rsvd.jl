@@ -1,12 +1,13 @@
-#############################################
-## Randomized singular value decomposition ##
-#############################################
+#########################################################
+## Randomized singular value and eigen- decompositions ##
+########################################################
 
 # This file provides a rudimentary implementation of the randomized singular
-# value decomposition as described in the Reference.
+# value decomposition and spectral (eigen-) decomposition as described in 
+# \cite{Halko2011}.
 # 
 # Reference:
-#@article{Halko2011,
+# @article{Halko2011,
 #    author = {Halko, N and Martinsson, P G and Tropp, J A},
 #    doi = {10.1137/090771806},
 #    journal = {SIAM Review},
@@ -16,12 +17,11 @@
 #    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
 #    volume = {53},
 #    year = {2011}
-#}
+# }
 
+import Base.LinAlg: Eigen, SVD
 
-import Base.LinAlg: SVD
-
-export rsvd
+export rsvd, reig
 
 @doc doc"""
 Computes the partial singular value decomposition of `A` using a randomized
@@ -337,3 +337,156 @@ function svdfact_re(A, Q)
     S=svdfact(Z)
     SVD(S[:U], S[:S], S[:Vt]*W′)
 end
+
+@doc doc"""
+Computes the spectral (`Eigen`) factorization of `A` restricted to the subspace
+spanned by `Q` using row extraction.
+
+Inputs:
+
+    `A`: Input matrix. Must be `Hermitian` and support pre- and post-multiply
+    `Q`: Orthonormal matrix containing basis vectors of the subspace whose
+         restriction to is desired.
+
+Output:
+
+    `F`: An `Eigen` `Factorization` object
+
+Reference:
+
+    Algorithm 5.3 of \cite{Halko2011}
+""" ->
+function eigfact_restricted(A::Hermitian, Q)
+    B = Q'A*Q
+    E = eigfact!(B)
+    Eigen(E[:values], Q*E[:vectors])
+end
+
+@doc doc"""
+Computes the spectral (`Eigen`) factorization of `A` restricted to the subspace
+spanned by `Q` using row extraction.
+
+Inputs:
+
+    `A`: Input matrix. Must be `Hermitian` and support pre- and post-multiply
+    `Q`: Matrix containing basis vectors of the subspace whose restriction to is
+         desired. Need not be orthogonal or normalized.
+
+Note:
+
+    \cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
+    where `Ω` is a sample computed by `randn(n,l)` or even `srft(l)`.
+
+Output:
+
+    `F`: An `Eigen` `Factorization` object
+
+Note:
+
+    A faster but less accurate variant of `eigfact_restricted()` which uses the
+    interpolative decomposition `idfact()`.
+
+Reference:
+
+    Algorithm 5.4 of \cite{Halko2011}
+""" ->
+function eigfact_re(A::Hermitian, Q)
+    X, J = idfact(Q)
+    F = qrfact!(X)
+    V, R = F[:Q], F[:R]
+    Z=R*A[J, J]*R'
+    E=eigfact(Z)
+    Eigen(E[:values], V*E[:vectors])
+end
+
+@doc doc"""
+Computes the spectral (`Eigen`) factorization of `A` restricted to the subspace
+spanned by `Q` using the Nyström method.
+
+Inputs:
+
+    `A`: Input matrix. Must be positive semidefinite.
+    `Q`: Orthonormal matrix containing basis vectors of the subspace whose
+         restriction to is desired.
+
+Output:
+
+    `F`: An `Eigen` `Factorization` object
+
+Note:
+
+    More accurate than `eigfact_restricted()` but is restricted to matrices
+    that can be Cholesky decomposed.
+
+Reference:
+
+    Algorithm 5.5 of \cite{Halko2011}
+""" ->
+function eigfact_nystrom(A, Q)
+    B₁=A*Q
+    B₂=Q'*B₁
+    C=cholfact!(B₂)
+    F=B₁/C
+    S=svdfact!(F)
+    Eigen(S[:S].^2, S[:U])
+end
+
+@doc doc"""
+Computes the spectral (`Eigen`) factorization of `A` using only one matrix
+product involving `A`.
+
+Inputs:
+
+    `A`: Input matrix.
+    `Ω`: Sample matrix for the column space, e.g. `randn(n, l)` or `srft(l)`
+    `Ω̃;: Sample matrix for the row space. Not neeeded for `Hermitian` matrices
+    `At`: Computes transpose of input matrix. Default: `A'`
+
+Output:
+
+    `F`: An `Eigen` `Factorization` object
+
+Reference:
+
+    Algorithm 5.6 of \cite{Halko2011}
+""" ->
+function eigfact_onepass(A::Hermitian, Ω)
+    Y=A*Ω
+    B=(Q'Y)\(Q'Ω)
+    E=eigfact!(B)
+    Eigen(E[:values], Q*E[:vectors])
+end
+
+function eigfact_onepass(A, Ω, Ω̃; At=A')
+    Y=A *Ω; Q = qrfact!(Y)[:Q]
+    Ỹ=At*Ω; Q̃ = qrfact!(Ỹ)[:Q]
+    #Want least-squares solution to (5.14 and 5.15)
+    B=(Q'Y)\(Q̃'Ω)
+    B̃=(Q̃'Ỹ)\(Q'Ω̃)
+    #Here is a very very very hacky way to solve the problem
+    B=0.5(B + B̃')
+    E=eigfact!(B)
+    Eigen(E[:values], Q*E[:vectors])
+end
+
+@doc doc"""
+Computes the spectral (`Eigen`) decomposition of `A` using a randomized
+algorithm.
+
+Inputs:
+
+    `A`: input matrix
+    `n`: Number of eigenpairs to find
+
+Output:
+
+    `F`: An `Eigen` `Factorization` object
+
+Implementation Note:
+
+    This is a wrapper around `eigfact_onepass()` which uses the randomized
+    samples found using `srft(l)`.
+""" ->
+reig(A::Hermitian, l::Int) = eigfact_onepass(A, srft(l))
+reig(A, l::Int) = eigfact_onepass(A, srft(l), srft(l))
+
