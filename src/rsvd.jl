@@ -451,15 +451,15 @@ Reference:
     Algorithm 5.6 of \cite{Halko2011}
 """ ->
 function eigfact_onepass(A::Hermitian, Ω)
-    Y=A*Ω
+    Y=A*Ω; Q = full(qrfact!(Y)[:Q])
     B=(Q'Y)\(Q'Ω)
     E=eigfact!(B)
     Eigen(E[:values], Q*E[:vectors])
 end
 
 function eigfact_onepass(A, Ω, Ω̃; At=A')
-    Y=A *Ω; Q = qrfact!(Y)[:Q]
-    Ỹ=At*Ω; Q̃ = qrfact!(Ỹ)[:Q]
+    Y=A *Ω; Q = full(qrfact!(Y)[:Q])
+    Ỹ=At*Ω; Q̃ = full(qrfact!(Ỹ)[:Q])
     #Want least-squares solution to (5.14 and 5.15)
     B=(Q'Y)\(Q̃'Ω)
     B̃=(Q̃'Ỹ)\(Q'Ω̃)
