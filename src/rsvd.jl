@@ -106,18 +106,18 @@ function rrange(A, l::Int; p::Int=0)
 end
 
 @doc doc"""
-Computes an orthogonal basis for a subspace of A of dimension l using adaptive
+Computes an orthogonal basis for a subspace of `A` of dimension `l` using adaptive
 randomized rangefinding.
 
-Similar to rrange(), but determines the oversampling parameter adaptively given
-a threshold ϵ.
+Similar to `rrange()`, but determines the oversampling parameter adaptively given
+a threshold `ϵ`.
 
 Inputs:
 
     `A`: Input matrix. Must support `size(A)` and premultiply
     `l`: The number of basis vectors to compute
     `ϵ`: Threshold to determine adaptive fitting
-    `maxiter`: Maximum number of iterations to run. Default: 10.
+    `maxiter`: Maximum number of iterations to run. (Default: 10.)
 
 Output:
 
