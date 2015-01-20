@@ -1,7 +1,19 @@
+#######################
+# Conjugate gradients #
+#######################
+
 export cg, cg!
 
 import Base: start, next, done
+
+@doc doc"""
+Abstract iterative solver
+""" ->
 abstract IterativeSolver
+
+@doc doc"""
+Abstract state of iterative solver
+""" ->
 abstract IterationState
 
 immutable KrylovSpace #XXX to replace KrylovSubspace
@@ -9,66 +21,17 @@ immutable KrylovSpace #XXX to replace KrylovSubspace
     v0 :: Vector
 end
 
-#####################
-# Stopping criteria #
-#####################
 
-abstract stopcriterion
 
-immutable stopcriteriastate{T}
-    iter :: Int
-    resnorm² :: T
-end
+@doc doc"""
+Conjugate gradients iterative solver
 
-immutable maxiterations <: stopcriterion
-    maxiter :: Int
-end
-done(criterion::maxiterations, current::stopcriteriastate) = 
-    current.iter>=criterion.maxiter
+Fields:
 
-immutable absresnorm{T<:Real} <: stopcriterion
-    threshold :: T
-end
-done(criterion::absresnorm, current::stopcriteriastate) =
-    current.resnorm²<criterion.threshold^2
+   `K`: Krylov space
+   `t`: terminator
+""" ->
 
-#This termination criterion gets replaced by an absresnorm
-#once a resnorm is computed (its continuation is an absresnorm)
-immutable relresnorm{T<:Real} <: stopcriterion
-    relthreshold :: T
-end
-#If this criterion is still around, the starting norm is
-#unknown and there's no way to know if it should stop
-done(criterion::relresnorm, current::stopcriteriastate) =
-    false
-
-type Terminator
-    criteria :: Vector{stopcriterion}
-end
-push!(T::Terminator, criterion::stopcriterion) =
-    push!(T.criteria, criterion)
-
-function done(termination::Terminator, currentstate::stopcriteriastate)
-    for (idx, criterion) in enumerate(termination.criteria)
-        if isa(criterion, relresnorm) && isfinite(currentstate.resnorm²)
-            #There is a computed resnorm, so replace the
-            #relative criterion it by its continuation as an absresnorm
-            #Be careful to preserve ordering of criteria
-            #since we are modifying the list while iterating over it
-            deleteat!(termination.criteria, idx)
-            insert!(termination.criteria, idx,
-                absresnorm(criterion.relthreshold*√currentstate.resnorm²))
-        else #check if current criterion is good to terminate
-            done(criterion, currentstate) && return true
-        end
-    end
-    return length(termination.criteria)==0 #If no criteria, always terminate
-end
-
-################################
-# Conjugate gradients          #
-# The Hestenes-Stiefel variant #
-################################
 
 immutable cg_hs <: IterativeSolver
     K :: KrylovSpace
@@ -84,7 +47,8 @@ immutable cg_hs_state <: IterationState
         # - Current iteration
 end
 
-start(a::cg_hs) = cg_hs_state(a.K.v0, zeros(size(a.K.v0, 1)), stopcriteriastate(1, norm(a.K.v0)))
+start(a::cg_hs) = cg_hs_state(a.K.v0, zeros(size(a.K.v0, 1)),
+    stopcriteriastate(1, norm(a.K.v0)))
 
 #TODO Slot in preconditioners
 function next(a::cg_hs, old::cg_hs_state)

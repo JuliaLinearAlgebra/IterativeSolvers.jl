@@ -119,3 +119,152 @@ A_mul_B!(output, op::AbstractMatrixFcn, b) = op.mul(output, b)
 Ac_mul_B{R,S}(op::MatrixCFcn{R}, b::AbstractVector{S}) = Ac_mul_B!(Array(promote_type(R,S), op.n), op, b)
 
 Ac_mul_B!(output, op::AbstractMatrixFcn, b) = op.mulc(output, b)
+
+########################
+# Termination criteria #
+########################
+
+@doc doc"""
+Abstract termination criterion
+""" ->
+abstract stopcriterion
+
+@doc doc"""
+Termination criterion state
+
+Fields:
+
+    iter: Iteration number
+    resnorm²: square of the residual norm
+""" ->
+immutable stopcriteriastate{T}
+    iter :: Int
+    resnorm² :: T
+end
+
+
+
+@doc doc"""
+Stopping criterion based on maximum number of iterations
+
+Field:
+
+    maxiter: maximum number of iterations allowed
+""" ->
+immutable maxiterations <: stopcriterion
+    maxiter :: Int
+end
+
+@doc doc"""
+Check if maximum number of iterations has been reached or exceeded.
+"""
+done(criterion::maxiterations, current::stopcriteriastate) = 
+    current.iter ≥ criterion.maxiter
+
+
+
+@doc doc"""
+Stopping criterion based on absolute value of the residual norm
+
+Field:
+
+    threshold: value of threshold
+""" ->
+immutable absresnorm{T<:Real} <: stopcriterion
+    threshold :: T
+end
+
+@doc doc"""
+Check if the residual norm has fallen below a certain absolute threshold.
+""" ->
+done(criterion::absresnorm, current::stopcriteriastate) =
+    current.resnorm²<criterion.threshold^2
+
+
+
+@doc doc"""
+Stopping criterion based on relative value of the residual norm
+
+Field:
+
+    relthreshold: value of relative threshold
+
+Implementation note:
+
+    A relresnorm stopcriterion gets replaced by an absresnorm
+    once a stopcriterionstate is computed. In other words, the
+    continuation of a relresnorm is an absresnorm once the initial resnorm is
+    computed.
+""" ->
+immutable relresnorm{T<:Real} <: stopcriterion
+    relthreshold :: T
+end
+
+@doc doc"""
+Check if the residual norm has fallen below a certain relative threshold.
+
+Implementation note:
+
+    Always return false. A relresnorm stopcriterion gets replaced by an absnorm
+    stopcriterion once the initial resnorm is known. Hence, if this criterion
+    is still around, the starting norm is unknown and there's no way to know if
+    it should stop.
+""" ->
+done(criterion::relresnorm, current::stopcriteriastate) =
+    false
+
+
+
+@doc doc"""
+A type encapsulating various termination criteria.
+""" ->
+type Terminator
+    criteria :: Vector{stopcriterion}
+end
+
+@doc doc"""
+Add a stopcriterion.
+""" ->
+push!(T::Terminator, criterion::stopcriterion) =
+    push!(T.criteria, criterion)
+
+@doc doc"""
+    Check whether to terminate algorithm based on at least one of the
+    stopcriteria returning `true`.
+""" ->
+function done(termination::Terminator, currentstate::stopcriteriastate)
+    for (idx, criterion) in enumerate(termination.criteria)
+        if isa(criterion, relresnorm) && isfinite(currentstate.resnorm²)
+            #There is a computed resnorm, so replace the
+            #relative criterion it by its continuation as an absresnorm
+            #Be careful to preserve ordering of criteria
+            #since we are modifying the list while iterating over it
+            deleteat!(termination.criteria, idx)
+            insert!(termination.criteria, idx,
+                absresnorm(criterion.relthreshold*√currentstate.resnorm²))
+        else #check if current criterion is good to terminate
+            done(criterion, currentstate) && return true
+        end
+    end
+    return length(termination.criteria)==0 #If no criteria, always terminate
+end
+
+
+
+# Algorithms
+
+@doc doc"""
+Abstract iterative solver
+""" ->
+abstract IterativeSolver
+
+@doc doc"""
+Abstract state of iterative solver
+""" ->
+abstract IterationState
+
+immutable KrylovSpace #XXX to replace KrylovSubspace
+    A
+    v0 :: Vector
+end
+
