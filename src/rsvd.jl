@@ -3,9 +3,9 @@
 ########################################################
 
 # This file provides a rudimentary implementation of the randomized singular
-# value decomposition and spectral (eigen-) decomposition as described in 
+# value decomposition and spectral (eigen-) decomposition as described in
 # \cite{Halko2011}.
-# 
+#
 # Reference:
 # @article{Halko2011,
 #    author = {Halko, N and Martinsson, P G and Tropp, J A},
@@ -48,7 +48,7 @@ Warning:
 Implementation note:
 
     This function calls `rrange()`, which uses naive randomized rangefinding to
-    compute a basis for a subspace of dimension `n` (Algorithm 4.1 of 
+    compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
     \cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
     exact SVD factorization on the restriction of `A` to this randomly selected
     subspace (Algorithm 5.1 of \cite{Halko2011}).
@@ -58,9 +58,26 @@ Implementation note:
     and feeding the result to one of the routines that computes the SVD
     restricted to that subspace.
 """ ->
-function rsvd(A, n, p=0)
+function rsvd(A, n::Int, p::Int=0)
     Q = rrange(A, n, p=p)
     svdfact_restricted(A, Q)
+end
+
+@doc doc"""
+Like `rsvd`, but returns only the singular values.
+
+Inputs:
+
+    as for `rsvd`.
+
+Output:
+
+    A vector containing the estimated singular values of `A`
+
+""" ->
+function rsvdvals(A, n::Int, p::Int=0)
+    Q = rrange(A, n, p=p)
+    svdvals_restricted(A, Q)
 end
 
 @doc doc"""
@@ -149,7 +166,7 @@ function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
     r += maxiter
     Ω = randn(n, r)
     #Normalize columns of Ω
-    #for i=1:r 
+    #for i=1:r
     #    ω = sub(Ω, :, i)
     #    scale!(1/norm(ω), ω)
     #end
@@ -200,7 +217,7 @@ Inputs:
     `p` : The oversampling parameter. The number of extra basis vectors to use
           in the computation, which get discarded at the end. (Default: 0)
     `q` : Number of subspace iterations. (Default: 0)
-    
+
 Note:
     Running with `q=0` is functionally equivalent to `rrange()`
 
@@ -299,6 +316,22 @@ function svdfact_restricted(A, Q)
     B=Q'A
     S=svdfact!(B)
     SVD(Q*S[:U], S[:S], S[:Vt])
+end
+
+@doc doc"""
+Like `svdfact_restricted`, but returns only the singular values.
+
+Inputs:
+
+    as for `svdfact_restricted`.
+
+Output:
+
+    `v`: A vector containing the estimated singular values of `A`
+""" ->
+function svdvals_restricted(A, Q)
+    B=Q'A
+    S=svdvals!(B)
 end
 
 @doc doc"""
