@@ -129,14 +129,14 @@ for T in (Float32, Float64, Complex64, Complex128)
     T<:Complex && (A+=convert(Matrix{T}, im*randn(n,n)))
     A=A+A' #Symmetric/Hermitian
     v = eigvals(A)
-    
+
     ## Simple methods
-    
+
     #Power iteration
     eval_big = maximum(v) > abs(minimum(v)) ? maximum(v) : minimum(v)
     eval_pow = eigvals_power(A; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
     @test_approx_eq_eps eval_big eval_pow (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
-    
+
     #Inverse iteration
     irnd = iceil(rand()*(n-2))
     eval_rand = v[1+irnd] #Pick random eigenvalue
@@ -145,7 +145,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     σ = eval_rand + eval_diff/2*(rand()-.5)
     eval_ii = eigvals_ii(A, σ; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
     @test_approx_eq_eps eval_rand eval_ii (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
-    
+
     #Rayleigh quotient iteration
     #XXX broken?
     #l = eigvals_rqi(A, eigvals_rand, 2000, sqrt(eps())).val
@@ -154,7 +154,7 @@ end
 
 
 #Lanczos methods
-    
+
 #Lanczos eigenvalues computation
 for T in (Float32, Float64)
     A=convert(Matrix{T}, randn(n,n))
@@ -180,6 +180,7 @@ include("lsqr.jl")
 #Randomized algorithms
 include("rlinalg.jl")
 include("rsvd.jl")
+include("rsvd_fnkz.jl")
 
 #Expensive tests - don't run by default
 #include("matrixmarket.jl")

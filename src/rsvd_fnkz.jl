@@ -1,0 +1,94 @@
+immutable OuterProduct{T}
+    X :: Matrix{T}
+    Y :: Matrix{T}
+end
+
+X ⊗ Y = OuterProduct{promote_type(eltype(X), eltype(Y))}(X, Y)
+
+@doc """
+Compute the randomized SVD by iterative refinement from randomly selected
+columns/rows.
+
+TODO: Currently works only on tall and skinny A.
+
+Arguments:
+
+    A: Matrix whose SVD is desired
+    k: Desired rank of approximation. Must be k ≤ min(m, n).
+    l: Number of columns/rows to sample at each iteration.
+       Must be 1 ≤ l ≤ k. Default: k
+    N: Maximum number of iterations. Default: min(size(A))
+    ϵ: Relative threshold for convergence, as measured by growth of the spectral norm.
+       Default: prod(size(A))*eps(real(float(one(eltype(A)))))
+    verbose: If true, prints convergence information at each iteration. Default: false
+
+Returns:
+
+    S: An SVD object of rank ≤ k.
+
+Reference:
+
+    @inproceedings{,
+        author={Friedland, S. and Niknejad, A. and Kaveh, Mostafa and Zare, H.},
+        booktitle={System of Systems Engineering, 2006 IEEE/SMC International Conference on},
+        title={Fast Monte-Carlo low rank approximations for matrices},
+        year={2006},
+        month={April},
+        pages={218--223},
+        doi={10.1109/SYSOSE.2006.1652299}
+    }
+""" ->
+function rsvd_fnkz(A, k::Int;
+    l::Int=k, N::Int=minimum(size(A)), verbose::Bool=false,
+    ϵ::Real=prod(size(A))*eps(real(float(one(eltype(A))))))
+
+    m, n = size(A)
+    @assert 1 ≤ l ≤ k ≤ min(m, n)
+
+    #Initialize k-rank approximation B₀ according to (III.9)
+    tallandskinny = m ≥ n
+    B₀ = if tallandskinny
+        #Select k columns of A
+        π = randperm(n)[1:k]
+        A[:, π]
+    else
+        warn("Not implemented")
+        #Select k rows of A
+        π = randperm(m)[1:k]
+        A[π, :]
+    end
+    X, RRR = qr(B₀)
+    X = X[:, abs(diag(RRR)) .> ϵ] #Remove linear dependent columns
+    @show A
+    @show size(X), size(A)
+    B = tallandskinny ? X ⊗ A'X : X ⊗ X'A
+
+    oldnrmB = 0.0
+    Λ = 0
+    X̃ = 0
+    V = 0
+    for t=1:N
+        π = randperm(k)[1:l]
+        #Update B using Theorem 2.4
+        X, RRR = qr([B.X A[:, π]]) #We are doing more work than needed here
+        X = X[:, abs(diag(RRR)) .> ϵ] #Remove linearly dependent columns
+        Y = A'X
+        E = eigfact!(Y'Y)
+        π = sortperm(E[:values], rev=true)[1:min(length(E[:values]), k)]
+        Λ = E[:values][π]
+        O = E[:vectors][:, π] #Eq. 2.6
+        X̃ = X * O
+        B = X̃ ⊗ A'X̃
+
+        length(Λ)==0 && break
+
+        nrmB = √Λ[1]
+        verbose && println("iteration $t: Norm: $nrmB")
+        oldnrmB > (1-ϵ)*nrmB && break
+        oldnrmB = nrmB
+    end
+    for i=1:size(B.Y, 2)
+        scale!(slice(B.Y, :, i), 1/√Λ[i])
+    end
+    Base.LinAlg.SVD(B.X, √Λ, B.Y')
+end

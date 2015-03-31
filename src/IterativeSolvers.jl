@@ -15,7 +15,7 @@ end
 include("common.jl")
 include("krylov.jl")
 
-#Specialized Factorizations
+#Specialized factorizations
 include("factorization.jl")
 
 #Linear solvers
@@ -34,5 +34,6 @@ include("lsqr.jl")
 #Randomized algorithms
 include("rlinalg.jl")
 include("rsvd.jl")
+include("rsvd_fnkz.jl")
 
 end
