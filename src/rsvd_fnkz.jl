@@ -20,6 +20,8 @@ Arguments:
     N: Maximum number of iterations. Default: min(size(A))
     ϵ: Relative threshold for convergence, as measured by growth of the spectral norm.
        Default: prod(size(A))*eps(real(float(one(eltype(A)))))
+    method: :eig - Solve eigenproblem (Default)
+            :svd - Solve singular problem
     verbose: If true, prints convergence information at each iteration. Default: false
 
 Returns:
@@ -40,13 +42,15 @@ Reference:
 """ ->
 function rsvd_fnkz(A, k::Int;
     l::Int=k, N::Int=minimum(size(A)), verbose::Bool=false,
+    method::Symbol=:eig,
     ϵ::Real=prod(size(A))*eps(real(float(one(eltype(A))))))
 
-    m, n = size(A)
+    const m, n = size(A)
+    const dosvd = method == :svd
     @assert 1 ≤ l ≤ k ≤ min(m, n)
 
     #Initialize k-rank approximation B₀ according to (III.9)
-    tallandskinny = m ≥ n
+    const tallandskinny = m ≥ n
     B₀ = if tallandskinny
         #Select k columns of A
         π = randperm(n)[1:k]
@@ -59,8 +63,6 @@ function rsvd_fnkz(A, k::Int;
     end
     X, RRR = qr(B₀)
     X = X[:, abs(diag(RRR)) .> ϵ] #Remove linear dependent columns
-    @show A
-    @show size(X), size(A)
     B = tallandskinny ? X ⊗ A'X : X ⊗ X'A
 
     oldnrmB = 0.0
@@ -73,12 +75,18 @@ function rsvd_fnkz(A, k::Int;
         X, RRR = qr([B.X A[:, π]]) #We are doing more work than needed here
         X = X[:, abs(diag(RRR)) .> ϵ] #Remove linearly dependent columns
         Y = A'X
-        E = eigfact!(Y'Y)
-        π = sortperm(E[:values], rev=true)[1:min(length(E[:values]), k)]
-        Λ = E[:values][π]
-        O = E[:vectors][:, π] #Eq. 2.6
-        X̃ = X * O
-        B = X̃ ⊗ A'X̃
+        if dosvd
+            S = svdfact!(Y)
+            Λ = S[:S].^2
+            B = (X * S[:V]) ⊗ (S[:U]*Diagonal(S[:S]))
+        else
+            E = eigfact!(Symmetric(Y'Y))
+            π = sortperm(E[:values], rev=true)[1:min(length(E[:values]), k)]
+            Λ = E[:values][π]
+            O = E[:vectors][:, π] #Eq. 2.6
+            X̃ = X * O
+            B = X̃ ⊗ A'X̃
+        end
 
         length(Λ)==0 && break
 
