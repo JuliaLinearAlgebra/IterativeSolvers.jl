@@ -1,25 +1,30 @@
 export chebyshev, chebyshev!
 
-chebyshev(A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2);
-          tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3) =
+chebyshev(A, b, λmin::Real, λmax::Real, Pr = 1, n = size(A,2);
+          tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = n^3) =
     chebyshev!(zerox(A, b), A, b, λmin, λmax, Pr, n; tol=tol,maxiter=maxiter)
 
-function chebyshev!(x, A, b, λmin::Real, λmax::Real, Pr=1, n=size(A,2); tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=n^3)
+function chebyshev!(x, A, b, λmin::Real, λmax::Real, Pr = 1, n = size(A,2);
+	tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = n^3)
+
 	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
 	init!(K, x)
-	chebyshev!(x, K, b, λmin, λmax, Pr; tol=tol, maxiter=maxiter)
+	chebyshev!(x, K, b, λmin, λmax, Pr; tol = tol, maxiter = maxiter)
 end
 
-function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol::Real=sqrt(eps(typeof(real(b[1])))), maxiter::Int=K.n^3)
-	K.order=1
-    tol = tol * norm(b)
+function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr = 1;
+	tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = K.n^3)
+
+	local α, p
+	K.order = 1
+    tol = tol*norm(b)
 	r = b - nextvec(K)
-	d::eltype(b) = (λmax+λmin)/2
-	c::eltype(b) = (λmax-λmin)/2
-	resnorms=zeros(typeof(real(b[1])), maxiter)
-	for iter=1:maxiter
+	d::eltype(b) = (λmax + λmin)/2
+	c::eltype(b) = (λmax - λmin)/2
+	resnorms = zeros(typeof(real(b[1])), maxiter)
+	for iter = 1:maxiter
 		z = Pr\r
-		if iter==1
+		if iter == 1
 			p = z
 			α = 2/d
 		else
@@ -29,9 +34,9 @@ function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, Pr=1; tol
 		end
 		append!(K, p)
 		update!(x, α, p)
-		r -= α * nextvec(K)
+		r -= α*nextvec(K)
 		#Check convergence
-		resnorms[iter]=norm(r)
+		resnorms[iter] = norm(r)
 		if resnorms[iter] < tol
 			resnorms = resnorms[1:iter]
 			break

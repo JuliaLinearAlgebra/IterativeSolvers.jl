@@ -8,7 +8,7 @@ let A = reshape(1:64,8,8)
 end
 
 #A linearly dependent matrix
-let A = [[1:8] [1:8] [1:8] [1:8]]
+let A = [collect(1:8) collect(1:8) collect(1:8) collect(1:8)]
     S = rsvd_fnkz(A, 4)
     @assert vecnorm(A - S[:U]*Diagonal(S[:S])*S[:Vt]) < 1e-9
 end

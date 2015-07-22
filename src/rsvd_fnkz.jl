@@ -1,3 +1,6 @@
+
+export rsvd_fnkz
+
 immutable OuterProduct{T}
     X :: Matrix{T}
     Y :: Matrix{T}

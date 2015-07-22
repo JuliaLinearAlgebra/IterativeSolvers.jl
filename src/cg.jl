@@ -20,7 +20,7 @@ function cg!(x, K::KrylovSubspace, b, Pl=1;
         append!(K, p)
         q = nextvec(K)
         α = γ/dot(p, q)
-        α>=0 || throw(PosSemidefException("α=$α"))
+        # α>=0 || throw(PosSemidefException("α=$α"))
         update!(x, α, p)
         r -= α*q
         resnorms[iter] = norm(r)
