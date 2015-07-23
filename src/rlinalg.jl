@@ -282,6 +282,8 @@ immutable srft
     l :: Integer
 end
 
+(*)(A::AbstractMatrixFcn, B::srft) = error("method only defined to avoid ambiguity. If you need this method please open a pull request")
+
 @doc doc"""
 Applies a subsampled random Fourier transform to the columns of `A`
 
