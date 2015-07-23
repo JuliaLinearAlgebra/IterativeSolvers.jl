@@ -28,8 +28,8 @@ function shiftfwd!(output, b)
     output
 end
 
-Atimesb = [b[end], b[1:end-1]]
-Aptimesb = [b[2:end], b[1]]
+Atimesb = [b[end]; b[1:end-1]]
+Aptimesb = [b[2:end]; b[1]]
 
 A = MatrixFcn{Int}(5, 5, shiftback!)
 @test eltype(A) == Int

@@ -1,7 +1,9 @@
 using IterativeSolvers
 using Base.Test
-const n=10
-const m=6
+using Compat
+
+n = 10
+m = 6
 srand(1234321)
 
 include("common.jl")
@@ -138,7 +140,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     @test_approx_eq_eps eval_big eval_pow (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
 
     #Inverse iteration
-    irnd = iceil(rand()*(n-2))
+    @compat irnd = ceil(Integer, rand()*(n-2))
     eval_rand = v[1+irnd] #Pick random eigenvalue
     # Perturb the eigenvalue by < 1/4 of the distance to the nearest eigenvalue
     eval_diff = min(abs(v[irnd]-eval_rand), abs(v[irnd+2]-eval_rand))
