@@ -24,3 +24,4 @@ S2 = rsvd(A, 3, 0)
 @assert vecnorm(abs(S1[:Vt]) - abs(S2[:Vt])) <= √(eps())
 @assert norm(S1[:S] - S2[:S]) <= √(eps())
 
+@assert size(IterativeSolvers.rrange_adaptive(A, 3, 1e-3) == (3,2)

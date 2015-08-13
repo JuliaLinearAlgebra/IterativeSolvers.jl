@@ -150,55 +150,32 @@ Reference:
 
     Algorithm 4.2 of \cite{Halko2011}
 
-Implementation note:
-
-    Whereas \cite{Halko2011} recommends classical Gram-Schmidt with double
-    reorthogonalization, we instead compute the basis with `qrfact()`, which
-    for dense `A` computes the QR factorization using Householder reflectors.
-
-Warning:
-
-    Empirical testing indicates that this implementation is slow; the
-    orthogonalization of a newly computed random vector is rate-limiting.
 """ ->
 function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
     m, n = size(A)
-    r += maxiter
-    Ω = randn(n, r)
-    #Normalize columns of Ω
-    #for i=1:r
-    #    ω = sub(Ω, :, i)
-    #    scale!(1/norm(ω), ω)
-    #end
+
+    Ω = randn(n,r)
     Y = A*Ω
-    Q = full(qrfact(Y)[:Q], thin=true)
+    Q = zeros(m,0)
 
     const tol=ϵ/(10*√(2/π))
     for j=1:maxiter
-        Tol = maximum([norm(sub(Y,:,i)) for i=j-1+(1:r)])
-        info("Iteration $j: norm = $Tol (target: $tol)")
+        Tol = maximum([norm(Y[:,i]) for i=j:(j+r-1)])
         Tol > tol || break
 
-        if j>1
-            y = sub(Y, :, j)
-            Y[:,j]-=Q*(Q'y)
-        end
-        q = sub(Y,:,j)
-        scale!(1/norm(q), q)
+        y = sub(Y,:,j)
+        y = Y[:,j] = y - Q*(Q'y)
+        q = y/norm(y)
         Q = [Q q]
 
-	#Compute new random vector in the range of A and
-	#orthogonalize against existing vectors
-        y = randn(n)
-        scale!(1/norm(y), y)
-        A_mul_B!(y, A, y)
-        y -= Q*Q'y
+        ω = randn(n)
+        y = A*ω
+        y = y - Q*(Q'y)
         Y = [Y y]
-        for i = j+(1:(r-1))
-            y = sub(Y, :, i)
-            Y[:,i] -= q*(q⋅y)
-        end
-        j==maxiter && warn("Maximum number of iterations reached")
+        Yb = sub(Y, :, (j+1):(j+r-1))
+        Yb = Y[:, (j+1):(j+r-1)] = Yb - q * q'Yb
+
+        j==maxiter && warn("Maximum number of iterations reached with norm $Tol > $tol")
     end
     Q
 end
