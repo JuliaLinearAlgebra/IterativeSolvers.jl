@@ -1,14 +1,16 @@
 export svdvals_gkl
 
-Base.svdvals{T, Tr}(S::Base.LinAlg.SVD{T, Tr}) = (S[:S])::Vector{Tr}
+#JuliaLang/julia#12747
+if VERSION <= v"0.4.0-dev+6890"
+    Base.svdvals{T, Tr}(S::Base.LinAlg.SVD{T, Tr}) = (S[:S])::Vector{Tr}
+end
 
 """
 Compute the largest singular values of a matrix A using the Golub-Kahan-Lanczos
-bidiagonalization method.
+bidiagonalization method [Golub1965].
 
-This implementation uses complete reorthogonalization to avoid loss of
-convergence due to roundoff error.
-
+This implementation uses full one-sided reorthogonalization as described in
+[Simon2000].
 
 Inputs
 
@@ -43,13 +45,27 @@ Side effects
 
     - The number of iterations
 
-    - The final approximation error ω² in the Frobenius norm [Simon2000]
+    - The final approximation error ω², which is the Frobenius norm of the
+    difference between A and the low rank approximation to A computable from
+    the computed singular values [Simon2000]
 
     If an invariant subspace is found which smaller than the either dimension
     of A, an informational message is printed and only the singular values
     corresponding to this subspace are returned.
 
 References
+
+@article{Golub1965,
+    author = {Golub, G. and Kahan, W.},
+    doi = {10.1137/0702016},
+    journal = {Journal of the Society for Industrial and Applied Mathematics Series B Numerical Analysis},
+    volume = 2,
+    number = 2,
+    pages = {205--224},
+    title = {Calculating the Singular Values and Pseudo-Inverse of a Matrix},
+    year = 1965
+}
+
 
 @article{Simon2000,
     author = {Simon, Horst D. and Zha, Hongyuan},
@@ -85,8 +101,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(
 
     k = 0
     for k=1:maxiter
-        #Purge
-        #Reorthogonalize right vectors - as suggested by Simon and Zha 1997
+        #Reorthogonalize right vectors [Simon2000]
         if m >= n
             for w in converged_vectors
                 p -= (p⋅w)*w
@@ -97,8 +112,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(
         r = A*p
         k>1 && (r -= β*u)
 
-        #Purge
-        #Reorthogonalize right vectors - as suggested by Simon and Zha 1997
+        #Reorthogonalize left vectors [Simon2000]
         if m < n
             for w in converged_vectors
                 r -= (r⋅w)*w
@@ -163,23 +177,3 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(
     info("Final Lanczos β = $β")
     sort!(converged_values, rev=true), Bidiagonal(αs, βs[1:end-1], false)
 end
-
-#Simple test
-let A = full(Diagonal([10.0, 9, 8, 6, 1]))
-    @assert norm(svdvals_gkl(A)[1] - svdvals(A)) ≤ 1e-10
-end
-
-#Find top singular values of some random triangular matrix
-let
-    n = 500
-    σth = √eps()
-    nvals = 6
-
-    A = UpperTriangular(rand(n, n))
-
-    svals = svdvals_gkl(A, nvals)[1]
-    svals2 = svdvals(A)[1:nvals]
-
-    @assert norm(svals - svals2) ≤ nvals*σth
-end
-
