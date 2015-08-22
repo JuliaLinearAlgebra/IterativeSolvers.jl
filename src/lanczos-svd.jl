@@ -51,14 +51,6 @@ Outputs
 
 Side effects
 
-    Prints a convergence summary consisting of:
-
-    - The number of iterations
-
-    - The final approximation error ω², which is the Frobenius norm of the
-    difference between A and the low rank approximation to A computable from
-    the computed singular values [Simon2000]
-
     If an invariant subspace is found which smaller than the either dimension
     of A, an informational message is printed and only the singular values
     corresponding to this subspace are returned.
