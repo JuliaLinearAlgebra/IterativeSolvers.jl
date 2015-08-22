@@ -37,7 +37,17 @@ Keyword arguments
 Outputs
 
     converged_values: The requested singular values
-    B: The bidiagonal matrix produced during Step 1 of the process.
+    convergence_history: A Dict{Symbol,Any} containing the following keys:
+        :isconverged: Did the calculation converge?
+        :iters: Number of iterations run
+        :mvps: Number of matrix-vector products computed
+        :B: The Bidiagonal matrix computed during the bidiagonalization process
+        :β: Norm of Lanczos iterate
+        :ω²: The Frobenius norm of the difference between A and the low rank
+        approximation to A computable from the currently computed singular
+        values [Simon2000]
+        :vals: Ritz values computed at each iteration
+        :valerrs: Error bounds on Ritz values at each iteration
 
 Side effects
 
@@ -78,8 +88,11 @@ References
     year = 2000
 }
 """
-function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(size(A)),
-        βth::Real = 0.1*√eps(eltype(A)), σth::Real = 0.1*√eps(eltype(A)))
+function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
+    maxiter::Int=minimum(size(A)),
+    βth::Real = 0.1*√eps(eltype(A)),
+    σth::Real = 0.1*√eps(eltype(A))
+    )
 
     m, n = size(A)
     T = eltype(A)
@@ -98,6 +111,13 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(
     converged_values_errors = T[] #List of estimated errors in converged values
 
     ω² = ω²₀ = vecnorm(A)^2
+
+    convergence_history = Dict()
+    convergence_history[:isconverged] = false
+    convergence_history[:ω²] = [ω²]
+    convergence_history[:vals] = Vector{Tσ}[]
+    convergence_history[:valerrs] = Vector{Tσ}[]
+    convergence_history[:mvps] = 0
 
     k = 0
     for k=1:maxiter
@@ -125,10 +145,12 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(
         β = norm(p)
         push!(αs, α)
         push!(βs, β)
+        convergence_history[:mvps] += 2
 
         #Update Simon-Zha approximation error
         ω² -= α^2
         length(βs) > 1 && (ω² -= βs[end-1]^2)
+        push!(convergence_history[:ω²], ω²)
 
         #Compute error bars on singular values
         S = svdfact(Bidiagonal(αs, βs[1:end-1], false))
@@ -137,6 +159,8 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(
         e2 = abs(S[:Vt][:, end])
         σ = svdvals(S)
         Δσ = [min(d*e1[i], d*e2[i]) for i in eachindex(e1)]
+        push!(convergence_history[:vals], σ)
+        push!(convergence_history[:valerrs], Δσ)
 
         #Check number of converged values
         converged_values = Tσ[]
@@ -163,17 +187,21 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2)), maxiter::Int=minimum(
                 #different choice of starting vector.
                 info("Invariant subspace of dimension $k found")
             end
+            convergence_history[:isconverged] = true
             converged_values = σ
             break
         end
 
         #If at least n converged values have been found, stop
-        length(converged_values) ≥ nvals && break
+        if length(converged_values) ≥ nvals
+            convergence_history[:isconverged] = true
+            break
+        end
     end
 
-    info("Convergence summary")
-    info("Number of iterations: $k")
-    info("Final approximation error: ω² = $(ω²) ($(100ω²/ω²₀)%)")
-    info("Final Lanczos β = $β")
-    sort!(converged_values, rev=true), Bidiagonal(αs, βs[1:end-1], false)
+    convergence_history[:iters] = k
+    convergence_history[:B] = Bidiagonal(αs, βs[1:end-1], false)
+    convergence_history[:β] = βs
+
+    sort!(converged_values, rev=true), convergence_history
 end
