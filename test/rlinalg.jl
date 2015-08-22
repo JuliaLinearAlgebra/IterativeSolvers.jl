@@ -1,22 +1,26 @@
-using Base.Test
 using IterativeSolvers
+using FactCheck
 
-srand(1)
-m = n = 100 
-B = randn(m, n)
-nB = norm(B)
-p = 1e-5 #Probability of failure
+facts("Randomized linear algebra") do
+    srand(1)
+    m = n = 100
+    B = randn(m, n)
+    nB = norm(B)
+    p = 1e-5 #Probability of failure
 
-for j=1:n
-    @test rnorm(B, 2j, p) >= nB
-    @test rnorms(B, j, p) >= nB
+    for j=1:n
+        @fact rnorm(B, 2j, p) --> greater_than_or_equal(nB)
+        @fact rnorms(B, j, p) --> greater_than_or_equal(nB)
+    end
+
+    A = B*B'
+    k = 1
+    l, u = reigmin(A, k, p)
+    @fact l <= eigmin(A) <= u --> true
+
+    l, u = reigmax(A, k, p)
+    @fact l <= eigmax(A) <= u --> true
+
+    l, u = rcond(A, k, p)
+    @fact l <= cond(A) <= u --> true
 end
-
-A = B*B'
-k = 1
-l, u = reigmin(A, k, p)
-@test l <= eigmin(A) <= u
-l, u = reigmax(A, k, p)
-@test l <= eigmax(A) <= u
-l, u = rcond(A, k, p)
-@test l <= cond(A) <= u

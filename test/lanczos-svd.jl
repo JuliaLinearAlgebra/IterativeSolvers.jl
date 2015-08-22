@@ -1,12 +1,14 @@
 using IterativeSolvers
+using FactCheck
 
-#Simple test
-let A = full(Diagonal([10.0, 9, 8, 6, 1]))
-    @assert norm(svdvals_gkl(A)[1] - svdvals(A)) ≤ 1e-10
+facts("svdvals_gkl") do
+
+context("Small diagonal matrix") do
+    A = full(Diagonal([10.0, 9, 8, 6, 1]))
+    @fact norm(svdvals_gkl(A)[1] - svdvals(A)) --> less_than(1e-10)
 end
 
-#Find top singular values of some random triangular matrix
-let
+context("Medium random square matrix") do
     n = 500
     σth = √eps()
     nvals = 6
@@ -16,6 +18,7 @@ let
     svals = svdvals_gkl(A, nvals)[1]
     svals2 = svdvals(A)[1:nvals]
 
-    @assert norm(svals - svals2) ≤ nvals*σth
+    @fact norm(svals - svals2) --> less_than(nvals*σth)
 end
 
+end
