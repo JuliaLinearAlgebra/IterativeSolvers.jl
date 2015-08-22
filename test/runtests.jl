@@ -137,7 +137,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     #Power iteration
     eval_big = maximum(v) > abs(minimum(v)) ? maximum(v) : minimum(v)
     eval_pow = eigvals_power(A; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
-    @test_approx_eq_eps eval_big eval_pow (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
+    @test_approx_eq_eps eval_big eval_pow (eltype(T) <: Complex ?2:1)*n^2*cond(A)*eps(real(one(T)))
 
     #Inverse iteration
     @compat irnd = ceil(Integer, rand()*(n-2))
@@ -146,7 +146,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     eval_diff = min(abs(v[irnd]-eval_rand), abs(v[irnd+2]-eval_rand))
     σ = eval_rand + eval_diff/2*(rand()-.5)
     eval_ii = eigvals_ii(A, σ; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
-    @test_approx_eq_eps eval_rand eval_ii (iseltype(T,Complex)?2:1)*n^2*cond(A)*eps(real(one(T)))
+    @test_approx_eq_eps eval_rand eval_ii (eltype(T) <: Complex ?2:1)*n^2*cond(A)*eps(real(one(T)))
 
     #Rayleigh quotient iteration
     #XXX broken?
