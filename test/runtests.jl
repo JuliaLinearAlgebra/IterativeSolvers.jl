@@ -169,13 +169,7 @@ for T in (Float32, Float64)
 end
 
 #Golub-Kahan-Lanczos singular values computation
-for T in (Float32, Float64)
-    B = convert(Matrix{T}, randn(n, m))
-    v = svdvals(B)
-
-    sv_gkl = svdvals_gkl(B)
-    @test_approx_eq v sv_gkl
-end
+include("lanczos-svd.jl")
 
 include("lsqr.jl")
 

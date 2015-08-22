@@ -1,6 +1,6 @@
 import Base.LinAlg.BlasFloat
 
-export eigvals_lanczos, svdvals_gkl
+export eigvals_lanczos
 
 function lanczos!{T}(K::KrylovSubspace{T})
     m = K.n
@@ -32,25 +32,5 @@ function eigvals_lanczos(A, neigs::Int=size(A,1); tol::Real=size(A,1)^3*eps(), m
         end
     end
     e1, ConvergenceHistory(0<=resnorms[end]<tol, tol, K.mvps, resnorms)
-end
-
-#Golub-Kahan-Lanczos algorithm for the singular values
-#TODO duck-type for A::Function
-function svdvals_gkl(A, Ap=A')
-    n = size(A, 2)
-    α, β = Array(eltype(A), n), Array(eltype(A), n-1)
-    K = KrylovSubspace(A, 1)
-    initrand!(K)
-    u, v = nextvec(K), lastvec(K)
-    for k=1:n
-        α[k]=norm(u)
-        if k==n break end
-        u/=α[k]
-        v=Ap*u-α[k]*v
-        β[k]=norm(v)
-        v/=β[k]
-        u=A*v-β[k]*u
-    end
-    svdvals(Bidiagonal(α, β, true))
 end
 

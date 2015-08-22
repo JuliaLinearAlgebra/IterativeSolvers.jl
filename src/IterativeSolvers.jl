@@ -28,6 +28,9 @@ include("chebyshev.jl")
 include("simple.jl")
 include("lanczos.jl")
 
+#SVD solvers
+include("lanczos-svd.jl")
+
 #Least-squares
 include("lsqr.jl")
 
