@@ -263,7 +263,7 @@ Implementation note:
 function rrange_f(A, l::Int; p::Integer=0)
     p ≥ 0 || error()
     n = size(A, 2)
-    Ω = srft(n,l+p)
+    Ω = srft(l+p)
     Y = A*Ω
     Q = full(qrfact!(Y)[:Q])
     p==0 ? Q : Q[:,1:l]
@@ -436,7 +436,7 @@ function eigfact_nystrom(A, Q)
     B₁=A*Q
     B₂=Q'*B₁
     C=cholfact!(B₂)
-    F=B₁/C
+    F=B₁*inv(C)
     S=svdfact!(F)
     Eigen(S[:S].^2, S[:U])
 end

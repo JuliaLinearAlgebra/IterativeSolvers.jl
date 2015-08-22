@@ -86,7 +86,7 @@ Randomized matrix norm estimator using `A'A`
 
 Computes a probabilistic upper bound on the norm of a matrix `A`.
 
-\cite[Appendix]{Liberty2007} states (with minor change in notation) that 
+\cite[Appendix]{Liberty2007} states (with minor change in notation) that
 
 ρ = √(‖(A'A)ʲω‖/‖(A'A)ʲ⁻¹ω‖)
 
@@ -110,7 +110,7 @@ Output:
 
 Reference:
     Appendix of \cite{Liberty2007}.
-    
+
     @article{Liberty2007,
         authors = {Edo Liberty and Franco Woolfe and Per-Gunnar Martinsson
 	    and Vladimir Rokhlin and Mark Tygert},
@@ -278,8 +278,8 @@ Parameter:
 
     l :: Number of vectors to return
 """ ->
-immutable srft
-    l :: Integer
+immutable srft{T<:Integer}
+    l :: T
 end
 
 (*)(A::AbstractMatrixFcn, B::srft) = error("method only defined to avoid ambiguity. If you need this method please open a pull request")
