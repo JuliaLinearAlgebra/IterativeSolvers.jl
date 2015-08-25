@@ -103,16 +103,18 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     m, n = size(A)
     T = eltype(A)
     Tσ= eltype(svdfact(A[1,1])[:S])
+    @assert length(v0) == n
     p = v0
 
     αs = T[]
     βs = T[]
 
-    β = norm(p)
     α = Inf
-    u = T[]
+    u = Array(T, m)
+    v = Array(T, n)
+    r = Array(T, n)
 
-    converged_vectors = Vector{T}[] #List of converged right vectors
+    V = Array(T, n, 0) #List of converged right vectors
     converged_values = Tσ[] #List of converged values
     converged_values_errors = T[] #List of estimated errors in converged values
 
@@ -125,29 +127,35 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     convergence_history[:valerrs] = Vector{Tσ}[]
     convergence_history[:mvps] = 0
 
-    local k, oldσ
+    local β, k, oldσ, Δσ
     for k=1:maxiter
         #Reorthogonalize right vectors [Simon2000]
-        if m >= n
-            for w in converged_vectors
-                p -= (p⋅w)*w
-            end
+        #Here we use doubly reorthogonalized classical Gram-Schmidt
+        if m ≥ n
+            p -= V*(V'p)
+            p -= V*(V'p)
         end
 
-        v = scale!(p, inv(β))
-        r = A*p
-        k>1 && (r -= β*u)
+        β = norm(p)
+
+        v[:] = p/β
+        #r = A*v
+        #k>1 && (r -= β*u)
+        A_mul_B!(r, A, v)
+        k>1 && (axpy!(-β, u, r))
 
         #Reorthogonalize left vectors [Simon2000]
         if m < n
-            for w in converged_vectors
-                r -= (r⋅w)*w
-            end
+            r -= V*(V'r)
+            r -= V*(V'r)
         end
 
         α = norm(r)
-        u = scale!(r, inv(α))
-        p = A'u - α*v
+        u[:] = r/α
+        #p = A'u - α*v
+        Ac_mul_B!(p, A, u)
+        axpy!(-α, v, p)
+
         β = norm(p)
         push!(αs, α)
         push!(βs, β)
@@ -160,8 +168,11 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
 
         #Compute error bars on singular values
         d = √(α*β)
-        σ = svdvals(Bidiagonal(αs, βs[1:end-1], false))
-        Δσ = k==1 ? [d] : svdvals_error!(Δσ, oldσ, σ, d)
+        S = svdfact(Bidiagonal(αs, βs[1:end-1], false))
+        σ = svdvals(S)
+        e1= abs(S[:U][end,:])
+        e2= abs(S[:Vt][:,end])
+        Δσ= Tσ[d*min(e1[i], e2[i]) for i in eachindex(σ)]
         oldσ = σ
 
         push!(convergence_history[:vals], σ)
@@ -178,7 +189,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
 
         #true: do complete reorthogonalization
         if true
-            push!(converged_vectors, m>=n ? v : u)
+            V = [V m≥n?v:u]
         end
 
         #If invariant subspace has been found, stop
@@ -206,7 +217,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
 
     convergence_history[:iters] = k
     convergence_history[:B] = Bidiagonal(αs, βs[1:end-1], false)
-    convergence_history[:β] = @show βs
+    convergence_history[:β] = βs
 
     @assert issorted(converged_values, rev=true)
     converged_values, convergence_history
