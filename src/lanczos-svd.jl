@@ -7,60 +7,72 @@ end
 
 """
 Compute the largest singular values of a matrix A using the Golub-Kahan-Lanczos
-bidiagonalization method [Golub1965].
+bidiagonalization method `\cite{Golub1965}` implemented in `svdvals_gkl()`.
 
 This implementation uses full one-sided reorthogonalization as described in
-[Simon2000].
+`\cite{Simon2000}`.
 
 Inputs
+------
 
-    A: The matrix or matrix-like object whose SVD is desired.
-       A must support size(), A*v and A'*v methods.
+- `A`    : The matrix or matrix-like object whose truncated SVD is desired.
+           `A` must support `size()`, `A*v` and `A'*v` methods.
 
-    nvals: Number of singular values requested. (Default: 6)
+- `nvals`: Number of singular values requested.
+           Default: 6
 
-    v0: Initial guess vector. Default: a randomized unit vector.
-
+- `v0`   : Initial guess vector.
+           Default: a randomized unit vector.
 
 Keyword arguments
+-----------------
 
-    maxiter: Maximum number of iterations. Default: the smaller dimension of A.
+- `maxiter`: Maximum number of iterations.
+             Default: the smaller dimension of A.
 
-    βth    : The threshold value of β below which an invariant subspace is
-             deemed to be found. Default: 0.1*√eps(eltype(A))
+- `βth`    : The threshold value of β below which an invariant subspace is
+             deemed to be found.
+             Default: `0.1*√eps(eltype(A))`
 
-    σth    : The threshold value below which a Ritz value estimate of the
-             singular value is considered to be converged. Default:
-             0.1*√eps(eltype(A))
 
+- `σth`    : The threshold value below which a Ritz value estimate of the
+             singular value is considered to be converged.
+             Default: `0.1*√eps(eltype(A))`
 
 Outputs
+-------
 
-    converged_values: The requested singular values
-    convergence_history: A Dict{Symbol,Any} containing the following keys:
-        :isconverged: Did the calculation converge?
-        :iters: Number of iterations run
-        :mvps: Number of matrix-vector products computed
-        :B: The Bidiagonal matrix computed during the bidiagonalization process
-        :β: Norm of Lanczos iterate
-        :ω²: The Frobenius norm of the difference between A and the low rank
-        approximation to A computable from the currently computed singular
-        values [Simon2000]
-        :vals: Ritz values computed at each iteration
-        :valerrs: Error bounds on Ritz values at each iteration
+- `converged_values`   : The requested singular values
+
+- `convergence_history`: A `Dict{Symbol,Any}` containing the following keys:
+    - `:isconverged` : Did the calculation converge?
+    - `:iters`       : Number of iterations run
+    - `:mvps`        : Number of matrix-vector products computed
+    - `:B`           : The `Bidiagonal` matrix computed during the
+                       bidiagonalization process
+    - `:β`           : Norm of Lanczos iterate
+    - `:ω²`          : The Frobenius norm of the difference between A and the
+                       low rank approximation to A computable from the
+                       currently computed singular values [Simon2000]
+    - `:vals`        : Ritz values computed at each iteration
+    - `:valerrs`     : Error bounds on Ritz values at each iteration
 
 Side effects
+------------
 
-    If an invariant subspace is found which smaller than the either dimension
-    of A, an informational message is printed and only the singular values
-    corresponding to this subspace are returned.
+If an invariant subspace is found which smaller than the either dimension of A,
+an informational message is printed and only the singular values corresponding
+to this subspace are returned.
 
 References
+----------
 
+```bibtex
 @article{Golub1965,
     author = {Golub, G. and Kahan, W.},
     doi = {10.1137/0702016},
-    journal = {Journal of the Society for Industrial and Applied Mathematics Series B Numerical Analysis},
+    journal = {Journal of the Society for Industrial and Applied Mathematics
+        Series B Numerical Analysis},
     volume = 2,
     number = 2,
     pages = {205--224},
@@ -75,10 +87,12 @@ References
     journal = {SIAM Journal on Scientific Computing},
     number = 6,
     pages = {2257--2274},
-    title = {Low-Rank Matrix Approximation Using the {L}anczos Bidiagonalization Process with Applications},
+    title = {Low-Rank Matrix Approximation Using the {L}anczos Bidiagonalization
+        Process with Applications},
     volume = 21,
     year = 2000
 }
+```
 """
 function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     maxiter::Int=minimum(size(A)),
@@ -200,80 +214,86 @@ end
 
 """
 Compute the errors in the Rayleigh-Ritz approximation to singular values in the
-Golub-Kalan-Lanczos bidiagonalization method implemented in svdvals_gkl().
+Golub-Kalan-Lanczos bidiagonalization method implemented in `svdvals_gkl()`.
 
-Inputs:
+Inputs
+------
 
-    Δθ: Old error vector. Will get appended to.
-    τ: Old Ritz values, sorted either in ascending or descending order.
-    θ: Current Ritz values, sorted in the same order as τ
-    β: The norm of the current residual vector
+- `Δθ`: Old error vector. Will get appended to.
+- `τ` : Old Ritz values, sorted either in ascending or descending order.
+- `θ` : Current Ritz values, sorted in the same order as `τ`
+- `β` : The norm of the current residual vector
 
-Outputs:
+Outputs
+-------
 
-    Δθ: The new error vector, updated in place.
+- `Δθ`: The new error vector, updated in place.
 
-Implementation notes:
+Implementation notes
+--------------------
 
-    The notation used corresponds to [Parlett1980, 2/e, Corollary 7.9.2].
+The notation used corresponds to `\cite[2/e, Corollary 7.9.2]{Parlett1980}`.
 
-    A given Ritz value θ has an associated error bound which is the product of
-    the norm of the residual and last entry of its associated eigenvector.
-    [Parlett1980, Section 13.2]
+A given Ritz value ``θ`` has an associated error bound which is the product of
+the norm of the residual and last entry of its associated eigenvector
+`\cite[Section 13.2]{Parlett1980}`.
 
-    [Hill1992] provides an approximation to the last component of each
-    eigenvector given the current Ritz values and the previous Ritz values,
-    using the Cauchy interlacing theorem.
+`\cite{Hill1992}` provides an approximation to the last component of each
+eigenvector given the current Ritz values and the previous Ritz values, using
+the Cauchy interlacing theorem.
 
-    This function implements the upper bound of Theorem 3 in [Hill 1992],
-    adapted to the computation of error bounds on Ritz values corresponding to
-    singular values.
+This function implements the upper bound of Theorem 3 in `\cite{Hill1992}`,
+adapted to the computation of error bounds on Ritz values corresponding to
+singular values.
 
-    The simple modification is to square the Ritz values to get estimates of
-    (nonzero) eigenvalues of A'A and apply Theorem 3 to the Ritz values of the
-    eigenvalues, thus deriving the final formulae used here.
+The simple modification is to square the Ritz values to get estimates of
+(nonzero) eigenvalues of ``A'A`` and apply Theorem 3 of `\cite{Hill1992}` to
+the Ritz values of the eigenvalues, thus deriving the final formulae used here:
 
-    \[
-        \Delta\theta_{j}<\beta\times
-        \begin{cases}
-            \sqrt{\frac{\tau_{1}-\theta_{1}}{\theta_{2}-\theta_{1}}
-                  \frac{\tau_{1}+\theta_{1}}{\theta_{2}+\theta_{1}}}     & i=1\\
-            \sqrt{\frac{\theta_{j}-\tau_{j-1}}{\theta_{j}-\theta_{j-1}}
-                  \frac{\tau_{j}-\theta_{j}}{\theta_{j+1}-\theta_{j}}
-                  \frac{\theta_{j}+\tau_{j-1}}{\theta_{j}+\theta_{j-1}}
-                  \frac{\tau_{j}+\theta_{j}}{\theta_{j+1}+\theta_{j}}}   & i=2,\dots,k-1\\
-            \sqrt{\frac{\theta_{k}-\tau_{k-1}}{\theta_{k}-\theta_{k-1}}
-                  \frac{\theta_{k}+\tau_{k-1}}{\theta_{k}+\theta_{k-1}}} & i=k
-        \end{cases}
-    \]
+```math
+\Delta\theta_{j}<\beta\times
+\begin{cases}
+    \sqrt{\frac{\tau_{1}-\theta_{1}}{\theta_{2}-\theta_{1}}
+          \frac{\tau_{1}+\theta_{1}}{\theta_{2}+\theta_{1}}}     & i=1\\
+    \sqrt{\frac{\theta_{j}-\tau_{j-1}}{\theta_{j}-\theta_{j-1}}
+          \frac{\tau_{j}-\theta_{j}}{\theta_{j+1}-\theta_{j}}
+          \frac{\theta_{j}+\tau_{j-1}}{\theta_{j}+\theta_{j-1}}
+          \frac{\tau_{j}+\theta_{j}}{\theta_{j+1}+\theta_{j}}}   & i=2,\dots,k-1\\
+    \sqrt{\frac{\theta_{k}-\tau_{k-1}}{\theta_{k}-\theta_{k-1}}
+          \frac{\theta_{k}+\tau_{k-1}}{\theta_{k}+\theta_{k-1}}} & i=k
+\end{cases}
+```
 
-    We also sneak in an abs() before taking the outermost square root to avoid
-    roundoff error when computing very small error bounds. It also has the
-    advantage of rendering the formulae agnostic to sort order. So long as τ
-    and θ are sorted the same way, the same formulae apply since reversing the
-    sort order merely reverses the indices in the Cauchy interlacing theorem.
+We also sneak in an `abs()` before taking the outermost square root to avoid
+roundoff error when computing very small error bounds. It also has the
+advantage of rendering the formulae agnostic to sort order. So long as `τ` and
+`θ` are sorted the same way, the same formulae apply since reversing the sort
+order merely reverses the indices in the Cauchy interlacing theorem.
 
-References:
+References
+----------
 
-    @book{Parlett1980,
-        author = {Parlett, Beresford N},
-        address = {Philadelphia, PA},
-        doi = {10.1137/1.9781611971163},
-        publisher = {SIAM},
-        title = {The symmetric eigenvalue problem},
-        year = 1980
-    }
+```bibtex
+@book{Parlett1980,
+    author = {Parlett, Beresford N},
+    address = {Philadelphia, PA},
+    doi = {10.1137/1.9781611971163},
+    publisher = {SIAM},
+    title = {The symmetric eigenvalue problem},
+    year = 1980
+}
 
-    @article{Hill1992,
-    	Author = {Hill, R O, Jr. and B N Parlett},
-    	Doi = {10.1137/0613019},
-    	Journal = {SIAM Journal on Matrix Analysis and Applications},
-    	Number = 1,
-    	Pages = {239-247},
-    	Title = {Refined Interlacing Properties},
-    	Volume = 13,
-    	Year = 1992
-    }
+@article{Hill1992,
+	Author = {Hill, R O, Jr. and B N Parlett},
+	Doi = {10.1137/0613019},
+	Journal = {SIAM Journal on Matrix Analysis and Applications},
+	Number = 1,
+	Pages = {239-247},
+	Title = {Refined Interlacing Properties},
+	Volume = 13,
+	Year = 1992
+}
+```
 """
 function svdvals_error!{T}(
         Δθ::AbstractVector, τ::AbstractVector{T},
