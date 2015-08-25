@@ -111,7 +111,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     convergence_history[:valerrs] = Vector{Tσ}[]
     convergence_history[:mvps] = 0
 
-    k = 0
+    local k, oldσ
     for k=1:maxiter
         #Reorthogonalize right vectors [Simon2000]
         if m >= n
@@ -145,19 +145,18 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         push!(convergence_history[:ω²], ω²)
 
         #Compute error bars on singular values
-        S = svdfact(Bidiagonal(αs, βs[1:end-1], false))
         d = √(α*β)
-        e1 = abs(S[:U][end, :])
-        e2 = abs(S[:Vt][:, end])
-        σ = svdvals(S)
-        Δσ = [min(d*e1[i], d*e2[i]) for i in eachindex(e1)]
+        σ = svdvals(Bidiagonal(αs, βs[1:end-1], false))
+        Δσ = k==1 ? [d] : svdvals_error!(Δσ, oldσ, σ, d)
+        oldσ = σ
+
         push!(convergence_history[:vals], σ)
         push!(convergence_history[:valerrs], Δσ)
 
         #Check number of converged values
         converged_values = Tσ[]
-        for i=1:length(αs)
-            if Δσ[i] ≤ βth
+        for i in eachindex(σ)
+            if Δσ[i] ≤ σth
                 push!(converged_values, σ[i])
                 push!(converged_values_errors, Δσ[i])
             end
@@ -193,7 +192,110 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
 
     convergence_history[:iters] = k
     convergence_history[:B] = Bidiagonal(αs, βs[1:end-1], false)
-    convergence_history[:β] = βs
+    convergence_history[:β] = @show βs
 
-    sort!(converged_values, rev=true), convergence_history
+    @assert issorted(converged_values, rev=true)
+    converged_values, convergence_history
 end
+
+"""
+Compute the errors in the Rayleigh-Ritz approximation to singular values in the
+Golub-Kalan-Lanczos bidiagonalization method implemented in svdvals_gkl().
+
+Inputs:
+
+    Δθ: Old error vector. Will get appended to.
+    τ: Old Ritz values, sorted either in ascending or descending order.
+    θ: Current Ritz values, sorted in the same order as τ
+    β: The norm of the current residual vector
+
+Outputs:
+
+    Δθ: The new error vector, updated in place.
+
+Implementation notes:
+
+    The notation used corresponds to [Parlett1980, 2/e, Corollary 7.9.2].
+
+    A given Ritz value θ has an associated error bound which is the product of
+    the norm of the residual and last entry of its associated eigenvector.
+    [Parlett1980, Section 13.2]
+
+    [Hill1992] provides an approximation to the last component of each
+    eigenvector given the current Ritz values and the previous Ritz values,
+    using the Cauchy interlacing theorem.
+
+    This function implements the upper bound of Theorem 3 in [Hill 1992],
+    adapted to the computation of error bounds on Ritz values corresponding to
+    singular values.
+
+    The simple modification is to square the Ritz values to get estimates of
+    (nonzero) eigenvalues of A'A and apply Theorem 3 to the Ritz values of the
+    eigenvalues, thus deriving the final formulae used here.
+
+    \[
+        \Delta\theta_{j}<\beta\times
+        \begin{cases}
+            \sqrt{\frac{\tau_{1}-\theta_{1}}{\theta_{2}-\theta_{1}}
+                  \frac{\tau_{1}+\theta_{1}}{\theta_{2}+\theta_{1}}}     & i=1\\
+            \sqrt{\frac{\theta_{j}-\tau_{j-1}}{\theta_{j}-\theta_{j-1}}
+                  \frac{\tau_{j}-\theta_{j}}{\theta_{j+1}-\theta_{j}}
+                  \frac{\theta_{j}+\tau_{j-1}}{\theta_{j}+\theta_{j-1}}
+                  \frac{\tau_{j}+\theta_{j}}{\theta_{j+1}+\theta_{j}}}   & i=2,\dots,k-1\\
+            \sqrt{\frac{\theta_{k}-\tau_{k-1}}{\theta_{k}-\theta_{k-1}}
+                  \frac{\theta_{k}+\tau_{k-1}}{\theta_{k}+\theta_{k-1}}} & i=k
+        \end{cases}
+    \]
+
+    We also sneak in an abs() before taking the outermost square root to avoid
+    roundoff error when computing very small error bounds. It also has the
+    advantage of rendering the formulae agnostic to sort order. So long as τ
+    and θ are sorted the same way, the same formulae apply since reversing the
+    sort order merely reverses the indices in the Cauchy interlacing theorem.
+
+References:
+
+    @book{Parlett1980,
+        author = {Parlett, Beresford N},
+        address = {Philadelphia, PA},
+        doi = {10.1137/1.9781611971163},
+        publisher = {SIAM},
+        title = {The symmetric eigenvalue problem},
+        year = 1980
+    }
+
+    @article{Hill1992,
+    	Author = {Hill, R O, Jr. and B N Parlett},
+    	Doi = {10.1137/0613019},
+    	Journal = {SIAM Journal on Matrix Analysis and Applications},
+    	Number = 1,
+    	Pages = {239-247},
+    	Title = {Refined Interlacing Properties},
+    	Volume = 13,
+    	Year = 1992
+    }
+"""
+function svdvals_error!{T}(
+        Δθ::AbstractVector, τ::AbstractVector{T},
+        θ::AbstractVector{T}, β::Real=1.0)
+
+    n = length(θ)
+    @assert (issorted(τ, rev=true) && issorted(θ, rev=true)) ||
+            (issorted(τ) && issorted(θ))
+    @assert length(Δθ)==length(τ)==n-1
+
+    Δθ[1] = β*√abs((τ[1]-θ[1])*(τ[1]+θ[1])/
+               ((θ[2]-θ[1])*(θ[2]+θ[1])))
+    for j=2:n-1
+        Δθ[j] = β*√abs(((θ[j]-τ[j-1])/(θ[j]-θ[j-1])) *
+                    ((θ[j]+τ[j-1])/(θ[j]+θ[j-1])) *
+                    ((τ[j]-θ[j])/(θ[j+1]-θ[j])) *
+                    ((τ[j]+θ[j])/(θ[j+1]+θ[j])))
+    end
+    if n>1
+        push!(Δθ, β*√abs((θ[n]-τ[n-1])*(θ[n]+τ[n-1])/
+                        ((θ[n]-θ[n-1])*(θ[n]+θ[n-1]))))
+    end
+    Δθ
+end
+
