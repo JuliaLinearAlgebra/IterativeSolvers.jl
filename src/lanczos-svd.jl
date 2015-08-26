@@ -112,7 +112,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     α = Inf
     u = Array(T, m)
     v = Array(T, n)
-    r = Array(T, n)
+    r = Array(T, m)
 
     V = Array(T, n, 0) #List of converged right vectors
     converged_values = Tσ[] #List of converged values
