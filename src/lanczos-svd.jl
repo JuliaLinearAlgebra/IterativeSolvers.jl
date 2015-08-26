@@ -128,6 +128,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     convergence_history[:mvps] = 0
 
     local β, k, oldσ, Δσ
+    fasterror = true
     for k=1:maxiter
         #Reorthogonalize right vectors [Simon2000]
         #Here we use doubly reorthogonalized classical Gram-Schmidt
@@ -168,12 +169,29 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
 
         #Compute error bars on singular values
         d = √(α*β)
-        S = svdfact(Bidiagonal(αs, βs[1:end-1], false))
-        σ = svdvals(S)
-        e1= abs(S[:U][end,:])
-        e2= abs(S[:Vt][:,end])
-        Δσ= Tσ[d*min(e1[i], e2[i]) for i in eachindex(σ)]
-        oldσ = σ
+
+        if fasterror
+            σ = svdvals(Bidiagonal(αs, βs[1:end-1], false))
+            Δσ = k==1 ? [d] : svdvals_error!(Δσ, oldσ, σ, d)
+            fasterror = fasterror && all(isfinite(Δσ)) && all(Δσ.>√eps(Tσ))
+            oldσ = σ
+        end
+
+        if !fasterror
+            S = svdfact(Bidiagonal(αs, βs[1:end-1], false))
+            σ = svdvals(S)
+            e1= abs(S[:U][end,:])
+            e2= abs(S[:Vt][:,end])
+            Δσ= Tσ[d*min(e1[i], e2[i]) for i in eachindex(σ)]
+        end
+
+        #Debug svdvals_error!
+        #println("Iteration $k: $(√eps())")
+        #for i=1:min(k,10)
+        #    println(σ[i], '\t', Δσ[i], '\t', Δσ2[i], '\t')
+        #end
+        #println()
+        #end
 
         push!(convergence_history[:vals], σ)
         push!(convergence_history[:valerrs], Δσ)
@@ -224,8 +242,14 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
 end
 
 """
-Compute the errors in the Rayleigh-Ritz approximation to singular values in the
-Golub-Kalan-Lanczos bidiagonalization method implemented in `svdvals_gkl()`.
+Compute approximate errors in the Rayleigh-Ritz approximation to singular
+values in the Golub-Kalan-Lanczos bidiagonalization method implemented in
+`svdvals_gkl()`.
+
+Warning
+-------
+The approximations here are only good to ~`√eps()`, since differences smaller
+than that cannot be captured reliably in floating point arithmetic.
 
 Inputs
 ------
@@ -315,8 +339,17 @@ function svdvals_error!{T}(
             (issorted(τ) && issorted(θ))
     @assert length(Δθ)==length(τ)==n-1
 
+    #Check Cauchy interlacing property
+    #for i in eachindex(τ)
+    #    if !(θ[i]+length(θ)^2*eps(T) ≥ τ[i] ≥ θ[i+1]-length(θ)^2*eps(T))
+    #        warn("Interlacing violated $i: $(θ[i]) ≥ $(τ[i]) ≥ $(θ[i+1])")
+    #        println(min(abs(τ[i] - θ[i])/eps(T), abs(θ[i+1] - τ[i])/eps(T)))
+    #    end
+    #end
+
     Δθ[1] = β*√abs((τ[1]-θ[1])*(τ[1]+θ[1])/
                ((θ[2]-θ[1])*(θ[2]+θ[1])))
+
     for j=2:n-1
         Δθ[j] = β*√abs(((θ[j]-τ[j-1])/(θ[j]-θ[j-1])) *
                     ((θ[j]+τ[j-1])/(θ[j]+θ[j-1])) *
