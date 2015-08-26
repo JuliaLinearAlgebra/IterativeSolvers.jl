@@ -109,16 +109,18 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     αs = T[]
     βs = T[]
 
-    α = Inf
     r = Array(T, m)
     u = Array(T, m) #Same as r
     v = Array(T, n) #Same as p
 
-    V = Array(T, min(m, n), 0) #List of converged right vectors
+    #V = Array(T, min(m, n), 0) #List of converged right vectors
+    V = Array(T, n, 0) #List of converged right vectors
+    U = Array(T, m, 0) #List of converged right vectors
     converged_values = Tσ[] #List of converged values
     converged_values_errors = T[] #List of estimated errors in converged values
 
-    ω² = ω²₀ = vecnorm(A)^2
+    α = vecnorm(A)
+    ω² = ω²₀ = α^2
 
     convergence_history = Dict()
     convergence_history[:isconverged] = false
@@ -126,18 +128,20 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     convergence_history[:vals] = Vector{Tσ}[]
     convergence_history[:valerrs] = Vector{Tσ}[]
     convergence_history[:mvps] = 0
+    convergence_history[:nreorths] = 0 #Number of reorthogonalizations
 
-    local β, k, oldσ, Δσ
+
+    normB = α #An estimate of the norm of B
+    β = norm(p)
+    #Initialize to Frobenius norm, which is ≥ the 2-norm
+    local k, oldσ, σ, Δσ
     fasterror = true
-    for k=1:maxiter
-        #Reorthogonalize right vectors [Simon2000]
-        #Here we use doubly reorthogonalized classical Gram-Schmidt
-        if m ≥ n
-            p -= V*(V'p)
-            p -= V*(V'p)
-        end
 
-        β = norm(p)
+    #For partial reorthogonalization recurrence
+    μs = ones(Tσ, 1)
+    νs = Array(Tσ, 0)
+    for k=1:maxiter
+        #Iterate on right vectors
 
         v[:] = p/β
         #r = A*v
@@ -145,11 +149,23 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         A_mul_B!(r, A, v)
         k>1 && (axpy!(-β, u, r))
 
-        #Reorthogonalize left vectors [Simon2000]
-        if m < n
-            r -= V*(V'r)
-            r -= V*(V'r)
+
+        #Reorthogonalize left vectors
+        if true #partial
+            L2 = prorecur2!(αs, βs, μs, νs, (m+n)*eps(Tσ), √(eps(Tσ)/k))
+            W = V[:, L2]
+            r -= W*(W'r)
+            r -= W*(W'r)
+            convergence_history[:nreorths] += 2size(W, 2)
         end
+
+        #Complete one-sided reorthogonalization [Simon2000]
+        #if m < n
+        #    r -= V*(V'r)
+        #    r -= V*(V'r)
+        #    convergence_history[:nreorths] += 2size(V, 2)
+        #end
+
 
         α = norm(r)
         u[:] = r/α
@@ -157,10 +173,33 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         Ac_mul_B!(p, A, u)
         axpy!(-α, v, p)
 
+        #Reorthogonalize right vectors
+
+        if true #partial
+        L1 = prorecur1!(αs, βs, μs, νs, (m+n)*eps(Tσ), √(eps(Tσ)/k))
+            W = U[:, L1]
+            p -= W*(W'p)
+            p -= W*(W'p)
+            convergence_history[:nreorths] += 2size(W, 2)
+        end
+
+        #Completely reorthogonalized one-sided [Simon2000]
+        #if m ≥ n
+        #    p -= V*(V'p)
+        #    p -= V*(V'p)
+        #    convergence_history[:nreorths] += 2size(V, 2)
+        #end
+
+
         β = norm(p)
+
+        #Save data
         push!(αs, α)
         push!(βs, β)
         convergence_history[:mvps] += 2
+
+        #Update normB estimate
+        k<=2 || (normB = σ[1]+Δσ[1])
 
         #Update Simon-Zha approximation error
         ω² -= α^2
@@ -188,7 +227,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         #Debug svdvals_error!
         #println("Iteration $k: $(√eps())")
         #for i=1:min(k,10)
-        #    println(σ[i], '\t', Δσ[i], '\t', Δσ2[i], '\t')
+        #    println(σ[i], '\t', Δσ[i])# '\t', Δσ2[i], '\t')
         #end
         #println()
         #end
@@ -205,9 +244,15 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
             end
         end
 
-        #true: do complete reorthogonalization
+        #do complete reorthogonalization
+        #if true
+        #    V = [V m≥n?v:u]
+        #    U = [U u]
+        #end
+        #do partial reorthogonalization
         if true
-            V = [V m≥n?v:u]
+            V = [V v]
+            U = [U u]
         end
 
         #If invariant subspace has been found, stop
@@ -232,6 +277,8 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
             break
         end
     end
+
+    info("Number of reorths: $(convergence_history[:nreorths])")
 
     convergence_history[:iters] = k
     convergence_history[:B] = Bidiagonal(αs, βs[1:end-1], false)
@@ -362,4 +409,79 @@ function svdvals_error!{T}(
     end
     Δθ
 end
+
+"""
+Theorem 6 of Larsen thesis
+
+Pessimistic bound, ϵ₁ = m+n
+"""
+function prorecur(α, β, normB, ϵ₁)
+    j = length(α)
+    μ = eye(j+1)
+    ν = eye(j)
+
+    for i=1:j
+        μ[j+1,i] = (α[i]*ν[j,i] + i<2 ? 0 : β[i]*ν[j,i-1]
+                  - α[j]*μ[j,i])
+        μ[j+1,i] = (μ[i,j] + sign(μ[i,j])*ϵ₁)/β[j+1]
+
+        ν[i,j] = (β[i+1]*μ[j,i+1] + α[i]*μ[j,i]
+                - j<2 ? 0 : β[j]*ν[j-1,i])
+        ν[i,j] = (ν[i,j] + sign(ν[i,j])*ϵ₁)/α[j]
+    end
+end
+
+#Andreas
+function prorecur1!(αs, βs, μs, νs, τ, tolError)
+    reorth_ν = Int[]
+    j = length(αs)-1
+    for i=1:j
+        ν = βs[i]*μs[i+1] + αs[i]*μs[i] - βs[end]*νs[i]
+        ν = (ν + copysign(τ, ν))/αs[end]
+        if abs(ν) > tolError
+            push!(reorth_ν, i)
+        end
+        νs[i] = ν
+    end
+    push!(νs, 1)
+
+    #Add neighbors
+    η = eps(typeof(τ))^0.75
+    for i in reorth_ν
+        if i>1 && !(i-1∈reorth_ν) && νs[i-1] > η
+            push!(reorth_ν, i-1)
+        end
+        if i<j && !(i+1∈reorth_ν) && νs[i+1] > η
+            push!(reorth_ν, i+1)
+        end
+    end
+    reorth_ν
+end
+
+function prorecur2!(αs, βs, μs, νs, τ,  tolError)
+    reorth_μ = Int[]
+    j = length(αs)-1
+    for i=1:j
+        μ = αs[i]*νs[i] + (i > 1 ? βs[i-1]*νs[i-1] : 0) - αs[end]*μs[i]
+        μ = (μ + copysign(τ, μ))/βs[end]
+        if abs(μ) > tolError
+            push!(reorth_μ, i)
+        end
+        μs[i] = μ
+    end
+    push!(μs, 1)
+
+    #Add neighbors
+    η = eps(typeof(τ))^0.75
+    for i in reorth_μ
+        if i>1 && !(i-1∈reorth_μ) && μs[i-1] > η
+            push!(reorth_μ, i-1)
+        end
+        if i<j && !(i+1∈reorth_μ) && μs[i+1] > η
+            push!(reorth_μ, i+1)
+        end
+    end
+    reorth_μ
+end
+
 
