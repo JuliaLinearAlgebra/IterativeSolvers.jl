@@ -110,11 +110,11 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     βs = T[]
 
     α = Inf
-    u = Array(T, m)
-    v = Array(T, n)
     r = Array(T, m)
+    u = Array(T, m) #Same as r
+    v = Array(T, n) #Same as p
 
-    V = Array(T, n, 0) #List of converged right vectors
+    V = Array(T, min(m, n), 0) #List of converged right vectors
     converged_values = Tσ[] #List of converged values
     converged_values_errors = T[] #List of estimated errors in converged values
 

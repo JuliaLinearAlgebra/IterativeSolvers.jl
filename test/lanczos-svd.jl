@@ -30,11 +30,11 @@ for T in (Float32, Float64)
 end
 
 for T in (Float32, Float64)
-    context("Medium rectangular Matrix{$T}") do
+    context("Medium wide rectangular Matrix{$T}") do
         srand(1)
         n = 500
-        m = 300
-        nvals = 6
+        m = 200
+        nvals = 10
 
         A = convert(Matrix{T}, rand(n, m))
         σth = 0.1*√eps(T)
@@ -42,10 +42,30 @@ for T in (Float32, Float64)
         svals, = svdvals_gkl(A, nvals, σth=σth)
         @fact length(svals) --> greater_than_or_equal(nvals)
 
+        nvals = 4
         svals = svals[1:nvals]
         svals2 = svdvals(A)[1:nvals]
         @fact norm(svals - svals2) --> less_than(nvals*σth) "Disagreement in top $nvals singular values:\nsvdvals_gkl\tsvdvals\n"*repr([svals svals2])
     end
+
+    context("Medium tall rectangular Matrix{$T}") do
+        srand(1)
+        n = 200
+        m = 500
+        nvals = 10
+
+        A = convert(Matrix{T}, rand(n, m))
+        σth = 0.1*√eps(T)
+
+        svals, = svdvals_gkl(A, nvals, σth=σth)
+        @fact length(svals) --> greater_than_or_equal(nvals)
+
+        nvals = 4
+        svals = svals[1:nvals]
+        svals2 = svdvals(A)[1:nvals]
+        @fact norm(svals - svals2) --> less_than(nvals*σth) "Disagreement in top $nvals singular values:\nsvdvals_gkl\tsvdvals\n"*repr([svals svals2])
+    end
+e
 end
 
 
