@@ -289,14 +289,16 @@ end
 
 #Thick restart with harmonic Ritz values
 #Baglama2005
-function harmonictruncate!(A, L::PartialFactorization,
-#function truncate!(A, L::PartialFactorization,
+#function harmonictruncate!(A, L::PartialFactorization,
+function truncate!(A, L::PartialFactorization,
         F::Base.LinAlg.SVD, k::Int)
 
     m = size(L.B, 1)
     @assert size(L.P,2)==m==size(L.Q,2)-1
+    info("Before harmonic truncation")
     B = [full(L.B) zeros(m)]
     B[end, end] = L.β
+    @show B
     F = svdfact!(B)
 
     #Take k smallest triplets
@@ -307,7 +309,7 @@ function harmonictruncate!(A, L::PartialFactorization,
     #Compute scaled residual from the harmonic Ritz problem
     r = zeros(m)
     r[end] = 1
-    @assert L.B.isupper
+    isa(L.B, Bidiagonal) && @assert L.B.isupper
     r = - L.β*(L.B\r)
 
     M = zeros(m+1, k+1)
@@ -316,7 +318,9 @@ function harmonictruncate!(A, L::PartialFactorization,
     M[end,end] = 1
     Q, R = qr(M)#[V*Diagonal(Σ) r])
 
-    p = A*L.Q[:,m+1] #XXX orthogonalize!!
+    p = A*L.Q[:,m+1]
+    p -= L.P*(L.P'p)
+    p[:] = p/norm(p)
     P = [L.P p]*Q
     Q = L.Q[:,1:m]*U
     q = A'L.P[:,m-1]-L.β*L.Q[:,m]
@@ -327,7 +331,10 @@ function harmonictruncate!(A, L::PartialFactorization,
     Q = [Q q]
 
     Ar= BrokenArrowBidiagonal([Σ; α], γ, typeof(α)[])
-    B = full(Ar)/R
+    @show full(Ar)
+    @show R
+    B = UpperTriangular(full(Ar)/R)
+    info("After harmonic truncation")
     @show B
     #Compute new residual
     r = A*q - α*p
@@ -345,12 +352,18 @@ function extend!(A, L::PartialFactorization, k::Int)
     local β
     m, n = size(A)
     q = zeros(n)
+    @assert l+1 == size(L.B, 1) == size(L.B, 2)
+
+    if !isa(L.B, Bidiagonal) && !isa(L.B, BrokenArrowBidiagonal) #Cannot be appended
+        L.B = [L.B zeros(l+1, k-l-1); zeros(k-l-1, k)]
+        @assert size(L.B) == (k, k)
+    end
+
     for j=l+1:k
         Ac_mul_B!(q, A, p) #q = A'p
         q -= L.Q*(L.Q'q)   #orthogonalize
         β = norm(q)
         q[:] = q/β
-        push!(L.B.ev, β)
 
         L.Q = [L.Q q]
         j==k && break
@@ -361,7 +374,13 @@ function extend!(A, L::PartialFactorization, k::Int)
 
         α = norm(p)
         p[:] = p/α
-        push!(L.B.dv, α)
+        if isa(L.B, Bidiagonal) || isa(L.B, BrokenArrowBidiagonal)
+            push!(L.B.dv, α)
+            push!(L.B.ev, β)
+        else
+            L.B[j+1, j+1] = α
+            L.B[j  , j+1] = β
+        end
         L.P = [L.P p]
     end
     L.β = β
@@ -382,7 +401,7 @@ let
 
     A = randn(m,n)
     q = randn(n)|>x->x/norm(x)
-    σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5)
+    @time σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5, maxiter=20)
     @assert norm(σ - svdvals(A)[1:k]) < k^2*1e-5
 end
 
