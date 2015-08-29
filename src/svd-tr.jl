@@ -45,8 +45,52 @@ type BidiagonalFactorization{T, Tr} <: Factorization{T}
 end
 
 
-function thickrestartbidiag(A, q::AbstractVector, k::Int, l::Int;
-    maxiter::Int=10, tol::Real=√eps())
+
+"""
+The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
+
+# Inputs
+
+- `A` : The matrix or matrixlike object whose singular values are desired
+- `q` : The starting guess vector in the range of `A`.
+        The length of `q` should be the number of columns in `A`.
+- `l` : The number of singular values requested.
+        Default: 6
+- `k` : The maximum number of Lanczos vectors to compute before restarting.
+        Default: `2*l`
+
+# Keyword inputs
+
+- `maxiter`: Maximum number of iterations to run
+             Default: `minimum(size(A))`
+- `tol`    : Maximum error in each desired singular value.
+             Default: `√eps()`
+
+# Output
+
+# Implementation notes
+
+This implementation follows closely that of SLEPc as described in
+[Hernandez2008].
+
+# References
+
+@article{Hernandez2008,
+    author = {Hern\'{a}ndez, Vicente and Rom\'{a}n, Jos\'{e} E and Tom\'{a}s,
+    Andr\'{e}s},
+    journal = {Electronic Transactions on Numerical Analysis},
+    pages = {68--85},
+    title = {A Robust and Efficient Parallel {SVD} Solver based on Restarted
+        {L}anczos Bidiagonalization},
+    url = {http://etna.mcs.kent.edu/volumes/2001-2010/vol31/abstract.php?vol=31\&pages=68-85},
+    volume = 31,
+    year = 2008
+}
+
+"""
+
+function thickrestartbidiag(A, q::AbstractVector, l::Int=6, k::Int=2l;
+    maxiter::Int=minimum(size(A)), tol::Real=√eps())
 
     @assert k>l
     L = build(A, q, k)
@@ -58,23 +102,108 @@ function thickrestartbidiag(A, q::AbstractVector, k::Int, l::Int;
         F = svdfact(L.B)
         L = truncate!(A, L, F, l)
         extend!(A, L, k)
-        isconverged(L, F, tol) && break
+        isconverged(L, F, l, tol) && break
     end
     F[:S][1:l], L
 end
 
+"""
+
+# References
+
+The simple error bound dates back at least to Wilkinson's classic book
+[Wilkinson1965:Ch.3 §53 p.170]
+
+@book{Wilkinson1965,
+    address = {Oxford, UK},
+    author = {J H Wilkinson},
+    publisher = {Oxford},
+    title = {The Algebraic Eigenvalue Problem},
+    year = 1965
+}
+
+The Rayleigh-Ritz bounds were presented in [Wilkinson1965:Ch.3 §54-55 p.173,
+    Yamamoto1980, Ortega1990]
+
+@book{Ortega1990,
+    address = {Philadelphia, PA},
+    author = {Ortega, James M},
+    doi = {10.1137/1.9781611971323},
+    edition = {2},
+    publisher = {SIAM},
+    series = {Classics in Applied Mathematics},
+    title = {Numerical Analysis: A Second Course},
+    url = {http://epubs.siam.org/doi/book/10.1137/1.9781611971323},
+    year = 1990
+}
+
+@article{Yamamoto1980,
+    author = {Yamamoto, Tetsuro},
+    doi = {10.1007/BF01396059},
+    journal = {Numerische Mathematik},
+    number = 2,
+    pages = {189--199},
+    title = {Error bounds for computed eigenvalues and eigenvectors},
+    volume = {34},
+    year = 1980
+}
+
+"""
 function isconverged(L::BidiagonalFactorization,
-        F::Base.LinAlg.SVD, tol::Real)
+        F::Base.LinAlg.SVD, k::Int, tol::Real)
 
-    σ = F[:S]
-    Δσ= L.β*abs(F[:U][end, :])
+    @assert tol ≥ 0
 
-    for i in eachindex(σ)
-        if Δσ[i]<√tol
-            println(σ[i], " ± ", Δσ[i], " ")
+    σ = F[:S][1:k]
+    Δσ= L.β*abs(F[:U][end, 1:k])
+
+    #Best available eigenvalue bounds
+    δσ = copy(Δσ)
+
+    #Update better error bounds from Rayleigh-Ritz
+    #Reference: Ortega, 1972
+    #In theory these only apply if we know all the values
+    #But so long as the gap between the converged Ritz values and all the
+    #others is larger than d then we're fine.
+    #Can also get some eigenvector statistics!!
+    let
+        d = Inf
+        for i in eachindex(σ), j=1:i-1
+            d = min(d, abs(σ[i] - σ[j]))
+        end
+        println("Smallest empirical spectral gap: ", d)
+        #Chatelein 1993 - normwise backward error associated with approximate invariant subspace
+        #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
+        println("Normwise backward error associated with subspace: ", L.β/σ[1])
+        for i in eachindex(Δσ)
+            α = Δσ[i]
+
+            #Simple error bound
+            println("Ritz value ", i, ": ", σ[i])
+            println("Simple error bound on eigenvalue: ", Δσ[i])
+
+            if 2α ≤ d
+                #Rayleigh-Ritz bounds
+                x = α/(d-α)*√(1+(α/(d-α))^2)
+                println("Rayleigh-Ritz error bound on eigenvector: $x")
+                δσ[i] = min(δσ[i], x)
+
+                y = α^2/d #[Wilkinson:Ch.3 Appendix (4), p.188]
+                println("Rayleigh-Ritz error bound on eigenvalue: $y")
+                δσ[i] = min(δσ[i], y)
+            end
+
+            #Estimate of the normwise backward error [Deif 1989]
+            #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
+            println("Normwise backward error estimate: ", α/σ[1])
+
+            #Geurts, 1982 - componentwise backward error also known
+
+
         end
     end
-    all(Δσ .< tol)
+
+    all(δσ[1:k] .< tol)
 end
 
 function build{T}(A, q::AbstractVector{T}, k::Int)
@@ -120,12 +249,10 @@ function truncate!(A, L::BidiagonalFactorization,
     @assert size(L.P) == (m, k)
     @assert size(L.Q) == (n, k+1)
 
-    @assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
     L.Q = [sub(L.Q, :,1:k)*sub(F[:V], :,1:l) sub(L.Q, :, k+1)]
-
     #Be pedantic about ensuring normalization
     #L.Q = qr(L.Q)[1]
-    @assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
+    #@assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
 
     f = A*sub(L.Q, :, l+1)
     ρ = L.β * reshape(F[:U][end, 1:l], l)
@@ -182,29 +309,27 @@ let
 end
 
 let
+    srand(1)
     m = 300
     n = 200
-    k = 10
-    l = 5
+    k = 5
+    l = 10
 
     A = randn(m,n)
     q = randn(n)|>x->x/norm(x)
-    σ, L = thickrestartbidiag(A, q, k, l)
-
-    @assert norm(σ - svdvals(A)[1:l]) < 0.001
+    σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5)
+    @assert norm(σ - svdvals(A)[1:k]) < k^2*1e-5
 end
 
-using Base.Profile
 let
     srand(1)
     m = 30000
     n = 20000
-    k = 200
-    l = 100
+    k = 5
+    l = 10
 
     A = sprandn(m,n,0.1)
     q = randn(n)|>x->x/norm(x)
-    Profile.clear()
-    @time @profile L = thickrestartbidiag(A, q, k, l; tol=1e-4)
-    Profile.print()
+    @time thickrestartbidiag(A, q, k, l, tol=1e-5)
 end
+
