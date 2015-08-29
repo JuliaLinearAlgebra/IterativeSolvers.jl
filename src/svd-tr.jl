@@ -45,35 +45,36 @@ type BidiagonalFactorization{T, Tr} <: Factorization{T}
 end
 
 
-function thickrestartbidiag(A, q::AbstractVector, k::Int, l::Int, maxiter::Int=10)
+function thickrestartbidiag(A, q::AbstractVector, k::Int, l::Int;
+    maxiter::Int=10, tol::Real=√eps())
+
     @assert k>l
     L = build(A, q, k)
+
+    local F
     for i=1:maxiter
         info("Iteration $i")
-        @show size(L.B), k
-        @assert size(L.B) == (k, k)
+        #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
-        @assert all([norm(F[:V][:,i]) ≈ 1 for i in 1:size(F[:V], 2)])
-        @assert all([norm(F[:U][:,i]) ≈ 1 for i in 1:size(F[:U], 2)])
         L = truncate!(A, L, F, l)
         extend!(A, L, k)
-        isconverged(L, F) && break
+        isconverged(L, F, tol) && break
     end
-    L
+    F[:S][1:l], L
 end
 
 function isconverged(L::BidiagonalFactorization,
-        F::Base.LinAlg.SVD)
+        F::Base.LinAlg.SVD, tol::Real)
 
     σ = F[:S]
     Δσ= L.β*abs(F[:U][end, :])
 
     for i in eachindex(σ)
-        if Δσ[i]<√1e-7
+        if Δσ[i]<√tol
             println(σ[i], " ± ", Δσ[i], " ")
         end
     end
-    all(Δσ .< 1e-7)
+    all(Δσ .< tol)
 end
 
 function build{T}(A, q::AbstractVector{T}, k::Int)
@@ -86,11 +87,13 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
     βs= Array(Tr, k-1)
     Q[:, 1] = q
     local β
+    p = Array(T, m)
     for j=1:k
-        p = A*q
+        #p = A*q
+        A_mul_B!(p, A, q)
         if j>1
             βs[j-1] = β
-            p -= β*P[:,j-1]
+            Base.LinAlg.axpy!(-β, sub(P, :, j-1), p) #p -= β*P[:,j-1]
         end
         α = norm(p)
         p[:] = p/α
@@ -98,11 +101,9 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
         αs[j] = α
         P[:, j] = p
 
-        q = A'p
-        for i=1:j
-            γ = Q[:,i]⋅q
-            q-= γ*Q[:,i]
-        end
+        Ac_mul_B!(q, A, p) #q = A'p
+        Base.LinAlg.axpy!(-1.0, sub(Q, :, 1:j)*(sub(Q, :, 1:j)'q), q) #orthogonalize
+
         β = norm(q)
         q[:] = q/β
         Q[:,j+1] = q
@@ -116,27 +117,22 @@ function truncate!(A, L::BidiagonalFactorization,
 
     k = size(F[:V], 1)
     m, n = size(A)
-    @show size(L.P), (m, k)
     @assert size(L.P) == (m, k)
     @assert size(L.Q) == (n, k+1)
 
     @assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
-    L.Q = [L.Q[:,1:k]*F[:V][:,1:l] L.Q[:, end]]
+    L.Q = [sub(L.Q, :,1:k)*sub(F[:V], :,1:l) sub(L.Q, :, k+1)]
 
     #Be pedantic about ensuring normalization
     #L.Q = qr(L.Q)[1]
     @assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
 
-    f = A*L.Q[:, end]
+    f = A*sub(L.Q, :, l+1)
     ρ = L.β * reshape(F[:U][end, 1:l], l)
-    L.P = L.P[:, 1:k]*F[:U][:,1:l]
-    for i=1:l
-        #if !(ρ[i] ≈ f⋅L.P[:, i])
-        #    @show ρ[i], f⋅L.P[:, i]
-        #end
-        #ρ[i] = f⋅L.P[:, i]
-        f -= ρ[i]*L.P[:, i]
-    end
+    L.P = sub(L.P, :, 1:k)*sub(F[:U], :, 1:l)
+
+    #@assert ρ[i] ≈ f⋅L.P[:, i]
+    f -= L.P*ρ
     α = norm(f)
     f[:] = f/α
     L.P = [L.P f]
@@ -144,7 +140,6 @@ function truncate!(A, L::BidiagonalFactorization,
     g = A'f - α*L.Q[:, end]
     β = norm(g)
     g[:] = g/β
-    #L.Q = [L.Q g]
     L.β = β
     L.B = BrokenArrowBidiagonal([F[:S][1:l]; α], ρ, typeof(β)[])
 
@@ -154,28 +149,24 @@ end
 function extend!(A, L::BidiagonalFactorization, k::Int)
     l = size(L.P, 2)-1
     p = L.P[:, end]
-    #for i=1:l
-    #    @show i, norm(p)
-    #    @assert norm(L.P[:,i]) ≈ 1
-    #    ρ = p⋅L.P[:, i]
-    #    p -= ρ*L.P[:, i]
-    #end
 
     local β
+    m, n = size(A)
+    q = zeros(n)
     for j=l+1:k
-        q = A'p
-        for i=1:j
-            @assert norm(L.Q[:,i]) ≈ 1
-            γ = L.Q[:,i]⋅q
-            q -= γ*L.Q[:,i]
-        end
+        Ac_mul_B!(q, A, p) #q = A'p
+        q -= L.Q*(L.Q'q)   #orthogonalize
         β = norm(q)
         q[:] = q/β
         push!(L.B.ev, β)
 
         L.Q = [L.Q q]
         j==k && break
-        p = A*q - β*p
+
+        #p = A*q - β*p
+        A_mul_B!(p, A, q)
+        Base.LinAlg.axpy!(-β, sub(L.P, :, j), p)
+
         α = norm(p)
         p[:] = p/α
         push!(L.B.dv, α)
@@ -190,16 +181,30 @@ let
     @assert full(B) == [1 0 1; 0 2 2; 0 0 3]
 end
 
-#A simple test
 let
-    m = 3000
-    n = 2000
-    k = 20
-    l = 10
+    m = 300
+    n = 200
+    k = 10
+    l = 5
 
     A = randn(m,n)
     q = randn(n)|>x->x/norm(x)
-    @time L = thickrestartbidiag(A, q, k, l)
+    σ, L = thickrestartbidiag(A, q, k, l)
 
-    @show svdvals(A)[1:l]
+    @assert norm(σ - svdvals(A)[1:l]) < 0.001
+end
+
+using Base.Profile
+let
+    srand(1)
+    m = 30000
+    n = 20000
+    k = 200
+    l = 100
+
+    A = sprandn(m,n,0.1)
+    q = randn(n)|>x->x/norm(x)
+    Profile.clear()
+    @time @profile L = thickrestartbidiag(A, q, k, l; tol=1e-4)
+    Profile.print()
 end
