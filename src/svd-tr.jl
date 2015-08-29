@@ -37,10 +37,10 @@ end
 
 Base.svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B))
 
-type BidiagonalFactorization{T, Tr} <: Factorization{T}
+type PartialFactorization{T, Tr} <: Factorization{T}
     P :: T
     Q :: T
-    B :: Union(Bidiagonal{Tr}, BrokenArrowBidiagonal{Tr})
+    B :: AbstractMatrix{Tr}
     β :: Tr
 end
 
@@ -88,7 +88,6 @@ This implementation follows closely that of SLEPc as described in
 }
 
 """
-
 function thickrestartbidiag(A, q::AbstractVector, l::Int=6, k::Int=2l;
     maxiter::Int=minimum(size(A)), tol::Real=√eps())
 
@@ -149,7 +148,7 @@ The Rayleigh-Ritz bounds were presented in [Wilkinson1965:Ch.3 §54-55 p.173,
 }
 
 """
-function isconverged(L::BidiagonalFactorization,
+function isconverged(L::PartialFactorization,
         F::Base.LinAlg.SVD, k::Int, tol::Real)
 
     @assert tol ≥ 0
@@ -198,7 +197,8 @@ function isconverged(L::BidiagonalFactorization,
             println("Normwise backward error estimate: ", α/σ[1])
 
             #Geurts, 1982 - componentwise backward error also known
-
+#A. J. Geurts, (1982), A contribution to the theory of condition, Numer. Math.,
+#39, 85{96.
 
         end
     end
@@ -206,6 +206,7 @@ function isconverged(L::BidiagonalFactorization,
     all(δσ[1:k] .< tol)
 end
 
+#Hernandez2008
 function build{T}(A, q::AbstractVector{T}, k::Int)
     m, n = size(A)
     Tr = typeof(real(one(T)))
@@ -237,11 +238,12 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
         q[:] = q/β
         Q[:,j+1] = q
     end
-    BidiagonalFactorization(P, Q, Bidiagonal(αs, βs, true), β)
+    PartialFactorization(P, Q, Bidiagonal(αs, βs, true), β)
 end
 
+#Hernandez2008
 #By default, truncate to l largest singular triplets
-function truncate!(A, L::BidiagonalFactorization,
+function truncate!(A, L::PartialFactorization,
         F::Base.LinAlg.SVD, l::Int)
 
     k = size(F[:V], 1)
@@ -273,7 +275,57 @@ function truncate!(A, L::BidiagonalFactorization,
     L
 end
 
-function extend!(A, L::BidiagonalFactorization, k::Int)
+#Baglama2005
+#function harmonictruncate!(A, L::PartialFactorization,
+function truncate!(A, L::PartialFactorization,
+        F::Base.LinAlg.SVD, k::Int)
+
+    m = size(L.B, 1)
+    @assert size(L.P,2)==m==size(L.Q,2)-1
+    B = [full(L.B) zeros(m)]
+    B[end, end] = L.β
+    F = svdfact!(B)
+
+    #Take k smallest triplets
+    U = F[:U][:,end:-1:end-k+1]
+    Σ = F[:S][end:-1:end-k+1]
+    V = F[:V][:,end:-1:end-k+1]
+
+    #Compute scaled residual from the harmonic Ritz problem
+    r = zeros(m)
+    r[end] = 1
+    @assert L.B.isupper
+    r = - L.β*(L.B\r)
+
+    M = zeros(m+1, k+1)
+    M[1:m,1:k] = L.B\(U*Diagonal(Σ))
+    M[1:m,end] = r
+    M[end,end] = 1
+    Q, R = qr(M)#[V*Diagonal(Σ) r])
+
+    p = A*L.Q[:,m+1] #XXX orthogonalize!!
+    P = [L.P p]*Q
+    Q = L.Q[:,1:m]*U
+    q = A'L.P[:,m-1]-L.β*L.Q[:,m]
+    γ = Q'q
+    q -= Q*γ
+    α = norm(q)
+    q[:] = q/α
+    Q = [Q q]
+
+    Ar= BrokenArrowBidiagonal([Σ; α], γ, typeof(α)[])
+    B = full(Ar)/R
+    @show B
+    #Compute new residual
+    r = A*q - α*p
+    β = norm(r)
+    r[:] = r/β
+
+    PartialFactorization(P, Q, B, β)
+end
+
+#Hernandez2008
+function extend!(A, L::PartialFactorization, k::Int)
     l = size(L.P, 2)-1
     p = L.P[:, end]
 
