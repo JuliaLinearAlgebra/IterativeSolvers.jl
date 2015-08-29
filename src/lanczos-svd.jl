@@ -1,10 +1,5 @@
 export svdvals_gkl
 
-#JuliaLang/julia#12747
-if VERSION <= v"0.4.0-dev+6890"
-    Base.svdvals{T, Tr}(S::Base.LinAlg.SVD{T, Tr}) = (S[:S])::Vector{Tr}
-end
-
 """
 Compute the largest singular values of a matrix A using the Golub-Kahan-Lanczos
 bidiagonalization method `\cite{Golub1965}` implemented in `svdvals_gkl()`.
@@ -97,7 +92,9 @@ References
 function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     maxiter::Int=minimum(size(A)),
     βth::Real = 0.1*√eps(eltype(A)),
-    σth::Real = 0.1*√eps(eltype(A))
+    σth::Real = 0.1*√eps(eltype(A)),
+    krestart::Int = 20,
+    ktrunc::Int = nvals
     )
 
     m, n = size(A)
@@ -115,8 +112,6 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     v = Array(T, n) #Same as p
 
     V = Array(T, min(m, n), 0) #List of converged right vectors
-    converged_values = Tσ[] #List of converged values
-    converged_values_errors = T[] #List of estimated errors in converged values
 
     ω² = ω²₀ = vecnorm(A)^2
 
@@ -126,15 +121,18 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     convergence_history[:vals] = Vector{Tσ}[]
     convergence_history[:valerrs] = Vector{Tσ}[]
     convergence_history[:mvps] = 0
+    convergence_history[:reorth] = 0
 
-    local β, k, oldσ, Δσ
+    converged_vectors = Int[]
+    local β, k, oldσ, S, Δσ, converged_values, converged_values_errors
     fasterror = true
     for k=1:maxiter
         #Reorthogonalize right vectors [Simon2000]
         #Here we use doubly reorthogonalized classical Gram-Schmidt
-        if m ≥ n
+        if m ≥ n && k>1
             p -= V*(V'p)
             p -= V*(V'p)
+            convergence_history[:reorth] += 2size(V,2)
         end
 
         β = norm(p)
@@ -149,6 +147,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         if m < n
             r -= V*(V'r)
             r -= V*(V'r)
+            convergence_history[:reorth] += 2size(V,2)
         end
 
         α = norm(r)
@@ -170,20 +169,22 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         #Compute error bars on singular values
         d = √(α*β)
 
-        if fasterror
-            σ = svdvals(Bidiagonal(αs, βs[1:end-1], false))
-            Δσ = k==1 ? [d] : svdvals_error!(Δσ, oldσ, σ, d)
-            fasterror = fasterror && all(isfinite(Δσ)) && all(Δσ.>√eps(Tσ))
-            oldσ = σ
-        end
+        #if fasterror
+        #    σ = svdvals(Bidiagonal(αs, βs[1:end-1], false))
+        #    Δσ = k==1 ? [d] : svdvals_error!(Δσ, oldσ, σ, d)
+        #    fasterror = fasterror && all(isfinite(Δσ)) && all(Δσ.>√eps(Tσ))
+        #    oldσ = σ
+        #end
 
-        if !fasterror
+
+        if
+        #if !fasterror
             S = svdfact(Bidiagonal(αs, βs[1:end-1], false))
             σ = svdvals(S)
             e1= abs(S[:U][end,:])
             e2= abs(S[:Vt][:,end])
             Δσ= Tσ[d*min(e1[i], e2[i]) for i in eachindex(σ)]
-        end
+        #end
 
         #Debug svdvals_error!
         #println("Iteration $k: $(√eps())")
@@ -197,11 +198,14 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         push!(convergence_history[:valerrs], Δσ)
 
         #Check number of converged values
-        converged_values = Tσ[]
+        converged_values = Array(Tσ, 0)
+        converged_values_errors = Array(Tσ, 0)
+        converged_vectors = Array(Int, 0)
         for i in eachindex(σ)
             if Δσ[i] ≤ σth
                 push!(converged_values, σ[i])
                 push!(converged_values_errors, Δσ[i])
+                push!(converged_vectors, i)
             end
         end
 
@@ -236,7 +240,7 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     convergence_history[:iters] = k
     convergence_history[:B] = Bidiagonal(αs, βs[1:end-1], false)
     convergence_history[:β] = βs
-
+    info("Number of reorths: $(convergence_history[:reorth])")
     @assert issorted(converged_values, rev=true)
     converged_values, convergence_history
 end
