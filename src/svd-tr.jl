@@ -58,13 +58,18 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
         Default: 6
 - `k` : The maximum number of Lanczos vectors to compute before restarting.
         Default: `2*l`
+- `j` : The number of vectors to keep at the end of the restart.
+        Default: `l`. [Lehoucq2001] advocates `l+3` but we see a slowdown with this.
+        We don't recommend j < l.
 
 # Keyword inputs
 
 - `maxiter`: Maximum number of iterations to run
              Default: `minimum(size(A))`
-- `tol`    : Maximum error in each desired singular value.
+- `tol`    : Maximum absolute error in each desired singular value.
              Default: `√eps()`
+- `reltol` : Maximum error in each desired singular value relative to the
+             estimated norm of the input matrix.  Default: `√eps()`
 
 # Output
 
@@ -88,8 +93,9 @@ This implementation follows closely that of SLEPc as described in
 }
 
 """
-function thickrestartbidiag(A, q::AbstractVector, l::Int=6, k::Int=2l;
-    maxiter::Int=minimum(size(A)), tol::Real=√eps())
+function thickrestartbidiag(A, q::AbstractVector, l::Int=6, k::Int=2l,
+    j::Int=l;
+    maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps())
 
     @assert k>l
     L = build(A, q, k)
@@ -99,9 +105,9 @@ function thickrestartbidiag(A, q::AbstractVector, l::Int=6, k::Int=2l;
         info("Iteration $i")
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
-        L = truncate!(A, L, F, l)
+        L = truncate!(A, L, F, j)
         extend!(A, L, k)
-        isconverged(L, F, l, tol) && break
+        isconverged(L, F, l, tol, reltol) && break
     end
     F[:S][1:l], L
 end
@@ -149,7 +155,7 @@ The Rayleigh-Ritz bounds were presented in [Wilkinson1965:Ch.3 §54-55 p.173,
 
 """
 function isconverged(L::PartialFactorization,
-        F::Base.LinAlg.SVD, k::Int, tol::Real)
+        F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real)
 
     @assert tol ≥ 0
 
@@ -181,16 +187,17 @@ function isconverged(L::PartialFactorization,
             println("Ritz value ", i, ": ", σ[i])
             println("Simple error bound on eigenvalue: ", Δσ[i])
 
-            if 2α ≤ d
+            #if 2α ≤ d
                 #Rayleigh-Ritz bounds
                 x = α/(d-α)*√(1+(α/(d-α))^2)
+                x=abs(x)
                 println("Rayleigh-Ritz error bound on eigenvector: $x")
-                δσ[i] = min(δσ[i], x)
+                2α ≤ d && (δσ[i] = min(δσ[i], x))
 
                 y = α^2/d #[Wilkinson:Ch.3 Appendix (4), p.188]
                 println("Rayleigh-Ritz error bound on eigenvalue: $y")
-                δσ[i] = min(δσ[i], y)
-            end
+                2α ≤ d && (δσ[i] = min(δσ[i], y))
+            #end
 
             #Estimate of the normwise backward error [Deif 1989]
             #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
@@ -203,7 +210,12 @@ function isconverged(L::PartialFactorization,
         end
     end
 
-    all(δσ[1:k] .< tol)
+    #Estimate condition number and see if two-sided reorthog is needed
+    if (F[:S][1]/F[:S][end]) > 1/√eps()
+        warn("Two-sided reorthogonalization should be used but is not implemented")
+    end
+
+    all(δσ[1:k] .< max(tol, reltol*σ[1]))
 end
 
 #Hernandez2008
@@ -275,9 +287,10 @@ function truncate!(A, L::PartialFactorization,
     L
 end
 
+#Thick restart with harmonic Ritz values
 #Baglama2005
-#function harmonictruncate!(A, L::PartialFactorization,
-function truncate!(A, L::PartialFactorization,
+function harmonictruncate!(A, L::PartialFactorization,
+#function truncate!(A, L::PartialFactorization,
         F::Base.LinAlg.SVD, k::Int)
 
     m = size(L.B, 1)
@@ -375,13 +388,12 @@ end
 
 let
     srand(1)
-    m = 30000
-    n = 20000
-    k = 5
-    l = 10
+    m = 3000#0
+    n = 2000#0
+    k = 50
 
     A = sprandn(m,n,0.1)
     q = randn(n)|>x->x/norm(x)
-    @time thickrestartbidiag(A, q, k, l, tol=1e-5)
+    @time thickrestartbidiag(A, q, k, tol=1e-5)
 end
 
