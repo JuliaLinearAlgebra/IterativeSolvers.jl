@@ -66,6 +66,7 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
 - `A` : The matrix or matrixlike object whose singular values are desired
 - `q` : The starting guess vector in the range of `A`.
         The length of `q` should be the number of columns in `A`.
+        Default: A random unit vector.
 - `l` : The number of singular values requested.
         Default: 6
 - `k` : The maximum number of Lanczos vectors to compute before restarting.
@@ -82,9 +83,8 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
 - `reltol` : Maximum error in each desired singular value relative to the
              estimated norm of the input matrix.  Default: `√eps()`
 - `restart`: Which restarting algorithm to use. Valid choices are:
-             - `:thick`: Thick restart [Wu2000] (default)
+             - `:ritz`: Thick restart with Ritz values [Wu2000] (default)
              - `:harmonic`: Restart with harmonic Ritz values [Baglama2005]
-
 
 # Output
 
@@ -136,7 +136,7 @@ described in [Hernandez2008].
 function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
     j::Int=l;
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    method::Symbol=:tr)
+    method::Symbol=:ritz)
 
     @assert k>l
     L = build(A, q, k)
@@ -146,7 +146,7 @@ function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
         i==1 && @assert eltype(F)==eltype(q)
-        if method == :thick
+        if method == :ritz
             thickrestart!(A, L, F, j)
         elseif method == :harmonic
             harmonicrestart!(A, L, F, j)
@@ -268,6 +268,7 @@ end
 
 #Hernandez2008
 function build{T}(A, q::AbstractVector{T}, k::Int)
+    @assert eltype(A) == T
     m, n = size(A)
     Tr = typeof(real(one(T)))
 
