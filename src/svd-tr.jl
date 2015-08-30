@@ -106,7 +106,7 @@ function thickrestartbidiag(A, q::AbstractVector, l::Int=6, k::Int=2l,
         info("Iteration $i")
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
-        L = truncate!(A, L, F, j)
+        L = harmtruncate!(A, L, F, j)
         extend!(A, L, k)
         isconverged(L, F, l, tol, reltol) && break
     end
@@ -240,7 +240,7 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
             Base.LinAlg.axpy!(-β, sub(P, :, j-1), p) #p -= β*P[:,j-1]
         end
         α = norm(p)
-        p[:] = p/α
+        scale!(p, inv(α))
 
         αs[j] = α
         P[:, j] = p
@@ -249,7 +249,7 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
         Base.LinAlg.axpy!(-1.0, sub(Q, :, 1:j)*(sub(Q, :, 1:j)'q), q) #orthogonalize
 
         β = norm(q)
-        q[:] = q/β
+        scale!(q, inv(β))
         Q[:,j+1] = q
     end
     PartialFactorization(P, Q, Bidiagonal(αs, βs, true), β)
@@ -277,7 +277,7 @@ function truncate!(A, L::PartialFactorization,
     #@assert ρ[i] ≈ f⋅L.P[:, i]
     f -= L.P*ρ
     α = norm(f)
-    f[:] = f/α
+    scale!(f, inv(α))
     L.P = [L.P f]
 
     g = A'f - α*L.Q[:, end]
@@ -313,12 +313,16 @@ function harmtruncate!{T,Tr}(A, L::PartialFactorization{T,Tr},
     r0[end] = 1
     isa(L.B, Bidiagonal) && @assert L.B.isupper
     r = try
-        L.β*(L.B\r0)
+        #(L.B\r0)
+        A_ldiv_B!(L.B, r0)
     catch exc
-        if isa(exc, LinAlg.LAPACKException) #B\r is singular
-            L.β*pinv(L.B)::Matrix{Tr}*r0
+        if isa(exc, LinAlg.LAPACKException) ||
+                isa(exc, LinAlg.SingularException) #B\r is singular
+
+            pinv(full(L.B))*r0
         else rethrow(exc) end
     end::Vector{Tr}
+    scale!(r, L.β)
     M::Matrix{T} = sub(M,1:m, :) + r*sub(M,m+1,:)
 
     M2 = zeros(m+1, k+1)
@@ -335,7 +339,7 @@ function harmtruncate!{T,Tr}(A, L::PartialFactorization{T,Tr},
     f = A*sub(Q,:,k+1)
     f -= P*(P'f)
     α = norm(f)
-    f[:] = f/α
+    scale!(f, inv(α))
     P = [P f]
     B = UpperTriangular{Tr,Matrix{Tr}}([(Diagonal(Σ)*triu(R')); zeros(Tr,1,k) α])
     #@assert size(P, 2) == size(B, 1) == size(Q, 2)
@@ -344,24 +348,29 @@ function harmtruncate!{T,Tr}(A, L::PartialFactorization{T,Tr},
     #g-= (g⋅q)*q
     axpy!(-(g⋅q), q, g)
     β = norm(g)
-    g[:] = g/β
+    scale!(g, inv(β))
     #@assert size(P, 2) == size(Q, 2) == size(B, 2)
-    PartialFactorization(P, Q, B, β)
+    L.P = P
+    L.Q = Q
+    L.B = B
+    L.β = β
+
+    L
 end
 
 #Hernandez2008
 function extend!(A, L::PartialFactorization, k::Int)
     l = size(L.B, 2)::Int-1
-    p = L.P[:, end]
+    p = L.P[:,l+1]
 
     m, n = size(A)
     q = zeros(n)
-    #@assert l+1 == size(L.B, 1) == size(L.B, 2)
+    #@assert l+1 == size(L.B, 1) == size(L.B, 2) == size(L.P, 2)
 
-    if !isa(L.B, Bidiagonal) && !isa(L.B, BrokenArrowBidiagonal) #Cannot be appended
+    if isa(L.B, UpperTriangular) #Cannot be appended
         B = zeros(k,k)
         B[1:size(L.B,1), 1:size(L.B,2)] = L.B
-        L.B = B
+        L.B = UpperTriangular(B)
         #@assert size(L.B) == (k, k)
     end
 
@@ -370,7 +379,7 @@ function extend!(A, L::PartialFactorization, k::Int)
         Ac_mul_B!(q, A, p) #q = A'p
         q -= L.Q*(L.Q'q)   #orthogonalize
         β = norm(q)
-        q[:] = q/β
+        scale!(q, inv(β))
 
         L.Q = [L.Q q]
         j==k && break
@@ -380,7 +389,7 @@ function extend!(A, L::PartialFactorization, k::Int)
         Base.LinAlg.axpy!(-β, sub(L.P, :, j), p)
 
         α = norm(p)
-        p[:] = p/α
+        scale!(p, inv(α))
         if isa(L.B, Bidiagonal) || isa(L.B, BrokenArrowBidiagonal)
             push!(L.B.dv, α)
             push!(L.B.ev, β)
