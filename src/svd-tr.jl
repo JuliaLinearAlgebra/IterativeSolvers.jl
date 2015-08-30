@@ -302,12 +302,11 @@ function truncate!(A, L::PartialFactorization,
     B = [diagm(F0[:S]) ρ']
     F = svdfact!(B, thin=false)
 
-    #Take k smallest triplets
-    U = F[:U]#[:,end:-1:end-k+1]
+    #Take k largest triplets
+    U = F[:U][:,1:k]
     Σ = F[:S][1:k]
-    V = F[:V]#[:,end:-1:end-k+1]
 
-    U = F0[:U]*F[:U]
+    U = F0[:U]*U
     M = eye(m+1)
     M[1:m, 1:m] = F0[:V]
     M = M * F[:V]
@@ -330,33 +329,24 @@ function truncate!(A, L::PartialFactorization,
     M2[1:m, k+1] = -r
     M2[m+1, k+1] = 1
     Q, R = qr(M2)
-    #Ensure positivity of diagonal
-    #for i=1:size(R,1)
-    #    if R[i,i] < 0
-    #        for j=i:size(R,1)
-    #            R[i,j] = -R[i,j]
-    #        end
-    #    end
-    #end
 
-    Q = L.Q*Q#[:,1:k]
-    P = L.P*U#[:,1:k]
+    Q = L.Q*Q
+    P = L.P*U[:,1:k]
 
     R = (R[1:k+1,1:k] + R[:,k+1]*Mend)
     B = (Diagonal(Σ)*triu(R'))
 
     f = A*Q[:,end]
-    f -= P[:,1:k]*(P[:,1:k]'f)
+    f -= P*(P'f)
     α = norm(f)
     f[:] = f/α
-    P = [P[:,1:k] f]
+    P = [P f]
     B = UpperTriangular([B; zeros(1,k) α])
     #@assert size(P, 2) == size(B, 1) == size(Q, 2)
     g = A'f
     g-= (g⋅Q[:,end])*Q[:, end]
     β = norm(g)
     g[:] = g/β
-    Q = Q[:,end-k:end]
     @assert size(P, 2) == size(Q, 2) == size(B, 2)
     PartialFactorization(P, Q, B, β)
 end
