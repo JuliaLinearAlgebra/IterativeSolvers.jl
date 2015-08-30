@@ -29,7 +29,6 @@ Keyword arguments
              deemed to be found.
              Default: `0.1*√eps(eltype(A))`
 
-
 - `σth`    : The threshold value below which a Ritz value estimate of the
              singular value is considered to be converged.
              Default: `0.1*√eps(eltype(A))`
@@ -42,6 +41,7 @@ Outputs
 - `convergence_history`: A `Dict{Symbol,Any}` containing the following keys:
     - `:isconverged` : Did the calculation converge?
     - `:iters`       : Number of iterations run
+    - `:reorth`      : Number of reorthogonalizations
     - `:mvps`        : Number of matrix-vector products computed
     - `:B`           : The `Bidiagonal` matrix computed during the
                        bidiagonalization process
@@ -176,8 +176,6 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
         #    oldσ = σ
         #end
 
-
-        if
         #if !fasterror
             S = svdfact(Bidiagonal(αs, βs[1:end-1], false))
             σ = svdvals(S)
@@ -240,7 +238,6 @@ function svdvals_gkl(A, nvals::Int=6, v0=randn(size(A,2));
     convergence_history[:iters] = k
     convergence_history[:B] = Bidiagonal(αs, βs[1:end-1], false)
     convergence_history[:β] = βs
-    info("Number of reorths: $(convergence_history[:reorth])")
     @assert issorted(converged_values, rev=true)
     converged_values, convergence_history
 end

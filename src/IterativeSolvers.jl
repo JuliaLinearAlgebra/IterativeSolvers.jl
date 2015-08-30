@@ -30,6 +30,7 @@ include("lanczos.jl")
 
 #SVD solvers
 include("lanczos-svd.jl")
+include("lanczos-svd-tr.jl")
 
 #Least-squares
 include("lsqr.jl")

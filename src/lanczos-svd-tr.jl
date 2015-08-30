@@ -1,17 +1,23 @@
 import Base.LinAlg: axpy!
-#Matrix of the form
-# d1          a_1
-#    d2       a_2
-#      ...    ...
-#         d_l a_l
-#             d_l+1 e_l+1
-#                   ...  e_k-1
-#                        d_k
+
+export svdvals_tr
+
+"""
+Matrix of the form
+ d1          a_1
+    d2       a_2
+      ...    ...
+         d_l a_l
+             d_l+1 e_l+1
+                   ...  e_k-1
+                        d_k
+"""
 type BrokenArrowBidiagonal{T} <: AbstractMatrix{T}
     dv::Vector{T}
     av::Vector{T}
     ev::Vector{T}
 end
+
 Base.size(B::BrokenArrowBidiagonal) = (n=length(B.dv); (n, n))
 function Base.size(B::BrokenArrowBidiagonal, n::Int)
     if n==1 || n==2
@@ -20,6 +26,7 @@ function Base.size(B::BrokenArrowBidiagonal, n::Int)
         throw(ArgumentError("invalid dimension $n"))
     end
 end
+
 function Base.full{T}(B::BrokenArrowBidiagonal{T})
     n = size(B, 1)
     k = length(B.av)
@@ -36,15 +43,19 @@ function Base.full{T}(B::BrokenArrowBidiagonal{T})
     M
 end
 
-Base.svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B))
+Base.svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B)) #XXX This can be much faster
 
+"""
+Partial factorization object which is an approximation of a matrix
+
+    A ≈ P * [B 0; 0 β] * Q
+"""
 type PartialFactorization{T, Tr} <: Factorization{T}
     P :: Matrix{T}
     Q :: Matrix{T}
     B :: AbstractMatrix{Tr}
     β :: Tr
 end
-
 
 
 """
@@ -60,8 +71,7 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
 - `k` : The maximum number of Lanczos vectors to compute before restarting.
         Default: `2*l`
 - `j` : The number of vectors to keep at the end of the restart.
-        Default: `l`. [Lehoucq2001] advocates `l+3` but we see a slowdown with this.
-        We don't recommend j < l.
+        Default: `l`. We don't recommend j < l.
 
 # Keyword inputs
 
@@ -71,15 +81,44 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
              Default: `√eps()`
 - `reltol` : Maximum error in each desired singular value relative to the
              estimated norm of the input matrix.  Default: `√eps()`
+- `restart`: Which restarting algorithm to use. Valid choices are:
+             - `:thick`: Thick restart [Wu2000] (default)
+             - `:harmonic`: Restart with harmonic Ritz values [Baglama2005]
+
 
 # Output
 
+- `Σ`: A list of the desired singular values
+- `L`: The computed partial factorization of A
+
+
 # Implementation notes
 
-This implementation follows closely that of SLEPc as described in
-[Hernandez2008].
+The implementation of thick restarting follows closely that of SLEPc as
+described in [Hernandez2008].
 
 # References
+
+@article{Wu2000,
+    author = {Wu, Kesheng and Simon, Horst},
+    journal = {SIAM Journal on Matrix Analysis and Applications},
+    number = 2,
+    pages = {602--616},
+    title = {Thick-Restart {L}anczos Method for Large Symmetric Eigenvalue Problems},
+    volume = 22,
+    year = 2000
+}
+
+@article{Baglama2005,
+    author = {Baglama, James and Reichel, Lothar},
+    doi = {10.1137/04060593X},
+    journal = {SIAM Journal on Scientific Computing},
+    number = 1,
+    pages = {19--42},
+    title = {Augmented Implicitly Restarted {L}anczos Bidiagonalization Methods},
+    volume = 27,
+    year = 2005
+}
 
 @article{Hernandez2008,
     author = {Hern\'{a}ndez, Vicente and Rom\'{a}n, Jos\'{e} E and Tom\'{a}s,
@@ -94,19 +133,25 @@ This implementation follows closely that of SLEPc as described in
 }
 
 """
-function thickrestartbidiag(A, q::AbstractVector, l::Int=6, k::Int=2l,
+function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
     j::Int=l;
-    maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps())
+    maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
+    method::Symbol=:tr)
 
     @assert k>l
     L = build(A, q, k)
 
     local F
     for i=1:maxiter
-        info("Iteration $i")
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
-        L = harmtruncate!(A, L, F, j)
+        if method == :thick
+            thickrestart!(A, L, F, j)
+        elseif method == :harmonic
+            harmonicrestart!(A, L, F, j)
+        else
+            throw(ArgumentError("Unknown restart method $method"))
+        end
         extend!(A, L, k)
         isconverged(L, F, l, tol, reltol) && break
     end
@@ -156,7 +201,7 @@ The Rayleigh-Ritz bounds were presented in [Wilkinson1965:Ch.3 §54-55 p.173,
 
 """
 function isconverged(L::PartialFactorization,
-        F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real)
+        F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real, verbose::Bool=false)
 
     @assert tol ≥ 0
 
@@ -177,37 +222,37 @@ function isconverged(L::PartialFactorization,
         for i in eachindex(σ), j=1:i-1
             d = min(d, abs(σ[i] - σ[j]))
         end
-        println("Smallest empirical spectral gap: ", d)
+        verbose && println("Smallest empirical spectral gap: ", d)
         #Chatelein 1993 - normwise backward error associated with approximate invariant subspace
         #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-        println("Normwise backward error associated with subspace: ", L.β/σ[1])
+        verbose && println("Normwise backward error associated with subspace: ", L.β/σ[1])
         for i in eachindex(Δσ)
             α = Δσ[i]
 
             #Simple error bound
             #if 2α ≤ d
-            println("Ritz value ", i, ": ", σ[i])
-            #println("Simple error bound on eigenvalue: ", Δσ[i])
+            verbose && println("Ritz value ", i, ": ", σ[i])
+            verbose && println("Simple error bound on eigenvalue: ", Δσ[i])
 
             if 2α ≤ d
                 #Rayleigh-Ritz bounds
                 x = α/(d-α)*√(1+(α/(d-α))^2)
                 x=abs(x)
-                println("Rayleigh-Ritz error bound on eigenvector: $x")
-                2α ≤ d && (δσ[i] = min(δσ[i], x))
+                verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
+                #2α ≤ d && (δσ[i] = min(δσ[i], x))
 
                 y = α^2/d #[Wilkinson:Ch.3 Appendix (4), p.188]
-                println("Rayleigh-Ritz error bound on eigenvalue: $y")
+                verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
                 2α ≤ d && (δσ[i] = min(δσ[i], y))
             end
 
             #Estimate of the normwise backward error [Deif 1989]
             ##Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-            println("Normwise backward error estimate: ", α/σ[1])
+            verbose && println("Normwise backward error estimate: ", α/σ[1])
 
             #Geurts, 1982 - componentwise backward error also known
-#A. J. Geurts, (1982), A contribution to the theory of condition, Numer. Math.,
-#39, 85{96.
+            #A. J. Geurts, (1982), A contribution to the theory of condition,
+            #Numer.  Math., #39, 85-96.
 
         end
     end
@@ -255,9 +300,14 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
     PartialFactorization(P, Q, Bidiagonal(αs, βs, true), β)
 end
 
-#Hernandez2008
-#By default, truncate to l largest singular triplets
-function truncate!(A, L::PartialFactorization,
+"""
+Thick restart (with ordinary Ritz values)
+
+# Reference
+
+[Hernandez2008]
+"""
+function thickrestart!(A, L::PartialFactorization,
         F::Base.LinAlg.SVD, l::Int)
 
     k = size(F[:V], 1)
@@ -287,10 +337,15 @@ function truncate!(A, L::PartialFactorization,
     L
 end
 
-#Thick restart with harmonic Ritz values
-#Baglama2005 - note that they have P and Q swapped relative to our notation,
-#which follows Hernandez2008
-function harmtruncate!{T,Tr}(A, L::PartialFactorization{T,Tr},
+"""
+Thick restart with harmonic Ritz values
+
+# Reference
+
+[Baglama2005] - note that they have P and Q swapped relative to our notation,
+which follows that of [Hernandez2008]
+"""
+function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
         F::Base.LinAlg.SVD{T,Tr}, k::Int)
 
     m = size(L.B, 1)::Int
@@ -408,34 +463,4 @@ let
     @assert full(B) == [1 0 1; 0 2 2; 0 0 3]
 end
 
-let
-    A = full(Diagonal([1.0:30.0;]))#randn(m,n)
-    q = ones(30)/√30
-    σ, L = thickrestartbidiag(A, q, 5, 10, tol=1e-5, maxiter=30)
-    @assert norm(σ - [30.0:-1.0:26.0]) < 25*1e-5
-end
-
-let
-    srand(1)
-    m = 300
-    n = 200
-    k = 5
-    l = 10
-
-    A = randn(m,n)
-    q = randn(n)|>x->x/norm(x)
-    σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5, maxiter=30)
-    @assert norm(σ - svdvals(A)[1:k]) < k^2*1e-5
-end
-
-let
-    srand(1)
-    m = 3000#0
-    n = 2000#0
-    k = 50
-
-    A = sprandn(m,n,0.1)
-    q = randn(n)|>x->x/norm(x)
-    @time thickrestartbidiag(A, q, k, tol=1e-5)
-end
 
