@@ -145,6 +145,7 @@ function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
     for i=1:maxiter
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
+        i==1 && @assert eltype(F)==eltype(q)
         if method == :thick
             thickrestart!(A, L, F, j)
         elseif method == :harmonic
@@ -282,22 +283,22 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
         A_mul_B!(p, A, q)
         if j>1
             βs[j-1] = β
-            Base.LinAlg.axpy!(-β, sub(P, :, j-1), p) #p -= β*P[:,j-1]
+            axpy!(-β, sub(P, :, j-1), p) #p -= β*P[:,j-1]
         end
-        α = norm(p)
+        α = convert(Tr, norm(p))
         scale!(p, inv(α))
 
         αs[j] = α
         P[:, j] = p
 
         Ac_mul_B!(q, A, p) #q = A'p
-        Base.LinAlg.axpy!(-1.0, sub(Q, :, 1:j)*(sub(Q, :, 1:j)'q), q) #orthogonalize
+        axpy!(-1.0, sub(Q, :, 1:j)*(sub(Q, :, 1:j)'q), q) #orthogonalize
 
-        β = norm(q)
+        β = convert(Tr, norm(q))
         scale!(q, inv(β))
         Q[:,j+1] = q
     end
-    PartialFactorization(P, Q, Bidiagonal(αs, βs, true), β)
+    PartialFactorization{T,Tr}(P, Q, Bidiagonal(αs, βs, true), β)
 end
 
 """
@@ -307,15 +308,16 @@ Thick restart (with ordinary Ritz values)
 
 [Hernandez2008]
 """
-function thickrestart!(A, L::PartialFactorization,
-        F::Base.LinAlg.SVD, l::Int)
+function thickrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
+        F::Base.LinAlg.SVD{Tr,Tr}, l::Int)
 
     k = size(F[:V], 1)
     m, n = size(A)
     #@assert size(L.P) == (m, k)
     #@assert size(L.Q) == (n, k+1)
 
-    L.Q = [sub(L.Q, :,1:k)*sub(F[:V], :,1:l) sub(L.Q, :, k+1)]
+    Q = sub(L.Q, :,1:k)*sub(F[:V], :,1:l)
+    L.Q = [Q sub(L.Q, :, k+1)]
     #Be pedantic about ensuring normalization
     #L.Q = qr(L.Q)[1]
     #@assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
@@ -326,7 +328,7 @@ function thickrestart!(A, L::PartialFactorization,
 
     #@assert ρ[i] ≈ f⋅L.P[:, i]
     f -= L.P*ρ
-    α = norm(f)
+    α = convert(Tr, norm(f))
     scale!(f, inv(α))
     L.P = [L.P f]
 
@@ -346,7 +348,7 @@ Thick restart with harmonic Ritz values
 which follows that of [Hernandez2008]
 """
 function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{T,Tr}, k::Int)
+        F::Base.LinAlg.SVD{Tr,Tr}, k::Int)
 
     m = size(L.B, 1)::Int
     #@assert size(L.P,2)==m==size(L.Q,2)-1
@@ -364,7 +366,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     M = M * F2[:V]
     Mend = M[end, 1:k]
     #Compute scaled residual from the harmonic Ritz problem
-    r0 = zeros(Tr,m)
+    r0 = zeros(Tr, m)
     r0[end] = 1
     isa(L.B, Bidiagonal) && @assert L.B.isupper
     r = try
@@ -380,7 +382,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     scale!(r, L.β)
     M::Matrix{T} = sub(M,1:m, :) + r*sub(M,m+1,:)
 
-    M2 = zeros(m+1, k+1)
+    M2 = zeros(T, m+1, k+1)
     M2[1:m, 1:k] = M[:,1:k]
     M2[1:m, k+1] = -r
     M2[m+1, k+1] = 1
@@ -393,7 +395,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
 
     f = A*sub(Q,:,k+1)
     f -= P*(P'f)
-    α = norm(f)
+    α = convert(Tr, norm(f))
     scale!(f, inv(α))
     P = [P f]
     B = UpperTriangular{Tr,Matrix{Tr}}([(Diagonal(Σ)*triu(R')); zeros(Tr,1,k) α])
@@ -402,28 +404,27 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     q = sub(Q,:,k+1)
     #g-= (g⋅q)*q
     axpy!(-(g⋅q), q, g)
-    β = norm(g)
+    β = convert(Tr, norm(g))
     scale!(g, inv(β))
     #@assert size(P, 2) == size(Q, 2) == size(B, 2)
     L.P = P
     L.Q = Q
     L.B = B
     L.β = β
-
     L
 end
 
 #Hernandez2008
-function extend!(A, L::PartialFactorization, k::Int)
+function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int)
     l = size(L.B, 2)::Int-1
     p = L.P[:,l+1]
 
     m, n = size(A)
-    q = zeros(n)
+    q = zeros(T, n)
     #@assert l+1 == size(L.B, 1) == size(L.B, 2) == size(L.P, 2)
 
     if isa(L.B, UpperTriangular) #Cannot be appended
-        B = zeros(k,k)
+        B = zeros(Tr, k, k)
         B[1:size(L.B,1), 1:size(L.B,2)] = L.B
         L.B = UpperTriangular(B)
         #@assert size(L.B) == (k, k)
