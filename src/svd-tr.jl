@@ -184,10 +184,11 @@ function isconverged(L::PartialFactorization,
             α = Δσ[i]
 
             #Simple error bound
-            println("Ritz value ", i, ": ", σ[i])
-            println("Simple error bound on eigenvalue: ", Δσ[i])
-
             #if 2α ≤ d
+            println("Ritz value ", i, ": ", σ[i])
+            #println("Simple error bound on eigenvalue: ", Δσ[i])
+
+            if 2α ≤ d
                 #Rayleigh-Ritz bounds
                 x = α/(d-α)*√(1+(α/(d-α))^2)
                 x=abs(x)
@@ -197,10 +198,10 @@ function isconverged(L::PartialFactorization,
                 y = α^2/d #[Wilkinson:Ch.3 Appendix (4), p.188]
                 println("Rayleigh-Ritz error bound on eigenvalue: $y")
                 2α ≤ d && (δσ[i] = min(δσ[i], y))
-            #end
+            end
 
             #Estimate of the normwise backward error [Deif 1989]
-            #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
+            ##Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
             println("Normwise backward error estimate: ", α/σ[1])
 
             #Geurts, 1982 - componentwise backward error also known
@@ -279,86 +280,108 @@ function truncate!(A, L::PartialFactorization,
     L.P = [L.P f]
 
     g = A'f - α*L.Q[:, end]
-    β = norm(g)
-    g[:] = g/β
-    L.β = β
+    L.β = β = norm(g)
     L.B = BrokenArrowBidiagonal([F[:S][1:l]; α], ρ, typeof(β)[])
-
+    @assert size(L.P, 2) == size(L.Q, 2) == size(L.B, 2)
     L
 end
 
 #Thick restart with harmonic Ritz values
-#Baglama2005
-#function harmonictruncate!(A, L::PartialFactorization,
+#Baglama2005 - note that they have P and Q swapped relative to our notation,
+#which follows Hernandez2008
 function truncate!(A, L::PartialFactorization,
+#function harmtruncate!(A, L::PartialFactorization,
         F::Base.LinAlg.SVD, k::Int)
 
+    info("Initiating harmonic truncation")
+    @show (round(L.B, 4))
     m = size(L.B, 1)
+    @show size(L.P), m, size(L.Q)
     @assert size(L.P,2)==m==size(L.Q,2)-1
+
+    F0 = svdfact(L.B)
+    ρ = L.β*F0[:U][end,:] #Residuals of singular values
+
+    B = [diagm(F0[:S]) ρ']
     info("Before harmonic truncation")
-    B = [full(L.B) zeros(m)]
-    B[end, end] = L.β
-    @show B
-    F = svdfact!(B)
+    F = svdfact!(B, thin=false)
 
     #Take k smallest triplets
-    U = F[:U][:,end:-1:end-k+1]
-    Σ = F[:S][end:-1:end-k+1]
-    V = F[:V][:,end:-1:end-k+1]
+    U = F[:U]#[:,end:-1:end-k+1]
+    Σ = F[:S][1:k]
+    V = F[:V]#[:,end:-1:end-k+1]
 
+    U = F0[:U]*F[:U]
+    M = eye(m+1)
+    M[1:m, 1:m] = F0[:V]
+    M = M * F[:V]
+    Mend = M[end, 1:k]
     #Compute scaled residual from the harmonic Ritz problem
     r = zeros(m)
     r[end] = 1
     isa(L.B, Bidiagonal) && @assert L.B.isupper
-    r = - L.β*(L.B\r)
+    r = L.β*(L.B\r)
+    M = M[1:m, :] + r*M[m+1,:]
 
-    M = zeros(m+1, k+1)
-    M[1:m,1:k] = L.B\(U*Diagonal(Σ))
-    M[1:m,end] = r
-    M[end,end] = 1
-    Q, R = qr(M)#[V*Diagonal(Σ) r])
+    M2 = zeros(m+1, k+1)
+    M2[1:m, 1:k] = M[:,1:k]
+    M2[1:m, k+1] = -r
+    M2[m+1, k+1] = 1
+    Q, R = qr(M2)
+    #Ensure positivity of diagonal
+    #for i=1:size(R,1)
+    #    if R[i,i] < 0
+    #        for j=i:size(R,1)
+    #            R[i,j] = -R[i,j]
+    #        end
+    #    end
+    #end
 
-    p = A*L.Q[:,m+1]
-    p -= L.P*(L.P'p)
-    p[:] = p/norm(p)
-    P = [L.P p]*Q
-    Q = L.Q[:,1:m]*U
-    q = A'L.P[:,m-1]-L.β*L.Q[:,m]
-    γ = Q'q
-    q -= Q*γ
-    α = norm(q)
-    q[:] = q/α
-    Q = [Q q]
+    Q = L.Q*Q#[:,1:k]
+    P = L.P*U#[:,1:k]
 
-    Ar= BrokenArrowBidiagonal([Σ; α], γ, typeof(α)[])
-    @show full(Ar)
-    @show R
-    B = UpperTriangular(full(Ar)/R)
+    R = (R[1:k+1,1:k] + R[:,k+1]*Mend)
+    B = (Diagonal(Σ)*triu(R'))
+
+    f = A*Q[:,end]
+    f -= P[:,1:k]*(P[:,1:k]'f)
+    α = norm(f)
+    f[:] = f/α
+    P = [P[:,1:k] f]
+    B = UpperTriangular([B; zeros(1,k) α])
     info("After harmonic truncation")
-    @show B
-    #Compute new residual
-    r = A*q - α*p
-    β = norm(r)
-    r[:] = r/β
-
+    display(round(B, 3))
+    #@assert size(P, 2) == size(B, 1) == size(Q, 2)
+    g = A'f
+    g-= (g⋅Q[:,end])*Q[:, end]
+    β = norm(g)
+    g[:] = g/β
+    #@show size(P), size(Q), size(B)
+    #@assert size(P, 2) == size(Q, 2)+1 == size(B, 1)
+    Q = Q[:,end-k:end]# g]#L.Q[:,end]]
+    @show size(P), size(Q), size(B)
+    @assert size(P, 2) == size(Q, 2) == size(B, 2)
     PartialFactorization(P, Q, B, β)
 end
 
 #Hernandez2008
 function extend!(A, L::PartialFactorization, k::Int)
-    l = size(L.P, 2)-1
+    l = size(L.B, 2)-1
     p = L.P[:, end]
 
-    local β
     m, n = size(A)
     q = zeros(n)
     @assert l+1 == size(L.B, 1) == size(L.B, 2)
 
     if !isa(L.B, Bidiagonal) && !isa(L.B, BrokenArrowBidiagonal) #Cannot be appended
-        L.B = [L.B zeros(l+1, k-l-1); zeros(k-l-1, k)]
+        B = zeros(k,k)
+        B[1:size(L.B,1), 1:size(L.B,2)] = L.B
+        L.B = B
+        #L.B = [L.B zeros(l+1, k-l-1); zeros(k-l-1, k)]
         @assert size(L.B) == (k, k)
     end
 
+    β = L.β#local β
     for j=l+1:k
         Ac_mul_B!(q, A, p) #q = A'p
         q -= L.Q*(L.Q'q)   #orthogonalize
@@ -399,9 +422,9 @@ let
     k = 5
     l = 10
 
-    A = randn(m,n)
-    q = randn(n)|>x->x/norm(x)
-    @time σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5, maxiter=20)
+    A = full(Diagonal([1.0:30.0;]))#randn(m,n)
+    q = ones(30)|>x->x/norm(x)
+    @time σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5, maxiter=30)
     @assert norm(σ - svdvals(A)[1:k]) < k^2*1e-5
 end
 
