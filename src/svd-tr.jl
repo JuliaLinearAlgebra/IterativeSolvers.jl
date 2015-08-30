@@ -262,8 +262,8 @@ function truncate!(A, L::PartialFactorization,
 
     k = size(F[:V], 1)
     m, n = size(A)
-    @assert size(L.P) == (m, k)
-    @assert size(L.Q) == (n, k+1)
+    #@assert size(L.P) == (m, k)
+    #@assert size(L.Q) == (n, k+1)
 
     L.Q = [sub(L.Q, :,1:k)*sub(F[:V], :,1:l) sub(L.Q, :, k+1)]
     #Be pedantic about ensuring normalization
@@ -283,7 +283,7 @@ function truncate!(A, L::PartialFactorization,
     g = A'f - α*L.Q[:, end]
     L.β = β = norm(g)
     L.B = BrokenArrowBidiagonal([F[:S][1:l]; α], ρ, typeof(β)[])
-    @assert size(L.P, 2) == size(L.Q, 2) == size(L.B, 2)
+    #@assert size(L.P, 2) == size(L.Q, 2) == size(L.B, 2)
     L
 end
 
@@ -294,7 +294,7 @@ function harmtruncate!{T,Tr}(A, L::PartialFactorization{T,Tr},
         F::Base.LinAlg.SVD{T,Tr}, k::Int)
 
     m = size(L.B, 1)::Int
-    @assert size(L.P,2)==m==size(L.Q,2)-1
+    #@assert size(L.P,2)==m==size(L.Q,2)-1
 
     F0 = F# svdfact(L.B)
     ρ = L.β*F0[:U][end,:] #Residuals of singular values
@@ -345,28 +345,27 @@ function harmtruncate!{T,Tr}(A, L::PartialFactorization{T,Tr},
     axpy!(-(g⋅q), q, g)
     β = norm(g)
     g[:] = g/β
-    @assert size(P, 2) == size(Q, 2) == size(B, 2)
+    #@assert size(P, 2) == size(Q, 2) == size(B, 2)
     PartialFactorization(P, Q, B, β)
 end
 
 #Hernandez2008
 function extend!(A, L::PartialFactorization, k::Int)
-    l = size(L.B, 2)-1
+    l = size(L.B, 2)::Int-1
     p = L.P[:, end]
 
     m, n = size(A)
     q = zeros(n)
-    @assert l+1 == size(L.B, 1) == size(L.B, 2)
+    #@assert l+1 == size(L.B, 1) == size(L.B, 2)
 
     if !isa(L.B, Bidiagonal) && !isa(L.B, BrokenArrowBidiagonal) #Cannot be appended
         B = zeros(k,k)
         B[1:size(L.B,1), 1:size(L.B,2)] = L.B
         L.B = B
-        #L.B = [L.B zeros(l+1, k-l-1); zeros(k-l-1, k)]
-        @assert size(L.B) == (k, k)
+        #@assert size(L.B) == (k, k)
     end
 
-    β = L.β#local β
+    β = L.β
     for j=l+1:k
         Ac_mul_B!(q, A, p) #q = A'p
         q -= L.Q*(L.Q'q)   #orthogonalize
