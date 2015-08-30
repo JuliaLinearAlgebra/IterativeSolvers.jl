@@ -1,3 +1,4 @@
+import Base.LinAlg: axpy!
 #Matrix of the form
 # d1          a_1
 #    d2       a_2
@@ -38,8 +39,8 @@ end
 Base.svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B))
 
 type PartialFactorization{T, Tr} <: Factorization{T}
-    P :: T
-    Q :: T
+    P :: Matrix{T}
+    Q :: Matrix{T}
     B :: AbstractMatrix{Tr}
     β :: Tr
 end
@@ -289,40 +290,36 @@ end
 #Thick restart with harmonic Ritz values
 #Baglama2005 - note that they have P and Q swapped relative to our notation,
 #which follows Hernandez2008
-function truncate!(A, L::PartialFactorization,
-#function harmtruncate!(A, L::PartialFactorization,
-        F::Base.LinAlg.SVD, k::Int)
+function harmtruncate!{T,Tr}(A, L::PartialFactorization{T,Tr},
+        F::Base.LinAlg.SVD{T,Tr}, k::Int)
 
-    m = size(L.B, 1)
+    m = size(L.B, 1)::Int
     @assert size(L.P,2)==m==size(L.Q,2)-1
 
-    F0 = svdfact(L.B)
+    F0 = F# svdfact(L.B)
     ρ = L.β*F0[:U][end,:] #Residuals of singular values
 
-    B = [diagm(F0[:S]) ρ']
-    F = svdfact!(B, thin=false)
+    F2 = svdfact!([diagm(F0[:S]) ρ'], thin=false)
 
     #Take k largest triplets
-    U = F[:U][:,1:k]
-    Σ = F[:S][1:k]
-
-    U = F0[:U]*U
-    M = eye(m+1)
-    M[1:m, 1:m] = F0[:V]
-    M = M * F[:V]
+    Σ = (F2[:S]::Vector{Tr})[1:k]
+    U = F0[:U]*sub(F2[:U],:,1:k)
+    M = eye(T, m+1)
+    M[1:m, 1:m] = F0[:V]::Matrix{T}
+    M = M * F2[:V]
     Mend = M[end, 1:k]
     #Compute scaled residual from the harmonic Ritz problem
-    r = zeros(m)
-    r[end] = 1
+    r0 = zeros(Tr,m)
+    r0[end] = 1
     isa(L.B, Bidiagonal) && @assert L.B.isupper
-    try
-        r = L.β*(L.B\r)
-    catch e
-        if isa(e, LinAlg.LAPACKException) #B\r is singular
-            r = L.β*pinv(full(L.B))*r
-        else rethrow(e) end
-    end
-    M = M[1:m, :] + r*M[m+1,:]
+    r = try
+        L.β*(L.B\r0)
+    catch exc
+        if isa(exc, LinAlg.LAPACKException) #B\r is singular
+            L.β*pinv(L.B)::Matrix{Tr}*r0
+        else rethrow(exc) end
+    end::Vector{Tr}
+    M::Matrix{T} = sub(M,1:m, :) + r*sub(M,m+1,:)
 
     M2 = zeros(m+1, k+1)
     M2[1:m, 1:k] = M[:,1:k]
@@ -331,20 +328,21 @@ function truncate!(A, L::PartialFactorization,
     Q, R = qr(M2)
 
     Q = L.Q*Q
-    P = L.P*U[:,1:k]
+    P = L.P*sub(U,:,1:k)
 
-    R = (R[1:k+1,1:k] + R[:,k+1]*Mend)
-    B = (Diagonal(Σ)*triu(R'))
+    R = sub(R,1:k+1,1:k) + sub(R,:,k+1)*Mend
 
-    f = A*Q[:,end]
+    f = A*sub(Q,:,k+1)
     f -= P*(P'f)
     α = norm(f)
     f[:] = f/α
     P = [P f]
-    B = UpperTriangular([B; zeros(1,k) α])
+    B = UpperTriangular{Tr,Matrix{Tr}}([(Diagonal(Σ)*triu(R')); zeros(Tr,1,k) α])
     #@assert size(P, 2) == size(B, 1) == size(Q, 2)
     g = A'f
-    g-= (g⋅Q[:,end])*Q[:, end]
+    q = sub(Q,:,k+1)
+    #g-= (g⋅q)*q
+    axpy!(-(g⋅q), q, g)
     β = norm(g)
     g[:] = g/β
     @assert size(P, 2) == size(Q, 2) == size(B, 2)
