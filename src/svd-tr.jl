@@ -293,17 +293,13 @@ function truncate!(A, L::PartialFactorization,
 #function harmtruncate!(A, L::PartialFactorization,
         F::Base.LinAlg.SVD, k::Int)
 
-    info("Initiating harmonic truncation")
-    @show (round(L.B, 4))
     m = size(L.B, 1)
-    @show size(L.P), m, size(L.Q)
     @assert size(L.P,2)==m==size(L.Q,2)-1
 
     F0 = svdfact(L.B)
     ρ = L.β*F0[:U][end,:] #Residuals of singular values
 
     B = [diagm(F0[:S]) ρ']
-    info("Before harmonic truncation")
     F = svdfact!(B, thin=false)
 
     #Take k smallest triplets
@@ -320,7 +316,13 @@ function truncate!(A, L::PartialFactorization,
     r = zeros(m)
     r[end] = 1
     isa(L.B, Bidiagonal) && @assert L.B.isupper
-    r = L.β*(L.B\r)
+    try
+        r = L.β*(L.B\r)
+    catch e
+        if isa(e, LinAlg.LAPACKException) #B\r is singular
+            r = L.β*pinv(full(L.B))*r
+        else rethrow(e) end
+    end
     M = M[1:m, :] + r*M[m+1,:]
 
     M2 = zeros(m+1, k+1)
@@ -349,17 +351,12 @@ function truncate!(A, L::PartialFactorization,
     f[:] = f/α
     P = [P[:,1:k] f]
     B = UpperTriangular([B; zeros(1,k) α])
-    info("After harmonic truncation")
-    display(round(B, 3))
     #@assert size(P, 2) == size(B, 1) == size(Q, 2)
     g = A'f
     g-= (g⋅Q[:,end])*Q[:, end]
     β = norm(g)
     g[:] = g/β
-    #@show size(P), size(Q), size(B)
-    #@assert size(P, 2) == size(Q, 2)+1 == size(B, 1)
-    Q = Q[:,end-k:end]# g]#L.Q[:,end]]
-    @show size(P), size(Q), size(B)
+    Q = Q[:,end-k:end]
     @assert size(P, 2) == size(Q, 2) == size(B, 2)
     PartialFactorization(P, Q, B, β)
 end
@@ -416,15 +413,22 @@ let
 end
 
 let
+    A = full(Diagonal([1.0:30.0;]))#randn(m,n)
+    q = ones(30)/√30
+    σ, L = thickrestartbidiag(A, q, 5, 10, tol=1e-5, maxiter=30)
+    @assert norm(σ - [30.0:-1.0:26.0]) < 25*1e-5
+end
+
+let
     srand(1)
     m = 300
     n = 200
     k = 5
     l = 10
 
-    A = full(Diagonal([1.0:30.0;]))#randn(m,n)
-    q = ones(30)|>x->x/norm(x)
-    @time σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5, maxiter=30)
+    A = randn(m,n)
+    q = randn(n)|>x->x/norm(x)
+    σ, L = thickrestartbidiag(A, q, k, l, tol=1e-5, maxiter=30)
     @assert norm(σ - svdvals(A)[1:k]) < k^2*1e-5
 end
 
