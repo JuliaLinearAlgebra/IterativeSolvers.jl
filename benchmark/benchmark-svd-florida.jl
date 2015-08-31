@@ -1,12 +1,15 @@
 #!/usr/bin/env julia
 #
 # Benchmarking script for singular value problems
-Pkg.installed("Benchmarks")==nothing &&
-    Pkg.clone("https://github.com/johnmyleswhite/Benchmarks.jl")
+
+#Pkg.clone("https://github.com/johnmyleswhite/Benchmarks.jl")
+#Pkg.clone("https://github.com/andreasnoack/PROPACK.jl")
+
 using Benchmarks
 using IterativeSolvers
 using JLD
 using MAT
+using PROPACK
 
 BASEDIR = "florida"
 
@@ -22,7 +25,7 @@ for group in readdir(BASEDIR)
 	isfile(benchmarkfilename) && continue
 
 	#To debug this script, it's useful to run it on small matrices only
-	#filesize(filename) < 10000 || continue
+	filesize(filename) < 100000 || continue
 
         mf = matread(filename)
         if !haskey(mf, "Problem")
@@ -38,13 +41,15 @@ for group in readdir(BASEDIR)
         A = pr["A"]
 
         #eltype(A) <: Real || warn("Skipping matrix with unsupported element type $(eltype(A))")
-        info(filename*", size = $(size(A))")
-        
+        info(filename*", matrix of type $(typeof(A)) and size $(size(A))")
 	m, n = size(A)
 	#Choose the same normalized unit vector to start with
 	q = randn(n)
         eltype(A) <: Complex && (q += im*randn(n))
         scale!(q, inv(norm(q)))
+	qm = randn(m)
+        eltype(A) <: Complex && (q += im*randn(m))
+        scale!(qm, inv(norm(qm)))
 
         #Number of singular values to request
         nv = min(m, n, 10)
@@ -60,12 +65,31 @@ for group in readdir(BASEDIR)
         #@time svdvals_gkl(A, 10)
 
         info("svds (eigs on [0 A; A' 0])")
+	#See #12890 :(
+	#b_svds = @benchmark svds(A, v0=q, nsv=nv, tol=tol, maxiter=maxiter)
 	b_svds = @benchmark svds(A, nsv=nv, tol=tol, maxiter=maxiter)
         
 	info("eigs on A'A or AA'")
 	b_ata = @benchmark B = m≥n ? A*A' : A'A
-	B = m≥n ? A*A' : A'A
-	b_eigs = @benchmark eigs(B, nev=nv, tol=tol, maxiter=maxiter)
+	b_eigs = if m≥n
+	    B = A'A #Size n x n
+	    b_eigs = @benchmark eigs(B, v0=q, nev=nv, tol=tol, maxiter=maxiter)
+	else
+	    B = A*A' #Size m x m
+	    #eigs cannot use the same starting vector as everyone else, needs R^m not R^n
+	    b_eigs = @benchmark eigs(B, v0=qm, nev=nv, tol=tol, maxiter=maxiter)
+	end
+
+	info("tsvd (PROPACK)")
+	b_tsvd = try
+	    if m≥n #PROPACK implicitly assumes the input is tall
+	        @benchmark tsvdvals(A, initvec=qm, kmax=maxiter, k=nv, tolin=tol)
+	    else
+	        @benchmark tsvdvals(A', initvec=q, kmax=maxiter, k=nv, tolin=tol)
+            end
+        catch exc
+            println("Exception: $exc")
+        end
 
         info("GKL with thick restart using Ritz values")
         b_tr = try
@@ -84,10 +108,11 @@ for group in readdir(BASEDIR)
 	
 	data = Dict(
 	    "svds" => b_svds,
-	    "ata" => b_ata,
+	    "ata"  => b_ata,
 	    "eigs" => b_eigs,
-	    "tr" => b_tr,
-	    "trh" => b_trh
+	    "tsvd" => b_tsvd,
+	    "tr"   => b_tr,
+	    "trh"  => b_trh
 	)
 	println("Timings:")
 	for (k, v) in data
@@ -96,5 +121,10 @@ for group in readdir(BASEDIR)
 	    println()
         end
         JLD.save(benchmarkfilename, data, compress=true)
+
+	#debug: just try one
+	#@goto stop
     end
 end
+@label stop
+
