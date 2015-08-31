@@ -259,7 +259,7 @@ function isconverged(L::PartialFactorization,
     end
 
     #Estimate condition number and see if two-sided reorthog is needed
-    if (F[:S][1]/F[:S][end]) > 1/√eps()
+    if verbose && (F[:S][1]/F[:S][end]) > 1/√eps()
         warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 

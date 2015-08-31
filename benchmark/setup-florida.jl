@@ -66,7 +66,8 @@ for (group, matrix) in matrices
         info("Downloading $group/$matrix.mat")
         download(joinpath(UFL_URL_ROOT, "..", "mat", group, matrix*".mat"),
             joinpath(BASEDIR, group, matrix*".mat"))
-        end
     end
 end
+info("Downloaded $(length(matrices)) matrices")
+
 
