@@ -1,16 +1,6 @@
 module IterativeSolvers
 
-#Documentation support
-#see https://github.com/MichaelHatherly/Docile.jl/issues/64
-if VERSION < v"0.4-"
-    using Docile
-    macro doc_mstr(text)
-        Base.triplequoted(text)
-    end
-    macro doc_str(text)
-        text
-    end
-end
+isdefined(:__precompile__) && __precompile__(true)
 
 include("common.jl")
 include("krylov.jl")
