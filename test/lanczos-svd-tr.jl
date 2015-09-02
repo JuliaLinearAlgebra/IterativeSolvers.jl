@@ -3,7 +3,7 @@ using FactCheck
 
 facts("svdvals_tr") do
 #Thick restart methods
-for method in (:thick, :harmonic) context("Thick restart with method=$method") do
+for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
   for elty in (Float32, Float64)
     context("Diagonal Matrix{$elty}") do
         n = 30
