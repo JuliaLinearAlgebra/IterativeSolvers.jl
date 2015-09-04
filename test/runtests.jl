@@ -207,6 +207,7 @@ include("lsqr.jl")
 include("rlinalg.jl")
 include("rsvd.jl")
 include("rsvd_fnkz.jl")
+include("rkaczmarz.jl")
 
 #Expensive tests - don't run by default
 #include("matrixmarket.jl")
