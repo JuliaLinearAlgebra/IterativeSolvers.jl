@@ -271,39 +271,18 @@ end
 
 #Hernandez2008
 function build{T}(A, q::AbstractVector{T}, k::Int)
-    @assert eltype(A) == T
     m, n = size(A)
     Tr = typeof(real(one(T)))
-
-    P = Array(T, m, k)
-    Q = Array(T, n, k+1)
-    αs= Array(Tr, k)
-    βs= Array(Tr, k-1)
-    Q[:, 1] = q
-    local β
-    p = Array(T, m)
-    for j=1:k
-        #p = A*q
-        A_mul_B!(p, A, q)
-        if j>1
-            βs[j-1] = β
-            axpy!(-β, sub(P, :, j-1), p) #p -= β*P[:,j-1]
-        end
-        α = convert(Tr, norm(p))
-        scale!(p, inv(α))
-
-        αs[j] = α
-        P[:, j] = p
-
-        Ac_mul_B!(q, A, p) #q = A'p
-        axpy!(-1.0, sub(Q, :, 1:j)*(sub(Q, :, 1:j)'q), q) #orthogonalize
-
-        β = convert(Tr, norm(q))
-        scale!(q, inv(β))
-        Q[:,j+1] = q
-    end
-    PartialFactorization{T,Tr}(P, Q, Bidiagonal(αs, βs, true), β)
+    β = norm(q)
+    scale!(q, inv(β))
+    p = A*q
+    α = convert(Tr, norm(p))
+    scale!(p, inv(α))
+    extend!(A, PartialFactorization(
+        reshape(p, m, 1), reshape(q, n, 1), Bidiagonal([α], Tr[], true), β
+        ), k)
 end
+
 
 """
 Thick restart (with ordinary Ritz values)
