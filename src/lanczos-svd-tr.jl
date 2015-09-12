@@ -157,9 +157,20 @@ function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
             throw(ArgumentError("Unknown restart method $method"))
         end
         extend!(A, L, k)
-	elapsedtime = round((time_ns()-T0)*1e-9, 3)
-	verbose && info("Iteration $iter: $elapsedtime seconds")
-        isconverged(L, F, l, tol, reltol, verbose) && break
+        if verbose
+	        elapsedtime = round((time_ns()-T0)*1e-9, 3)
+	        info("Iteration $iter: $elapsedtime seconds")
+        end
+        conv = isconverged(L, F, l, tol, reltol, verbose)
+        #Lock
+        if method == :ritz
+            for i in eachindex(conv)
+                if conv[i]
+                    L.B.av[i] = 0
+                end
+            end
+        end
+        all(conv) && break
     end
     F[:S][1:l], L
 end
@@ -248,7 +259,7 @@ function isconverged(L::PartialFactorization,
                 #verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
                 2α ≤ d && (δσ[i] = min(δσ[i], y))
             end
-            
+
 	    verbose && println("Ritz value ", i, ": ", σ[i], " ± ", signif(δσ[i], 3))
 
             #Estimate of the normwise backward error [Deif 1989]
@@ -266,7 +277,7 @@ function isconverged(L::PartialFactorization,
         warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 
-    all(δσ[1:k] .< max(tol, reltol*σ[1]))
+    conv = δσ[1:k] .< max(tol, reltol*σ[1])
 end
 
 #Hernandez2008
