@@ -78,6 +78,8 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
 
 - `maxiter`: Maximum number of iterations to run
              Default: `minimum(size(A))`
+- `verbose`: Whether to print information at each iteration
+             Default: false
 - `tol`    : Maximum absolute error in each desired singular value.
              Default: `√eps()`
 - `reltol` : Maximum error in each desired singular value relative to the
@@ -136,16 +138,17 @@ described in [Hernandez2008].
 function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
     j::Int=l;
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    method::Symbol=:ritz)
+    verbose::Bool=true, method::Symbol=:ritz)
 
+    T0 = time_ns()
     @assert k>l
     L = build(A, q, k)
 
     local F
-    for i=1:maxiter
+    for iter in 1:maxiter
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
-        i==1 && @assert eltype(F)==eltype(q)
+        iter==1 && @assert eltype(F)==eltype(q)
         if method == :ritz
             thickrestart!(A, L, F, j)
         elseif method == :harmonic
@@ -154,13 +157,14 @@ function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
             throw(ArgumentError("Unknown restart method $method"))
         end
         extend!(A, L, k)
-        isconverged(L, F, l, tol, reltol) && break
+	elapsedtime = round((time_ns()-T0)*1e-9, 3)
+	verbose && info("Iteration $iter: $elapsedtime seconds")
+        isconverged(L, F, l, tol, reltol, verbose) && break
     end
     F[:S][1:l], L
 end
 
 """
-
 # References
 
 The simple error bound dates back at least to Wilkinson's classic book
@@ -226,35 +230,34 @@ function isconverged(L::PartialFactorization,
         verbose && println("Smallest empirical spectral gap: ", d)
         #Chatelein 1993 - normwise backward error associated with approximate invariant subspace
         #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-        verbose && println("Normwise backward error associated with subspace: ", L.β/σ[1])
+        #verbose && println("Normwise backward error associated with subspace: ", L.β/σ[1])
         for i in eachindex(Δσ)
             α = Δσ[i]
 
             #Simple error bound
             #if 2α ≤ d
-            verbose && println("Ritz value ", i, ": ", σ[i])
-            verbose && println("Simple error bound on eigenvalue: ", Δσ[i])
 
             if 2α ≤ d
                 #Rayleigh-Ritz bounds
                 x = α/(d-α)*√(1+(α/(d-α))^2)
                 x=abs(x)
-                verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
+                #verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
                 #2α ≤ d && (δσ[i] = min(δσ[i], x))
 
                 y = α^2/d #[Wilkinson:Ch.3 Appendix (4), p.188]
-                verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
+                #verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
                 2α ≤ d && (δσ[i] = min(δσ[i], y))
             end
+            
+	    verbose && println("Ritz value ", i, ": ", σ[i], " ± ", signif(δσ[i], 3))
 
             #Estimate of the normwise backward error [Deif 1989]
             ##Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-            verbose && println("Normwise backward error estimate: ", α/σ[1])
+            #verbose && println("Normwise backward error estimate: ", α/σ[1])
 
             #Geurts, 1982 - componentwise backward error also known
             #A. J. Geurts, (1982), A contribution to the theory of condition,
             #Numer.  Math., #39, 85-96.
-
         end
     end
 
