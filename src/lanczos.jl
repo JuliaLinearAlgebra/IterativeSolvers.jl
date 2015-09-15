@@ -19,7 +19,7 @@ function lanczos!{T}(K::KrylovSubspace{T})
 end
 
 function eigvals_lanczos(A, neigs::Int=size(A,1); tol::Real=size(A,1)^3*eps(), maxiter::Int=size(A,1))
-    K = KrylovSubspace(A, 2) #In Lanczos, only remember the last two vectors
+    K = KrylovSubspace(A, size(A, 1), 2) #In Lanczos, only remember the last two vectors
     initrand!(K)
     resnorms = zeros(maxiter)
     e1 = eigvals(lanczos!(K), 1:neigs)
