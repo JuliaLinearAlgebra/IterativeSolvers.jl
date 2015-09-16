@@ -88,6 +88,9 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
              - `:ritz`: Thick restart with Ritz values [Wu2000] (default)
              - `:harmonic`: Restart with harmonic Ritz values [Baglama2005]
 
+- `doplot` : Plot a history of the Ritz value convergence. Requires the
+             UnicodePlots.jl package to be installed. Default: false
+
 # Output
 
 - `Σ`: A list of the desired singular values
@@ -138,11 +141,21 @@ described in [Hernandez2008].
 function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
     j::Int=l;
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    verbose::Bool=true, method::Symbol=:ritz)
+    verbose::Bool=true, method::Symbol=:ritz, doplot::Bool = false)
 
     T0 = time_ns()
     @assert k>l
     L = build(A, q, k)
+
+    #Save history of Ritz values
+    ritzvalhist = []
+    convhist = []
+
+    if doplot
+       ttyh, ttyw = Base.tty_size()
+       ttyh -= l+1+5+2
+       ttyw -= 12
+    end
 
     local F
     for iter in 1:maxiter
@@ -162,6 +175,23 @@ function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
 	        info("Iteration $iter: $elapsedtime seconds")
         end
         conv = isconverged(L, F, l, tol, reltol, verbose)
+
+        push!(convhist, conv)
+        push!(ritzvalhist, F[:S])
+
+        if doplot
+            if isdefined(Main, :UnicodePlots)
+                xs = convert(Vector{Vector{Int}}, map(x->fill(x[1], length(x[2])), enumerate(ritzvalhist)))
+                layer1 = Main.UnicodePlots.scatterplot([xs...;], [ritzvalhist...;], height=ttyh, width=ttyw)
+                display(Main.UnicodePlots.scatterplot!(layer1,
+                    [[fill(x[1], sum(conv)) for x in enumerate(convhist)]...;],
+                    [[x[1:l][conv] for x in ritzvalhist]...;],
+                    height=ttyh, width=ttyw, color=:red))
+            else
+                warn("UnicodePlots not found; no plotsies")
+            end
+        end
+
         #Lock
         if method == :ritz
             for i in eachindex(conv)
