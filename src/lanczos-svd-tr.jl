@@ -64,18 +64,18 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
 # Inputs
 
 - `A` : The matrix or matrixlike object whose singular values are desired
-- `q` : The starting guess vector in the range of `A`.
-        The length of `q` should be the number of columns in `A`.
-        Default: A random unit vector.
 - `l` : The number of singular values requested.
         Default: 6
+
+# Keyword inputs
+
+- `v0` : The starting guess vector in the range of `A`.
+         The length of `q` should be the number of columns in `A`.
+         Default: A random unit vector.
 - `k` : The maximum number of Lanczos vectors to compute before restarting.
         Default: `2*l`
 - `j` : The number of vectors to keep at the end of the restart.
         Default: `l`. We don't recommend j < l.
-
-# Keyword inputs
-
 - `maxiter`: Maximum number of iterations to run
              Default: `minimum(size(A))`
 - `verbose`: Whether to print information at each iteration
@@ -138,14 +138,14 @@ described in [Hernandez2008].
 }
 
 """
-function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
-    j::Int=l;
+function svdvals_tr(A, l::Int=6; k::Int=2l,
+    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    verbose::Bool=true, method::Symbol=:ritz, doplot::Bool = false)
+    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none)
 
     T0 = time_ns()
     @assert k>l
-    L = build(A, q, k)
+    L = build(A, v0, k)
 
     #Save history of Ritz values
     ritzvalhist = []
@@ -161,7 +161,7 @@ function svdvals_tr(A, q::AbstractVector, l::Int=6, k::Int=2l,
     for iter in 1:maxiter
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)
-        iter==1 && @assert eltype(F)==eltype(q)
+        iter==1 && @assert eltype(F)==eltype(v0)
         if method == :ritz
             thickrestart!(A, L, F, j)
         elseif method == :harmonic
