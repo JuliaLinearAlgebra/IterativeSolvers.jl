@@ -59,7 +59,11 @@ end
 
 
 """
-The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
+Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
+bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
+
+Thick restarting can be turned off by setting `k = maxiter`, but most of the
+time this is not desirable.
 
 # Inputs
 
@@ -110,6 +114,19 @@ described in [Hernandez2008].
 
 # References
 
+```bibtex
+@article{Golub1965,
+    author = {Golub, G. and Kahan, W.},
+    doi = {10.1137/0702016},
+    journal = {Journal of the Society for Industrial and Applied Mathematics
+        Series B Numerical Analysis},
+    volume = 2,
+    number = 2,
+    pages = {205--224},
+    title = {Calculating the Singular Values and Pseudo-Inverse of a Matrix},
+    year = 1965
+}
+
 @article{Wu2000,
     author = {Wu, Kesheng and Simon, Horst},
     journal = {SIAM Journal on Matrix Analysis and Applications},
@@ -142,6 +159,7 @@ described in [Hernandez2008].
     volume = 31,
     year = 2008
 }
+```
 
 """
 function svdvals_tr(A, l::Int=6; k::Int=2l,
