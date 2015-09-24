@@ -90,10 +90,16 @@ The thick-restarted variant of Golub-Kahan-Lanczos bidiagonalization
 
 - `doplot` : Plot a history of the Ritz value convergence. Requires the
              UnicodePlots.jl package to be installed. Default: false
+- `vecs`   : Return singular vectors also. If not `:none`, the first argument
+             - `:both`: Both left and right singular vectors are returned
+             - `:left`: Only the left singular vectors are returned
+             - `:right`: Only the right singular vectors are returned
+             - `:none`: No singular vectors are returned (Default)
 
 # Output
 
-- `Σ`: A list of the desired singular values
+- `Σ`: A list of the desired singular values if `vecs == :none` (the default),
+    otherwise returns an `SVD` object with the desired singular vectors filled in
 - `L`: The computed partial factorization of A
 
 
@@ -202,7 +208,25 @@ function svdvals_tr(A, l::Int=6; k::Int=2l,
         end
         all(conv) && break
     end
-    F[:S][1:l], L
+
+    values = F[:S][1:l]
+    m, n = size(A)
+    leftvecs = if vecs == :left || vecs == :both
+        L.P*sub(F[:U], :, 1:l)
+    else
+        zeros(eltype(v0), m, 0)
+    end
+    rightvecs = if vecs == :right || vecs == :both
+        (sub(L.Q, :, 1:size(L.Q,2)-1)*sub(F[:V], :, 1:l))'
+    else
+        zeros(eltype(v0), 0, n)
+    end
+
+    if vecs == :none
+        values, L
+    else
+        LinAlg.SVD(leftvecs, values, rightvecs), L
+    end
 end
 
 """
