@@ -172,13 +172,17 @@ function svdl(A, l::Int=6; k::Int=2l,
     j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
+#function svdl(A, l::Int=6, k::Int=2l,
+#    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
+#    maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
+#    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
 
     T0 = time_ns()
     @assert k>l
     L = build(A, v0, k)
 
     #Save history of Ritz values
-    ritzvalhist = []
+    ritzvalhist = Vector[]
     convhist = []
 
     if doplot
@@ -190,7 +194,7 @@ function svdl(A, l::Int=6; k::Int=2l,
     local F
     for iter in 1:maxiter
         #@assert size(L.B) == (k, k)
-        F = svdfact(L.B)
+        F = svdfact(L.B)::LinAlg.SVD{eltype(v0), typeof(real(one(eltype(v0)))), Matrix{eltype(v0)}}
         iter==1 && @assert eltype(F)==eltype(v0)
         if method == :ritz
             thickrestart!(A, L, F, j)
@@ -212,7 +216,7 @@ function svdl(A, l::Int=6; k::Int=2l,
         if doplot
             if isdefined(Main, :UnicodePlots)
                 xs = convert(Vector{Vector{Int}}, map(x->fill(x[1], length(x[2])), enumerate(ritzvalhist)))
-                layer1 = Main.UnicodePlots.scatterplot([xs...;], [ritzvalhist...;], height=ttyh, width=ttyw)
+                layer1 = Main.UnicodePlots.scatterplot([xs...;], [ritzvalhist...;], height=ttyh, width=ttyw)::Main.UnicodePlots.Plot{Main.UnicodePlots.BrailleCanvas}
                 display(Main.UnicodePlots.scatterplot!(layer1,
                     [[fill(x[1], sum(conv)) for x in enumerate(convhist)]...;],
                     [[x[1:l][conv] for x in ritzvalhist]...;],
@@ -373,7 +377,7 @@ function isconverged(L::PartialFactorization,
         warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 
-    conv = δσ[1:k] .< max(tol, reltol*σ[1])
+    conv = (δσ[1:k] .< max(tol, reltol*σ[1]))::BitVector
 end
 
 #Hernandez2008
