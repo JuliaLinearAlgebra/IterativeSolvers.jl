@@ -12,6 +12,11 @@
 
 This package provides iterative algorithms for solving linear systems, eigensystems, and singular value problems which are implemented with maximal flexibility without sacrificing performance.
 
+## Functions provided
+
+- `svdl`: Compute the largest few singular triples using a iterative singular
+          value decomposition.
+
 ## Current status
 
 - [Issue #1](https://github.com/JuliaLang/IterativeSolvers.jl/issues/1) documents the implementation roadmap for iterative solvers.
