@@ -59,8 +59,8 @@ push!(ch::ConvergenceHistory, residual::AbstractVector) = push!(ch, norm(residua
 export PosSemidefException
 
 type PosSemidefException <: Exception
-    msg :: UTF8String
-    PosSemidefException(msg::String="Matrix was not positive semidefinite") = new(msg)
+    msg :: AbstractString
+    PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
 end
 
 #### Support for linear-operators-defined-as-functions
