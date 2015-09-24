@@ -1,7 +1,7 @@
 using IterativeSolvers
 using FactCheck
 
-facts("svdvals_tr") do
+facts("svdl") do
 #Thick restart methods
 for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
   for elty in (Float32, Float64)
@@ -12,11 +12,11 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         A = full(Diagonal(elty[1.0:n;]))
         q = convert(Vector{elty}, ones(n)/√n)
-        σ, L = svdvals_tr(A, ns, v0=q, tol=tol, maxiter=n, method=method, vecs=:none)
+        σ, L = svdl(A, ns, v0=q, tol=tol, maxiter=n, method=method, vecs=:none)
         @fact norm(σ - [n:-1.0:n-4;]) --> less_than(5^2*1e-5)
 
         #Check the singular vectors also
-        Σ, L = svdvals_tr(A, ns, v0=q, tol=tol, maxiter=n, method=method, vecs=:both)
+        Σ, L = svdl(A, ns, v0=q, tol=tol, maxiter=n, method=method, vecs=:both)
 
         #The vectors should have the structure
         # [ 0  0 ...  0 ]
@@ -47,12 +47,12 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         A = convert(Matrix{elty}, randn(m,n))
         q = convert(Vector{elty}, randn(n))|>x->x/norm(x)
-        σ, L = svdvals_tr(A, k, k=l, v0=q, tol=1e-5, maxiter=30, method=method)
+        σ, L = svdl(A, k, k=l, v0=q, tol=1e-5, maxiter=30, method=method)
         @fact norm(σ - svdvals(A)[1:k]) --> less_than(k^2*1e-5)
     end
   end
 end end
-end #svdvals_tr
+end #svdl
 
 facts("BrokenArrowBidiagonal") do
     B = IterativeSolvers.BrokenArrowBidiagonal([1, 2, 3], [1, 2], Int[])

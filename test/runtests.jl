@@ -198,8 +198,7 @@ end
 end
 
 #Golub-Kahan-Lanczos singular values computation
-include("lanczos-svd.jl")
-include("lanczos-svd-tr.jl")
+include("svdl.jl")
 
 include("lsqr.jl")
 

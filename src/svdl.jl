@@ -1,6 +1,6 @@
 import Base.LinAlg: axpy!
 
-export svdvals_tr
+export svdl
 
 """
 Matrix of the form
@@ -62,9 +62,6 @@ end
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
 bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 
-Thick restarting can be turned off by setting `k = maxiter`, but most of the
-time this is not desirable.
-
 # Inputs
 
 - `A` : The matrix or matrixlike object whose singular values are desired
@@ -91,10 +88,10 @@ time this is not desirable.
 - `restart`: Which restarting algorithm to use. Valid choices are:
              - `:ritz`: Thick restart with Ritz values [Wu2000] (default)
              - `:harmonic`: Restart with harmonic Ritz values [Baglama2005]
-
 - `doplot` : Plot a history of the Ritz value convergence. Requires the
-             UnicodePlots.jl package to be installed. Default: false
-- `vecs`   : Return singular vectors also. If not `:none`, the first argument
+             [UnicodePlots.jl](https://github.com/Evizero/UnicodePlots.jl.git)
+             package to be installed. Default: `false`
+- `vecs`   : Return singular vectors also.
              - `:both`: Both left and right singular vectors are returned
              - `:left`: Only the left singular vectors are returned
              - `:right`: Only the right singular vectors are returned
@@ -110,7 +107,11 @@ time this is not desirable.
 # Implementation notes
 
 The implementation of thick restarting follows closely that of SLEPc as
-described in [Hernandez2008].
+described in [Hernandez2008]. Thick restarting can be turned off by setting `k
+= maxiter`, but most of the time this is not desirable.
+
+The singular vectors are computed directly by forming the Ritz vectors from the
+product of the Lanczos vectors `L.P`/`L.Q` and the singular vectors of `L.B`.
 
 # References
 
@@ -162,7 +163,7 @@ described in [Hernandez2008].
 ```
 
 """
-function svdvals_tr(A, l::Int=6; k::Int=2l,
+function svdl(A, l::Int=6; k::Int=2l,
     j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none)
@@ -227,6 +228,7 @@ function svdvals_tr(A, l::Int=6; k::Int=2l,
         all(conv) && break
     end
 
+    #Compute singular vectors as necessary and return them in the output
     values = F[:S][1:l]
     m, n = size(A)
     leftvecs = if vecs == :left || vecs == :both
@@ -248,11 +250,26 @@ function svdvals_tr(A, l::Int=6; k::Int=2l,
 end
 
 """
-# References
+Determine if any singular values in a partial factorization have converged.
 
-The simple error bound dates back at least to Wilkinson's classic book
-[Wilkinson1965:Ch.3 §53 p.170]
+# Inputs
 
+- `L` : A `PartialFactorization` computed by an iterative method such as `svdl`
+- `F` : A `SVD` factorization computed for `L.B`
+- `k` : Number of singular values to check
+- `tol`: Absolute tolerance for a Ritz value to be considered converged
+- `reltol`: Relative tolerance for a Ritz value to be considered converged
+- `verbose`: If `true`, prints out all the results of convergence tests.
+             Default: `false`.
+
+# Implementation notes
+
+This convergence test routine uses a variety of different tests.
+
+1. The crudest estimate of the error bound is a simple error bound which dates
+back at least to Wilkinson's classic book [Wilkinson1965:Ch.3 §53 p.170]
+
+```bibtex
 @book{Wilkinson1965,
     address = {Oxford, UK},
     author = {J H Wilkinson},
@@ -260,10 +277,13 @@ The simple error bound dates back at least to Wilkinson's classic book
     title = {The Algebraic Eigenvalue Problem},
     year = 1965
 }
+```
 
-The Rayleigh-Ritz bounds were presented in [Wilkinson1965:Ch.3 §54-55 p.173,
-    Yamamoto1980, Ortega1990]
+2. When the Ritz values become sufficiently well-separated, more refined estimates
+can be derived from the Rayleigh-Ritz properties of the Krylov process, as
+described in [Wilkinson1965:Ch.3 §54-55 p.173, Yamamoto1980, Ortega1990]
 
+```bibtex
 @book{Ortega1990,
     address = {Philadelphia, PA},
     author = {Ortega, James M},
@@ -286,7 +306,7 @@ The Rayleigh-Ritz bounds were presented in [Wilkinson1965:Ch.3 §54-55 p.173,
     volume = {34},
     year = 1980
 }
-
+```
 """
 function isconverged(L::PartialFactorization,
         F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real, verbose::Bool=false)
@@ -300,10 +320,9 @@ function isconverged(L::PartialFactorization,
     δσ = copy(Δσ)
 
     #Update better error bounds from Rayleigh-Ritz
-    #Reference: Ortega, 1972
     #In theory these only apply if we know all the values
     #But so long as the gap between the converged Ritz values and all the
-    #others is larger than d then we're fine.
+    #others is larger than the smallest empirical spectral gap d then we're fine.
     #Can also get some eigenvector statistics!!
     let
         d = Inf

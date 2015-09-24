@@ -32,7 +32,7 @@ for group in readdir(BASEDIR)
             warn("Skipping unknown file $filename: No 'Problem' struct")
             continue
         end
-	
+
         pr = mf["Problem"]
         if !haskey(pr, "A")
             warn("Skipping unknown file $filename: 'Problem' struct has no matrix 'A'")
@@ -61,14 +61,11 @@ for group in readdir(BASEDIR)
 	#Set convergence criterion to sqrt eps
 	tol = √eps(real(one(eltype(A))))
 
-        #info("Running naive SVD")
-        #@time svdvals_gkl(A, 10)
-
         info("svds (eigs on [0 A; A' 0])")
 	#See #12890 :(
 	#b_svds = @benchmark svds(A, v0=q, nsv=nv, tol=tol, maxiter=maxiter)
 	b_svds = @benchmark svds(A, nsv=nv, tol=tol, maxiter=maxiter)
-        
+
 	info("eigs on A'A or AA'")
 	b_ata = @benchmark B = m≥n ? A*A' : A'A
 	b_eigs = if m≥n
@@ -93,19 +90,18 @@ for group in readdir(BASEDIR)
 
         info("GKL with thick restart using Ritz values")
         b_tr = try
-            @benchmark svdvals_tr(A, q, nv, tol=tol, reltol=tol)
-        catch exc
-            println("Exception: $exc")
-        end
-        
-	info("GKL with thick restart using harmonic Ritz values")
-        b_trh = try
-            @benchmark svdvals_tr(A, q, nv, tol=tol, reltol=tol, method=:harmonic)
+            @benchmark svdl(A, nv, v0=q, tol=tol, reltol=tol)
         catch exc
             println("Exception: $exc")
         end
 
-	
+	info("GKL with thick restart using harmonic Ritz values")
+        b_trh = try
+            @benchmark svdl(A, nv, v0=q, tol=tol, reltol=tol, method=:harmonic)
+        catch exc
+            println("Exception: $exc")
+        end
+
 	data = Dict(
 	    "svds" => b_svds,
 	    "ata"  => b_ata,

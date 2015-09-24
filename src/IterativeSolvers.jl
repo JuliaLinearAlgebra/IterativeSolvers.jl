@@ -19,8 +19,7 @@ include("simple.jl")
 include("lanczos.jl")
 
 #SVD solvers
-include("lanczos-svd.jl")
-include("lanczos-svd-tr.jl")
+include("svdl.jl")
 
 #Least-squares
 include("lsqr.jl")
