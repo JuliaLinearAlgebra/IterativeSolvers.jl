@@ -90,19 +90,22 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
              - `:harmonic`: Restart with harmonic Ritz values [Baglama2005]
 - `doplot` : Plot a history of the Ritz value convergence. Requires the
              [UnicodePlots.jl](https://github.com/Evizero/UnicodePlots.jl.git)
-             package to be installed. Default: `false`
+             package to be installed.
+             Default: `false`
 - `vecs`   : Return singular vectors also.
              - `:both`: Both left and right singular vectors are returned
              - `:left`: Only the left singular vectors are returned
              - `:right`: Only the right singular vectors are returned
              - `:none`: No singular vectors are returned (Default)
+- `dolock` : If `true`, locks converged Ritz values, removing them from the
+             Krylov subspace being searched in the next macroiteration.
+             Default: `false`
 
 # Output
 
 - `Σ`: A list of the desired singular values if `vecs == :none` (the default),
     otherwise returns an `SVD` object with the desired singular vectors filled in
 - `L`: The computed partial factorization of A
-
 
 # Implementation notes
 
@@ -112,6 +115,8 @@ described in [Hernandez2008]. Thick restarting can be turned off by setting `k
 
 The singular vectors are computed directly by forming the Ritz vectors from the
 product of the Lanczos vectors `L.P`/`L.Q` and the singular vectors of `L.B`.
+Additional accuracy in the singular triples can be obtained using inverse
+iteration.
 
 # References
 
@@ -166,7 +171,7 @@ product of the Lanczos vectors `L.P`/`L.Q` and the singular vectors of `L.B`.
 function svdl(A, l::Int=6; k::Int=2l,
     j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none)
+    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
 
     T0 = time_ns()
     @assert k>l
@@ -218,7 +223,7 @@ function svdl(A, l::Int=6; k::Int=2l,
         end
 
         #Lock
-        if method == :ritz
+        if method == :ritz && dolock
             for i in eachindex(conv)
                 if conv[i]
                     L.B.av[i] = 0
