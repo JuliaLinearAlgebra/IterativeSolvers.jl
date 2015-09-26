@@ -17,12 +17,13 @@ type KrylovSubspace{T, OpT}
     mvps::Int  #Count of matrix-vector products
 end
 
-KrylovSubspace(A, n::Int, order::Int, T::Type)=KrylovSubspace{T,typeof(A)}(A, n, order, Vector{T}[], 0)
+KrylovSubspace(A, n::Int, order::Int, T::Type) = KrylovSubspace{T,typeof(A)}(A, n, order, Array{T,1}[], 0)
 
-KrylovSubspace{T}(A, n::Int, order::Int, v::Vector{Vector{T}}=Vector{T}[])=KrylovSubspace{T,typeof(A)}(A, n, order, v, 0)
+KrylovSubspace{T}(A, n::Int, order::Int, v::Vector{Vector{T}}) = KrylovSubspace{T,typeof(A)}(A, n, order, v, 0)
 
-KrylovSubspace{T}(A::AbstractMatrix{T}, order::Int, v::Vector{Vector{T}}=Vector{T}[])=
-    KrylovSubspace{T,typeof(A)}(A, size(A,2), order, v, 0)
+KrylovSubspace(A, n::Int, order::Int) = KrylovSubspace{eltype(A),typeof(A)}(A, n, order, Array{eltype(A),1}[], 0)
+
+KrylovSubspace(A, order::Int) = KrylovSubspace{eltype(A),typeof(A)}(A, size(A,2), order, Array{eltype(A),1}[], 0)
 
 #Reset an existing KrylovSubspace
 function KrylovSubspace{T}(A::KrylovSubspace{T}, order::Int=size(A,2), v::Vector{Vector{T}}=Vector{T}[])
