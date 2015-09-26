@@ -1,9 +1,12 @@
-import Base: eltype, empty!, length, ndims, push!, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
+import Base: eltype, empty!, eps, length, ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
 export A_mul_B
 
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
 Amultype(A, x) = typeof(one(eltype(A))*one(eltype(x)))
+real{T<:Real}(::Type{Complex{T}}) = T
+real{T<:Real}(::Type{T}) = T
+eps{T<:Real}(::Type{Complex{T}}) = eps(T)
 
 function randx(A, b)
     T = Adivtype(A, b)

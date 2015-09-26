@@ -42,7 +42,7 @@ using Base.LinAlg # can be removed when 0.3 is no longer supported
 #    - Allow an initial guess for x
 #    - Eliminate printing
 #-----------------------------------------------------------------------
-function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))), conlim=one(Adivtype(A,b))/sqrt(eps(Adivtype(A,b))), maxiter::Int=max(size(A,1), size(A,2)))
+function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))), conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))), maxiter::Int=max(size(A,1), size(A,2)))
     # Sanity-checking
     m = size(A,1)
     n = size(A,2)
@@ -56,11 +56,12 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     empty!(ch)
     ch.threshold = (atol, btol, conlim)
     T = Adivtype(A, b)
+    Tr = real(T)
     itn = istop = 0
-    ctol = conlim > 0 ? convert(T,1/conlim) : zero(T)
-    Anorm = Acond = ddnorm = res2 = xnorm = xxnorm = z = sn2 = zero(T)
-    cs2 = -one(T)
-    dampsq = damp*damp
+    ctol = conlim > 0 ? convert(Tr, 1/conlim) : zero(Tr)
+    Anorm = Acond = ddnorm = res2 = xnorm = xxnorm = z = sn2 = zero(Tr)
+    cs2 = -one(Tr)
+    dampsq = abs2(damp)
     tmpm = similar(b, T, m)
     tmpn = similar(x, T, n)
 
@@ -69,14 +70,14 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     u = b - A*x
     v = copy(x)
     beta = norm(u)
-    alpha = zero(T)
+    alpha = zero(Tr)
     if beta > 0
-        scale!(u, one(T)/beta)
+        scale!(u, inv(beta))
         Ac_mul_B!(v,A,u)
         alpha = norm(v)
     end
-    if alpha > zero(T)
-        scale!(v, one(T)/alpha)
+    if alpha > 0
+        scale!(v, inv(alpha))
     end
     w = copy(v)
     wrho = similar(w)
@@ -94,7 +95,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     #     Main iteration loop.
     #------------------------------------------------------------------
     while itn < maxiter
-        itn = itn + 1
+        itn += 1
 
         # Perform the next step of the bidiagonalization to obtain the
         # next beta, u, alpha, v.  These satisfy the relations
@@ -108,8 +109,8 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         LinAlg.axpy!(one(eltype(tmpm)), tmpm, u)
         beta = norm(u)
         if beta > 0
-            scale!(u, one(T)/beta)
-            Anorm = sqrt(Anorm*Anorm + alpha*alpha + beta*beta + dampsq)
+            scale!(u, inv(beta))
+            Anorm = sqrt(abs2(Anorm) + abs2(alpha) + abs2(beta) + dampsq)
             # Note that the following three lines are a band aid for a GEMM: X: C := αA'B + βC.
             # This is already supported in Ac_mul_B! for sparse and distributed matrices, but not yet dense
             Ac_mul_B!(tmpn, A, u)
@@ -124,7 +125,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
 
         # Use a plane rotation to eliminate the damping parameter.
         # This alters the diagonal (rhobar) of the lower-bidiagonal matrix.
-        rhobar1 = sqrt(rhobar*rhobar + dampsq)
+        rhobar1 = sqrt(abs2(rhobar) + dampsq)
         cs1     = rhobar/rhobar1
         sn1     = damp  /rhobar1
         psi     = sn1*phibar
@@ -132,7 +133,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
 
         # Use a plane rotation to eliminate the subdiagonal element (beta)
         # of the lower-bidiagonal matrix, giving an upper-bidiagonal matrix.
-        rho     =   sqrt(rhobar1*rhobar1 + beta*beta)
+        rho     =   sqrt(abs2(rhobar1) + abs2(beta))
         cs      =   rhobar1/rho
         sn      =   beta   /rho
         theta   =   sn*alpha
@@ -156,22 +157,22 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         # super-diagonal element (theta) of the upper-bidiagonal matrix.
         # Then use the result to estimate  norm(x).
         delta   =   sn2*rho
-        gambar  = - cs2*rho
+        gambar  =  -cs2*rho
         rhs     =   phi - delta*z
         zbar    =   rhs/gambar
-        xnorm   =   sqrt(xxnorm + zbar^2)
-        gamma   =   sqrt(gambar*gambar + theta*theta)
+        xnorm   =   sqrt(xxnorm + abs2(zbar))
+        gamma   =   sqrt(abs2(gambar) + abs2(theta))
         cs2     =   gambar/gamma
         sn2     =   theta /gamma
         z       =   rhs   /gamma
-        xxnorm  =   xxnorm + z^2
+        xxnorm +=   abs2(z)
 
         # Test for convergence.
         # First, estimate the condition of the matrix  Abar,
         # and the norms of  rbar  and  Abar'rbar.
         Acond   =   Anorm*sqrt(ddnorm)
-        res1    =   phibar^2
-        res2    =   res2 + psi^2
+        res1    =   abs2(phibar)
+        res2    =   res2 + abs2(psi)
         rnorm   =   sqrt(res1 + res2)
         Arnorm  =   alpha*abs(tau)
 
@@ -183,7 +184,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         #    Estimate r1norm from
         #    r1norm = sqrt(r2norm^2 - damp^2*||x||^2).
         # Although there is cancellation, it might be accurate enough.
-        r1sq    =   rnorm^2 - dampsq*xxnorm
+        r1sq    =   abs2(rnorm) - dampsq*xxnorm
         r1norm  =   sqrt(abs(r1sq));   if r1sq < 0 r1norm = - r1norm; end
         r2norm  =   rnorm
         push!(ch, r1norm)
@@ -192,8 +193,8 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         # some of which will be small near a solution.
         test1   =   rnorm /bnorm
         test2   =   Arnorm/(Anorm*rnorm)
-        test3   =   one(T)/Acond
-        t1      =   test1/(one(T) + Anorm*xnorm/bnorm)
+        test3   =   inv(Acond)
+        t1      =   test1/(1 + Anorm*xnorm/bnorm)
         rtol    =   btol + atol*Anorm*xnorm/bnorm
 
         # The following tests guard against extremely small values of
