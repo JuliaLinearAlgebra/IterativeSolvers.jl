@@ -202,6 +202,7 @@ include("lanczos-svd.jl")
 include("lanczos-svd-tr.jl")
 
 include("lsqr.jl")
+include("lsmr.jl")
 
 #Randomized algorithms
 include("rlinalg.jl")
