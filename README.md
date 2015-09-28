@@ -8,9 +8,7 @@
 
 &copy; 2013---2015 [The Contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
 
-`IterativeSolvers` is a [Julia](http://julialang.org) package that provides flexible iterative algorithms for linear algebra.
-
-This package provides iterative algorithms for solving linear systems, eigensystems, and singular value problems which are implemented with maximal flexibility without sacrificing performance.
+`IterativeSolvers` is a [Julia](http://julialang.org) package that provides iterative algorithms for solving linear systems, eigensystems, and singular value problems.
 
 ## Functions provided
 
