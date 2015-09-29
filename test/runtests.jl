@@ -218,6 +218,7 @@ end
 include("svdl.jl")
 
 include("lsqr.jl")
+include("lsmr.jl")
 
 #Randomized algorithms
 include("rlinalg.jl")
