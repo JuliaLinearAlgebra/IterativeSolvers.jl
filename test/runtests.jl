@@ -208,6 +208,7 @@ for T in (Float32, Float64)
     context("Op{$T}") do
         A = MyOp(convert(Matrix{T}, randn(5,5)) |> t -> t + t')
         v = eigvals(Symmetric(A.buf))
+        eval_lanczos, c_lanczos = eigvals_lanczos(A)
         @fact c_lanczos.isconverged --> true
         @fact norm(v - eval_lanczos) --> less_than(√eps(T))
     end
