@@ -36,4 +36,3 @@ function cg!(x, K::KrylovSubspace, b, Pl=1;
       end
     x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)
 end
-

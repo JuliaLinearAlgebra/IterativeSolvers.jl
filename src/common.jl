@@ -4,8 +4,10 @@ export A_mul_B
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
 Amultype(A, x) = typeof(one(eltype(A))*one(eltype(x)))
-real{T<:Real}(::Type{Complex{T}}) = T
-real{T<:Real}(::Type{T}) = T
+if VERSION < v"0.4.0-dev+6068"
+    real{T<:Real}(::Type{Complex{T}}) = T
+    real{T<:Real}(::Type{T}) = T
+end
 eps{T<:Real}(::Type{Complex{T}}) = eps(T)
 
 function randx(A, b)
