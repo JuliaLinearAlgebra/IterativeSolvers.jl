@@ -70,7 +70,7 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 
 # Keyword inputs
 
-- `v0` : The starting guess vector in the range of `A`.
+- `v0` : The starting guess vector in the domain of `A`.
          The length of `q` should be the number of columns in `A`.
          Default: A random unit vector.
 - `k` : The maximum number of Lanczos vectors to compute before restarting.
