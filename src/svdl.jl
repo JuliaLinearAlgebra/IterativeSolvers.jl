@@ -213,6 +213,7 @@ function svdl(A, l::Int=6; k::Int=2l,
         push!(convhist, conv)
         push!(ritzvalhist, F[:S])
 
+
         if doplot
             if isdefined(Main, :UnicodePlots)
                 xs = convert(Vector{Vector{Int}}, map(x->fill(x[1], length(x[2])), enumerate(ritzvalhist)))
@@ -508,8 +509,36 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     L
 end
 
-#Hernandez2008
-function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int)
+"""
+Extend a PartialFactorization L using GKL bidiagonalization with k extra pairs
+of Lanczos vectors
+
+# Input
+
+- `A`: matrix or linear map generating the Lanczos vectors
+
+- `L`: `PartialFactorization` object
+
+- `orthleft::Bool`: whether or not to orthogonalize left Lanczos vectors
+
+- `orthright::Bool`: whether or not to orthogonalize right Lanczos vectors
+
+# Implementation notes
+
+The implementation mostly follows the description in [Simon2000,Hernandez2008].
+
+The reorthogonalization method used is using double classical Gram-Schmidt
+full reorthogonalization. As explained in the numerical analysis literature by
+Kahan, Golub, Rutishauser, and others in the 1970s, double classical
+Gram-Schmidt reorthogonalization always suffices to keep vectors orthogonal to
+within machine precision.
+
+In most situations it suffices to orthogonalize either the left vectors or the
+right vectors, except when the matrix norm exceeds `1/√eps(eltype(A))`, in
+which case it will be necessary to orthogonalize both sets of vectors. See
+[Simon2000].
+"""
+function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int, orthleft::Bool=false, orthright::Bool=true)
     l = size(L.B, 2)::Int-1
     p = L.P[:,l+1]
 
@@ -527,7 +556,13 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int)
     β = L.β
     for j=l+1:k
         Ac_mul_B!(q, A, p) #q = A'p
-        q -= L.Q*(L.Q'q)   #orthogonalize
+
+        if orthright #Orthogonalize right Lanczos vector
+            #Do double classical Gram-Schmidt reorthogonalization
+            q -= L.Q*(L.Q'q)
+            q -= L.Q*(L.Q'q)
+        end
+
         β = norm(q)
         scale!(q, inv(β))
 
@@ -537,6 +572,12 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int)
         #p = A*q - β*p
         A_mul_B!(p, A, q)
         Base.LinAlg.axpy!(-β, sub(L.P, :, j), p)
+
+        if orthleft #Orthogonalize left Lanczos vector
+            #Do double classical Gram-Schmidt reorthogonalization
+            p -= L.P*(L.P'p)
+            p -= L.P*(L.P'p)
+        end
 
         α = norm(p)
         scale!(p, inv(α))
