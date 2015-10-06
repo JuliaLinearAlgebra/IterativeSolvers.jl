@@ -523,6 +523,8 @@ of Lanczos vectors
 
 - `orthright::Bool`: whether or not to orthogonalize right Lanczos vectors
 
+- `α::Real`: criterion for doing a second reorthogonalization. Default: 1/√2
+
 # Implementation notes
 
 The implementation mostly follows the description in [Simon2000,Hernandez2008].
@@ -531,14 +533,19 @@ The reorthogonalization method used is using double classical Gram-Schmidt
 full reorthogonalization. As explained in the numerical analysis literature by
 Kahan, Golub, Rutishauser, and others in the 1970s, double classical
 Gram-Schmidt reorthogonalization always suffices to keep vectors orthogonal to
-within machine precision.
+within machine precision. As described in [Rutishauser2015], α is a threshold
+for determinining when the second orthogonalization is necessary. -log10(α) is
+the number of (decimal) digits lost due to cancellation. Common choices are
+α=0.1 [Rutishauser1967] and α=1/√2 [Daniel1976, Reichel1990] (our default).
 
 In most situations it suffices to orthogonalize either the left vectors or the
 right vectors, except when the matrix norm exceeds `1/√eps(eltype(A))`, in
 which case it will be necessary to orthogonalize both sets of vectors. See
 [Simon2000].
 """
-function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int, orthleft::Bool=false, orthright::Bool=true)
+function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
+    orthleft::Bool=false, orthright::Bool=true, α::Real = 1/√2)
+
     l = size(L.B, 2)::Int-1
     p = L.P[:,l+1]
 
@@ -559,8 +566,11 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int, orthleft::Bool
 
         if orthright #Orthogonalize right Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization
+            oldqnorm = norm(q)
             q -= L.Q*(L.Q'q)
-            q -= L.Q*(L.Q'q)
+            if norm(q) ≤ α * oldqnorm
+                q -= L.Q*(L.Q'q)
+            end
         end
 
         β = norm(q)
@@ -575,8 +585,11 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int, orthleft::Bool
 
         if orthleft #Orthogonalize left Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization
+            oldpnorm = norm(p)
             p -= L.P*(L.P'p)
-            p -= L.P*(L.P'p)
+            if norm(p) ≤ α * oldpnorm
+                p -= L.P*(L.P'p)
+            end
         end
 
         α = norm(p)
