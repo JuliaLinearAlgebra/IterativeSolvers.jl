@@ -2,19 +2,20 @@ export idrs, idrs!
 
 ####
 
-function omega(t, s, angle = .7)
+@inline function omega(t, s)
+    angle = sqrt(2.)/2
     ns = vecnorm(s)
     nt = vecnorm(t)
     ts = vecdot(t,s)
     rho = abs(ts/(nt*ns))
     om = ts/(nt*nt)
-    if rho < angle 
-        om = om*angle/rho
+    if rho < angle
+        om = om*convert(typeof(om),angle)/rho
     end
     om
 end
 
-linsys_op(x, A) = A*x
+@inline linsys_op(x, A) = A*x
 
 """
 IDRsSolver.jl
@@ -80,9 +81,9 @@ idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2) =
     idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter)
 
 function idrs_core!{T}(X, op, args, C::T, s, tol, maxiter)
-    R = C - op(X, args...)
+    R = C - op(X, args...)::T
     normR = vecnorm(R)
-    res = [normR]
+    res = typeof(tol)[normR]
 	iter = 0                 
 
     if normR <= tol           # Initial guess is a good enough solution
@@ -101,7 +102,7 @@ function idrs_core!{T}(X, op, args, C::T, s, tol, maxiter)
     f = zeros(eltype(C),s)
     c = zeros(eltype(C),s)
 
-    om = 1.
+    om::eltype(C) = 1
     iter = 0
     while normR > tol && iter < maxiter
         for i in 1:s,
@@ -111,7 +112,7 @@ function idrs_core!{T}(X, op, args, C::T, s, tol, maxiter)
 
             # Solve small system and make v orthogonal to P
 
-            c = \(LowerTriangular(M[k:s,k:s]),f[k:s])
+            c = LowerTriangular(M[k:s,k:s])\f[k:s]
             copy!(V, G[k])
             scale!(c[1], V)
         
@@ -168,8 +169,8 @@ function idrs_core!{T}(X, op, args, C::T, s, tol, maxiter)
         # Note: r is already perpendicular to P so v = r
 
         copy!(V, R)
-        Q = op(V, args...)
-        om = omega(Q, R, 0.7)
+        Q = op(V, args...)::T
+        om = omega(Q, R)
         axpy!(-om, Q, R)
         axpy!(om, V, X)
 
