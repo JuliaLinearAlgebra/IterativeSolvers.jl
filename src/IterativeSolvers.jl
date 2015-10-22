@@ -13,6 +13,7 @@ include("stationary.jl")
 include("cg.jl")
 include("gmres.jl")
 include("chebyshev.jl")
+include("idrs.jl")
 
 #Eigensolvers
 include("simple.jl")
