@@ -271,3 +271,5 @@ include("rsvd_fnkz.jl")
 #Expensive tests - don't run by default
 #include("matrixmarket.jl")
 #include("matrixcollection.jl")
+
+exitstatus()
