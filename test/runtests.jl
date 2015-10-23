@@ -238,12 +238,12 @@ eltype(A::MyOp) = eltype(A.buf)
 facts("eigvals_lanczos") do
 for T in (Float32, Float64)
     context("Matrix{$T}") do
-    A=convert(Matrix{T}, randn(n,n))
-    A=A+A' #Symmetric
+    A = convert(Matrix{T}, randn(n,n))
+    A = A + A' #Symmetric
     v = eigvals(A)
 
     eval_lanczos, c_lanczos = eigvals_lanczos(A)
-    T==Float64 && @fact c_lanczos.isconverged --> true #XXX Lanczos needs to be made more robust for Float32
+    @fact c_lanczos.isconverged --> true
     @fact norm(v - eval_lanczos) --> less_than(√eps(T))
     end
 
@@ -271,3 +271,5 @@ include("rsvd_fnkz.jl")
 #Expensive tests - don't run by default
 #include("matrixmarket.jl")
 #include("matrixcollection.jl")
+
+exitstatus()
