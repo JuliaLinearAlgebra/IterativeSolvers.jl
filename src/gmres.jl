@@ -76,6 +76,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
     tol = tol * norm(Pl\b)         #Relative tolerance
     resnorms = zeros(typeof(real(b[1])), maxiter, restart)
     isconverged = false
+    matvecs = 0
     K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
     for iter = 1:maxiter
         w    = Pl\(b - A*x)
@@ -117,9 +118,10 @@ function gmres!(x, A, b, Pl=1, Pr=1;
         if rho < tol
             resnorms = resnorms[1:iter, :]
             isconverged = true
+            matvecs = (iter-1)*restart + N
             break
         end
     end
 
-    return x, ConvergenceHistory(isconverged, tol, length(resnorms), resnorms)
+    return x, ConvergenceHistory(isconverged, tol, matvecs, resnorms)
 end
