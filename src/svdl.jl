@@ -451,7 +451,14 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     F0 = F# svdfact(L.B)
     ρ = L.β*F0[:U][end,:] #Residuals of singular values
 
-    F2 = svdfact!([diagm(F0[:S]) ρ'], thin=false)
+
+    #Construct broken arrow matrix
+    if VERSION < v"0.5.0-"
+        BA = [diagm(F0[:S]) ρ']
+    else #slicing behavior changed in 0.5
+        BA = [diagm(F0[:S]) ρ]
+    end
+    F2 = svdfact!(BA, thin=false)
 
     #Take k largest triplets
     Σ = (F2[:S]::Vector{Tr})[1:k]
@@ -486,7 +493,11 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     Q = L.Q*Q
     P = L.P*sub(U,:,1:k)
 
-    R = sub(R,1:k+1,1:k) + sub(R,:,k+1)*Mend
+    if VERSION < v"0.5.0-"
+        R = sub(R,1:k+1,1:k) + sub(R,:,k+1)*Mend
+    else
+        R = sub(R,1:k+1,1:k) + sub(R,:,k+1)*Mend'
+    end
 
     f = A*sub(Q,:,k+1)
     f -= P*(P'f)
