@@ -18,7 +18,7 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
         A = full(Diagonal(elty[1.0:n;]))
         q = convert(Vector{elty}, ones(n)/√n)
         σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none)
-        @fact norm(σ - [n:-1.0:n-4;]) --> less_than(5^2*1e-5)
+        @fact norm(σ - [n:-1.0:n-ns+1;]) --> less_than(ns^2*tol)
 
         #Check the singular vectors also
         Σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:both)
@@ -55,11 +55,12 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
         n = 200
         k = 5
         l = 10
+        tol = 1e-5
 
         A = convert(Matrix{elty}, randn(m,n))
         q = convert(Vector{elty}, randn(n))|>x->x/norm(x)
-        σ, L = svdl(A, k, k=l, v0=q, tol=1e-5, maxiter=30, method=method)
-        @fact norm(σ - svdvals(A)[1:k]) --> less_than(k^2*1e-5)
+        σ, L = svdl(A, k, k=l, v0=q, tol=tol, maxiter=30, method=method)
+        @fact norm(σ - svdvals(A)[1:k]) --> less_than(k^2*tol)
     end
   end
 end end
