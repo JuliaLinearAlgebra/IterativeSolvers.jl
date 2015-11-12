@@ -104,7 +104,7 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 - `reltol` : Maximum error in each desired singular value relative to the
              estimated norm of the input matrix.  Default: `√eps()`
 - `restart`: Which restarting algorithm to use. Valid choices are:
-             - `:ritz`: Thick restart with Ritz values [Wu2000] (default)
+             - `:ritz`: Thick restart with Ritz values [Wu2000]. Default
              - `:harmonic`: Restart with harmonic Ritz values [Baglama2005]
 - `doplot` : Plot a history of the Ritz value convergence. Requires the
              [UnicodePlots.jl](https://github.com/Evizero/UnicodePlots.jl.git)
