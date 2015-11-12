@@ -75,6 +75,11 @@ type PartialFactorization{T, Tr} <: Factorization{T}
     β :: Tr
 end
 
+type IterativeStatistics
+    mvps :: Int #Number of matrix-vector operations
+    vvps :: Int #Number of vector-vector operations
+end
+IterativeStatistics() = IterativeStatistics(0, 0)
 
 """
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
@@ -196,12 +201,14 @@ function svdl(A, l::Int=6; k::Int=2l,
 #    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
 
     T0 = time_ns()
-    @assert k>l
-    L = build(A, v0, k)
 
     #Save history of Ritz values
+    stats = IterativeStatistics()
     ritzvalhist = Vector[]
     convhist = []
+
+    @assert k>l
+    L = build(A, v0, k, stats)
 
     if doplot
        ttyh, ttyw = Base.tty_size()
@@ -215,13 +222,13 @@ function svdl(A, l::Int=6; k::Int=2l,
         F = svdfact(L.B)::LinAlg.SVD{eltype(v0), typeof(real(one(eltype(v0)))), Matrix{eltype(v0)}}
         iter==1 && @assert eltype(F)==eltype(v0)
         if method == :ritz
-            thickrestart!(A, L, F, j)
+            thickrestart!(A, L, F, j, stats)
         elseif method == :harmonic
-            harmonicrestart!(A, L, F, j)
+            harmonicrestart!(A, L, F, j, stats)
         else
             throw(ArgumentError("Unknown restart method $method"))
         end
-        extend!(A, L, k)
+        extend!(A, L, k, stats)
         if verbose
 	        elapsedtime = round((time_ns()-T0)*1e-9, 3)
 	        info("Iteration $iter: $elapsedtime seconds")
@@ -255,6 +262,8 @@ function svdl(A, l::Int=6; k::Int=2l,
         end
         all(conv) && break
     end
+
+    info(stats.mvps)
 
     #Compute singular vectors as necessary and return them in the output
     values = F[:S][1:l]
@@ -399,7 +408,7 @@ function isconverged(L::PartialFactorization,
 end
 
 #Hernandez2008
-function build{T}(A, q::AbstractVector{T}, k::Int)
+function build{T}(A, q::AbstractVector{T}, k::Int, stats::IterativeStatistics)
     m, n = size(A)
     Tr = typeof(real(one(T)))
     β = norm(q)
@@ -409,7 +418,7 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
     scale!(p, inv(α))
     extend!(A, PartialFactorization(
         reshape(p, m, 1), reshape(q, n, 1), Bidiagonal([α], Tr[], true), β
-        ), k)
+        ), k, stats)
 end
 
 
@@ -421,7 +430,7 @@ Thick restart (with ordinary Ritz values)
 [Hernandez2008]
 """
 function thickrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, l::Int)
+        F::Base.LinAlg.SVD{Tr,Tr}, l::Int, stats::IterativeStatistics)
 
     k = size(F[:V], 1)
     m, n = size(A)
@@ -437,6 +446,7 @@ function thickrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     f = A*sub(L.Q, :, l+1)
     ρ = L.β * reshape(F[:U][end, 1:l], l)
     L.P = sub(L.P, :, 1:k)*sub(F[:U], :, 1:l)
+    stats.mvps += 1
 
     #@assert ρ[i] ≈ f⋅L.P[:, i]
     f -= L.P*ρ
@@ -445,6 +455,7 @@ function thickrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     L.P = [L.P f]
 
     g = A'f - α*L.Q[:, end]
+    stats.mvps += 1
     L.β = β = norm(g)
     L.B = BrokenArrowBidiagonal([F[:S][1:l]; α], ρ, typeof(β)[])
     #@assert size(L.P, 2) == size(L.Q, 2) == size(L.B, 2)
@@ -460,7 +471,7 @@ Thick restart with harmonic Ritz values
 which follows that of [Hernandez2008]
 """
 function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, k::Int)
+        F::Base.LinAlg.SVD{Tr,Tr}, k::Int, stats::IterativeStatistics)
 
     m = size(L.B, 1)::Int
     #@assert size(L.P,2)==m==size(L.Q,2)-1
@@ -509,6 +520,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
 
     Q = L.Q*Q
     P = L.P*sub(U,:,1:k)
+    stats.mvps += 1
 
     if VERSION < v"0.5.0-"
         R = sub(R,1:k+1,1:k) + sub(R,:,k+1)*Mend
@@ -572,7 +584,9 @@ which case it will be necessary to orthogonalize both sets of vectors. See
 [Simon2000].
 """
 function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
-    orthleft::Bool=false, orthright::Bool=true, α::Real = 1/√2)
+    stats::IterativeStatistics;
+    orthleft::Bool=false, orthright::Bool=true, α::Real = 1/√2,
+    )
 
     l = size(L.B, 2)::Int-1
     p = L.P[:,l+1]
@@ -591,6 +605,7 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
     β = L.β
     for j=l+1:k
         Ac_mul_B!(q, A, p) #q = A'p
+        stats.mvps += 1
 
         if orthright #Orthogonalize right Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization
@@ -609,6 +624,7 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
 
         #p = A*q - β*p
         A_mul_B!(p, A, q)
+        stats.mvps += 1
         Base.LinAlg.axpy!(-β, sub(L.P, :, j), p)
 
         if orthleft #Orthogonalize left Lanczos vector
