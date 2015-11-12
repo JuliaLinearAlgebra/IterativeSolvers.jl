@@ -2,6 +2,11 @@ using IterativeSolvers
 using FactCheck
 
 facts("svdl") do
+
+#Simple error checking
+@fact_throws TypeError svdl(randn(5,5), vecs=true)
+@fact_throws ArgumentError svdl(randn(5,5), vecs=:wrongsymbol)
+
 #Thick restart methods
 for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
   for elty in (Float32, Float64)

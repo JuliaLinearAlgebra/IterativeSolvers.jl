@@ -194,11 +194,16 @@ iteration.
 function svdl(A, l::Int=6; k::Int=2l,
     j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
+    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs::Symbol=:none, dolock::Bool=false)
 #function svdl(A, l::Int=6, k::Int=2l,
 #    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
 #    maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
 #    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
+
+    #Validate inputs
+    if !(vecs == :left || vecs == :right || vecs == :both || vecs == :none)
+        throw(ArgumentError("vecs = $vecs not supported"))
+    end
 
     T0 = time_ns()
 
