@@ -30,5 +30,6 @@ include("lsmr.jl")
 include("rlinalg.jl")
 include("rsvd.jl")
 include("rsvd_fnkz.jl")
+include("rkaczmarz.jl")
 
 end
