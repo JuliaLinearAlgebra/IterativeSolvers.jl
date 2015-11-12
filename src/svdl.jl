@@ -352,7 +352,7 @@ function isconverged(L::PartialFactorization,
     #But so long as the gap between the converged Ritz values and all the
     #others is larger than the smallest empirical spectral gap d then we're fine.
     #Can also get some eigenvector statistics!!
-    let
+    if k > 1
         d = Inf
         for i in eachindex(σ), j=1:i-1
             d = min(d, abs(σ[i] - σ[j]))
@@ -369,8 +369,7 @@ function isconverged(L::PartialFactorization,
 
             if 2α ≤ d
                 #Rayleigh-Ritz bounds
-                x = α/(d-α)*√(1+(α/(d-α))^2)
-                x=abs(x)
+                x = abs(α/(d-α)*√(1+(α/(d-α))^2))
                 #verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
                 #2α ≤ d && (δσ[i] = min(δσ[i], x))
 

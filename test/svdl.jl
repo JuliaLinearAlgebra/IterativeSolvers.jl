@@ -12,11 +12,11 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         A = full(Diagonal(elty[1.0:n;]))
         q = convert(Vector{elty}, ones(n)/√n)
-        σ, L = svdl(A, ns, v0=q, tol=tol, maxiter=n, method=method, vecs=:none)
+        σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none)
         @fact norm(σ - [n:-1.0:n-4;]) --> less_than(5^2*1e-5)
 
         #Check the singular vectors also
-        Σ, L = svdl(A, ns, v0=q, tol=tol, maxiter=n, method=method, vecs=:both)
+        Σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:both)
 
         #The vectors should have the structure
         # [ 0  0 ...  0 ]
@@ -30,12 +30,18 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
         for i=1:5
             Σ[:U][end+1-i, i] -= sign(Σ[:U][end+1-i, i])
         end
-        @fact vecnorm(Σ[:U]) --> less_than(√tol)
+        @fact vecnorm(Σ[:U]) --> less_than(σ[1]*√tol)
         for i=1:5
             Σ[:Vt][i, end+1-i] -= sign(Σ[:Vt][i, end+1-i])
         end
-        @fact vecnorm(Σ[:U]) --> less_than(√tol)
-        @fact norm(σ - Σ[:S]) --> less_than(ns^2*tol)
+        @fact vecnorm(Σ[:U]) --> less_than(σ[1]*√tol)
+        @fact norm(σ - Σ[:S]) --> less_than(2max(tol*ns*σ[1], tol))
+
+        #Issue #55
+        let
+            σ1, _ = svdl(A, 1, tol=tol, reltol=tol)
+            @fact abs(σ[1] - σ1[1]) --> less_than(2max(tol*σ[1], tol))
+        end
     end
 
     context("Rectangular Matrix{$elty}") do
