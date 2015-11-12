@@ -27,6 +27,24 @@ function Base.size(B::BrokenArrowBidiagonal, n::Int)
     end
 end
 
+function Base.getindex{T}(B::BrokenArrowBidiagonal{T}, i::Int, j::Int)
+    n = size(B, 1)
+    k = length(B.av)
+    if !(1 ≤ i ≤ n || 1 ≤ j ≤ n)
+        throw(BoundsError())
+    end
+
+    if i == j
+        return B.dv[i]
+    elseif i ≤ k && j == k+1
+        return B.av[i]
+    elseif i > k && j == i+1
+        return B.ev[i-k]
+    else
+        return zero(T)
+    end
+end
+
 function Base.full{T}(B::BrokenArrowBidiagonal{T})
     n = size(B, 1)
     k = length(B.av)

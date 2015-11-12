@@ -57,5 +57,9 @@ end #svdl
 facts("BrokenArrowBidiagonal") do
     B = IterativeSolvers.BrokenArrowBidiagonal([1, 2, 3], [1, 2], Int[])
     @fact full(B) --> [1 0 1; 0 2 2; 0 0 3]
+    @fact B[3,3] --> 3
+    @fact B[2,3] --> 2
+    @fact B[3,2] --> 0
+    @fact B[1,3] --> 1
 end
 
