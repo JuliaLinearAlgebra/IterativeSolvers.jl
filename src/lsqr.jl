@@ -212,7 +212,10 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         if  test2 <= atol  istop = 2; end
         if  test1 <= rtol  istop = 1; end
 
-        if istop > 0 break end
+        if istop > 0
+            ch.isconverged = true
+            break
+        end
     end
     x
 end

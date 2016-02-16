@@ -73,5 +73,18 @@ context("SOL test") do
     x = lsqrSOLtest( 20,10, 0.1 )
 end
 
+context("Issue 64") do
+    srand(224)
+    n=10
+    A=sprand(n,n,.5)
+    b=rand(n)
+
+    x, ch = lsqr(A,b,maxiter=100)
+    resnorm = norm(A*x - b)
+    @fact resnorm --> less_than(√eps())
+    @fact ch.isconverged --> true
+    @fact ch.residuals[end] --> roughly(resnorm, atol=√eps())
+end
+
 end
 
