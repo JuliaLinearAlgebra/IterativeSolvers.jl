@@ -33,7 +33,7 @@
 
 ### Interface
 
-- All linear-algebraic routines will take as input a linear operator `A` that maps *n*-dimensional vectors to *n*-dimensional vectors. `A` is not explicitly typed, but must either be a `KrylovSubspace` or support multiplication `*` or function composition (`apply`) that behave as necessary to produce the correct mapping on the vector space.
+- All linear-algebraic routines will take as input a linear operator `A` that maps vectors to vectors. `A` is not explicitly typed, but must either be a `KrylovSubspace` or support multiplication `*` or function composition (`apply`) that behave as necessary to produce the correct mapping on the vector space.
 
 - A custom type for `A` may be specified. The following interface is expected to be defined on `A`:
   - `A*v` is define and computes the matrix-vector product on a `v::Vector`.
