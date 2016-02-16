@@ -2,14 +2,15 @@ export gmres, gmres!
 
 #One Arnoldi iteration
 #Optionally takes a truncation parameter l
-function arnoldi!(K::KrylovSubspace; l=K.order)
+function arnoldi!(K::KrylovSubspace, w; l=K.order)
     v = nextvec(K)
+    w = copy(v)
     n = min(length(K.v), l)
     h = zeros(eltype(v), n+1)
     v, h[1:n] = orthogonalize(v, K, n)
     h[n+1] = norm(v)
     (h[n+1]==0) && error("Arnoldi iteration terminated")
-    append!(K, v/h[n+1]) #save latest Arnoldi vector, i.e. newest column of Q in the AQ=QH factorization 
+    append!(K, v/h[n+1]) #save latest Arnoldi vector, i.e. newest column of Q in the AQ=QH factorization
     h #Return current Arnoldi coefficients, i.e. newest column of in the AQ=QH factorization
 end
 
@@ -86,11 +87,10 @@ function gmres!(x, A, b, Pl=1, Pr=1;
         N = restart
         for j = 1:restart
             #Calculate next orthonormal basis vector in the Krylov subspace
-            w = nextvec(K)
-            H[1:j+1, j] = arnoldi!(K)
+            H[1:j+1, j] = arnoldi!(K, w)
 
             #Update QR factorization of H
-            #The Q is stored as a series of Givens rotations in J 
+            #The Q is stored as a series of Givens rotations in J
             #The R is stored in H
             #- Compute Givens rotation that zeros out bottom right entry of H
             apply_givens!(H, J, j)
