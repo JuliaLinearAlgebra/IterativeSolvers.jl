@@ -57,7 +57,7 @@ end
 
 #Rayleigh quotient iteration
 #XXX Doesn't work well
-function eigvals_rqi{T}(K::KrylovSubspace, σ::Number, x=nothing; tol::Real=eps(T), maxiter::Int=K.n)
+function eigvals_rqi{T}(K::KrylovSubspace{T}, σ::Number, x=nothing; tol::Real=eps(T), maxiter::Int=K.n)
     v = lastvec(K)
     ρ = dot(v, nextvec(K))
     resnorms=zeros(eltype(real(one(T))), maxiter)
@@ -67,7 +67,7 @@ function eigvals_rqi{T}(K::KrylovSubspace, σ::Number, x=nothing; tol::Real=eps(
         ρ += dot(y,v)/θ^2
         v = y/θ
         resnorms[iter]=1/θ
-        if θ >= 1/tol 
+        if θ >= 1/tol
             resnorms=resnorms[1:iter]
             break
         end
@@ -79,4 +79,3 @@ function eigvals_rqi(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=siz
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
     eigvals_rqi(K, σ; tol=tol, maxiter=maxiter)
 end
-
