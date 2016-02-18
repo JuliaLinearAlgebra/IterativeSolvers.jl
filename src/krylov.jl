@@ -66,8 +66,10 @@ function init!{T}(K::KrylovSubspace{T}, v::Vector{T})
     K.v = Vector{T}[copy(v)]
 end
 
-#Orthogonalize a vector v against the last p basis vectors defined by the
-#KrylovSubspace K
+"""
+Orthogonalize a vector v against the last p basis vectors defined by the
+KrylovSubspace K
+"""
 function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
     method::Symbol=:ModifiedGramSchmidt, normalize::Bool=false)
     Kk = K.v[max(1,end-p+1):end]
@@ -76,14 +78,17 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
         for (i, e) in enumerate(Kk)
             v -= cs[i] * e
         end
-    elseif method == :ModifiedGramSchmidt || method== :Householder
-        #The numerical equivalence of ModifiedGramSchmidt and Householder was
-        #established in doi:10.1137/0613015
+    elseif method == :ModifiedGramSchmidt
         cs = zeros(T, p)
         for (i, e) in enumerate(Kk)
             cs[i] = dot(e, v)
             v-= cs[i] * e
         end
+    elseif method == :Householder
+        #Use brute force Householder
+        Q, R = qr([Kk v])
+        cs = R[:, end]
+        v = Q[:, end]
     else
         error("Unsupported orthogonalization method: $(method)")
     end

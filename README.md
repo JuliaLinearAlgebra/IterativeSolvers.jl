@@ -106,4 +106,4 @@ Orthogonalizing the basis vectors for a `KrylovSubspace` is crucial for numerica
 - `method`: Orthogonalization method. Currently supported methods are:
   - `:GramSchmidt`. Not recommended, as it is numerically unstable.
   - `:ModifiedGramSchmidt`. (default)
-  - `:Householder`. This is actually the same as `:ModifiedGramSchmidt`.
+  - `:Householder`.
