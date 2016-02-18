@@ -6,7 +6,7 @@
 [![Coverage Status](https://coveralls.io/repos/JuliaLang/IterativeSolvers.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaLang/IterativeSolvers.jl?branch=master)
 [![codecov.io](https://codecov.io/github/JuliaLang/IterativeSolvers.jl/coverage.svg?branch=master)](https://codecov.io/github/JuliaLang/IterativeSolvers.jl?branch=master)
 
-&copy; 2013---2015 [The Contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
+&copy; 2013---2016 [The Contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
 
 `IterativeSolvers` is a [Julia](http://julialang.org) package that provides iterative algorithms for solving linear systems, eigensystems, and singular value problems.
 
