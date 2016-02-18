@@ -21,7 +21,7 @@
 
 import Base.LinAlg: Eigen, SVD
 
-export rsvd, reig
+export rsvdfact, reig
 
 @doc doc"""
 Computes the partial singular value decomposition of `A` using a randomized
@@ -58,17 +58,17 @@ Implementation note:
     and feeding the result to one of the routines that computes the SVD
     restricted to that subspace.
 """ ->
-function rsvd(A, n::Int, p::Int=0)
-    Q = rrange(A, n, p=p)
-    svdfact_restricted(A, Q)
+function rsvdfact(A, n::Int, p::Int=0)
+    Q = rrange(A, n+p)
+    svdfact_restricted(A, Q, n)
 end
 
 @doc doc"""
-Like `rsvd`, but returns only the singular values.
+Like `rsvdfact`, but returns only the singular values.
 
 Inputs:
 
-    as for `rsvd`.
+    as for `rsvdfact`.
 
 Output:
 
@@ -76,8 +76,8 @@ Output:
 
 """ ->
 function rsvdvals(A, n::Int, p::Int=0)
-    Q = rrange(A, n, p=p)
-    svdvals_restricted(A, Q)
+    Q = rrange(A, n+p)
+    svdvals_restricted(A, Q, n)
 end
 
 @doc doc"""
@@ -110,21 +110,17 @@ Implementation note:
     reorthogonalization, we instead compute the basis with qrfact(), which
     for dense A computes the QR factorization using Householder reflectors.
 """ ->
-function rrange(A, l::Int; p::Int=0)
-    p≥0 || error()
+function rrange(A, l::Int=0)
     m, n = size(A)
     if l > m
-	warn("Cannot find $l linearly independent vectors of $m x $n matrix")
-	warn("Truncating to l=$m, p=0")
-        l=m
-	p=0
+	    throw(ArgumentError("Cannot find $l linearly independent vectors of $m x $n matrix"))
     end
-    Ω = randn(n, l+p)
+    Ω = randn(n, l)
     Y = A*Ω
     Q = full(qrfact!(Y)[:Q])
-    Q = p==0 ? Q : Q[:,1:l]
+    @assert m==size(Q, 1)
     @assert l==size(Q, 2)
-    Q
+    return Q
 end
 
 @doc doc"""
@@ -212,9 +208,8 @@ Implementation note:
     reorthogonalization, we instead compute the basis with `qrfact()`, which
     for dense A computes the QR factorization using Householder reflectors.
 """ ->
-function rrange_si(A, l::Int; At=A', p::Int=0, q::Int=0)
+function rrange_si(A, l::Int; At=A', q::Int=0)
     const basis=_->full(qrfact(_)[:Q])
-    p>=0 || error()
     n = size(A, 2)
     Ω = randn(n,l+p)
     Y = A*Ω
@@ -225,7 +220,7 @@ function rrange_si(A, l::Int; At=A', p::Int=0, q::Int=0)
         Y=A*Q̃
         Q=basis(Y)
     end
-    p==0 ? Q : Q[:,1:l]
+    Q
 end
 
 
@@ -260,13 +255,11 @@ Implementation note:
     for dense A computes the QR factorization using Householder reflectors.
 
 """ ->
-function rrange_f(A, l::Int; p::Integer=0)
-    p ≥ 0 || error()
+function rrange_f(A, l::Int)
     n = size(A, 2)
     Ω = srft(l+p)
     Y = A*Ω
     Q = full(qrfact!(Y)[:Q])
-    p==0 ? Q : Q[:,1:l]
 end
 
 
@@ -289,10 +282,10 @@ Reference:
 
     Algorithm 5.1 of \cite{Halko2011}
 """ ->
-function svdfact_restricted(A, Q)
+function svdfact_restricted(A, Q, n::Int)
     B=Q'A
     S=svdfact!(B)
-    SVD(Q*S[:U], S[:S], S[:Vt])
+    SVD((Q*S[:U])[:, 1:n], S[:S][1:n], S[:Vt][1:n, :])
 end
 
 @doc doc"""
@@ -306,9 +299,9 @@ Output:
 
     `v`: A vector containing the estimated singular values of `A`
 """ ->
-function svdvals_restricted(A, Q)
+function svdvals_restricted(A, Q, n::Int)
     B=Q'A
-    S=svdvals!(B)
+    S=svdvals!(B)[1:n]
 end
 
 @doc doc"""
@@ -499,4 +492,3 @@ Implementation Note:
 """ ->
 reig(A::Hermitian, l::Int) = eigfact_onepass(A, srft(l))
 reig(A, l::Int) = eigfact_onepass(A, srft(l), srft(l))
-

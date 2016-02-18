@@ -15,6 +15,9 @@
 - `svdl`: Compute the largest few singular triples using a iterative singular
           value decomposition.
 
+- `rsvdfact`: Compute the largest few singular triples using a naive randomized
+              SVD.
+
 ## Current status
 
 - [Issue #1](https://github.com/JuliaLang/IterativeSolvers.jl/issues/1) documents the implementation roadmap for iterative solvers.
@@ -39,7 +42,7 @@
   - `A*v` is define and computes the matrix-vector product on a `v::Vector`.
   - `eltype(A)` is defined and returns the element type implicit in the equivalent matrix representation of `A`.
   - `size(A, d)` is defined and returns the nominal dimensions along the `d`th axis in the equivalent matrix representation of `A`.
-  
+
 - All linear solvers have a common function declaration
 
     solver(A, b::Vector, [x, Pl, Pr, varargs...]; tol::Real, maxiter::Int, kwargs...)
