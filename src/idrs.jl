@@ -81,7 +81,7 @@ idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2) =
 idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2) =
     idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter)
 
-function idrs_core!{T}(X::T, op, args, C::T, s::Int64, tol::Float64, maxiter::Int64; smoothing::Bool=false)
+function idrs_core!{T}(X::T, op, args, C::T, s::Integer, tol::AbstractFloat, maxiter::Integer; smoothing::Bool=false)
     R = C - op(X, args...)::T
     normR = vecnorm(R)
     res = typeof(tol)[normR]
