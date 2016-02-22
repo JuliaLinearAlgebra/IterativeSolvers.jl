@@ -1,3 +1,4 @@
+import Base.LinAlg.BLAS: axpy!, gemm!
 export idrs, idrs!
 
 ####
@@ -89,7 +90,8 @@ function idrs_core!{T}(X::T, op, args, C::T, s::Int64, tol::Float64, maxiter::In
     if smoothing
         X_s = copy(X)
         R_s = copy(R)
-        T_s = zero(R)
+        T_s = zeros(R)
+        # gamma = zeros(size(R_s, 1), size(T_s, 1))
     end
 
     if normR <= tol           # Initial guess is a good enough solution
@@ -161,10 +163,10 @@ function idrs_core!{T}(X::T, op, args, C::T, s::Int64, tol::Float64, maxiter::In
 
             normR = vecnorm(R)
             if smoothing
-                T_s = R_s - R
-                gamma = (R_s * T_s')/vecnorm(T_s)^2
-                R_s = R_s - gamma*T_s
-                X_s = X_s - gamma*(X_s - X)
+                copy!(T_s, R_s); axpy!(-1., R, T_s) # T_s = R_s - R
+                gamma = vecdot(R_s, T_s)/vecnorm(T_s)^2
+                axpy!(-gamma, T_s, R_s) # R_s = R_s - gamma*T_s
+                copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s) # X_s = X_s - gamma*(X_s - X)
                 normR = vecnorm(R_s)
             end
             res = [res; normR]
@@ -188,10 +190,10 @@ function idrs_core!{T}(X::T, op, args, C::T, s::Int64, tol::Float64, maxiter::In
 
         normR = vecnorm(R)
         if smoothing
-            T_s = R_s - R
-            gamma = (R_s * T_s')/vecnorm(T_s)^2
-            R_s = R_s - gamma*T_s
-            X_s = X_s - gamma*(X_s - X)
+            copy!(T_s, R_s); axpy!(-1., R, T_s) # T_s = R_s - R
+            gamma = vecdot(R_s, T_s)/vecnorm(T_s)^2
+            axpy!(-gamma, T_s, R_s) # R_s = R_s - gamma*T_s
+            copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s) # X_s = X_s - gamma*(X_s - X)
             normR = vecnorm(R_s)
         end
         iter += 1
