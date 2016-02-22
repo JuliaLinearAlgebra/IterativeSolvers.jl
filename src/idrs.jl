@@ -45,6 +45,7 @@ Arguments
             but also  makes the method more expensive.
        tol -- tolerance of the method.
        maxiter -- maximum number of iterations
+       smoothing -- (Logical) specifies if residual smoothing must be applied. Default is false.
 
 
 Output
@@ -75,13 +76,13 @@ References
         http://ta.twi.tudelft.nl/nw/users/gijzen/idrs.m
     [4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
 """
-idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2) =
-    idrs_core!(zerox(A,b), linsys_op, (A,), b, s, tol, maxiter)
+idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2, smoothing=false) =
+    idrs_core!(zerox(A, b), linsys_op, (A,), b, s, tol, maxiter; smoothing=smoothing)
 
-idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2) =
-    idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter)
+idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2, smoothing=false) =
+    idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter; smoothing=smoothing)
 
-function idrs_core!{T}(X::T, op, args, C,
+function idrs_core!{T}(X, op, args, C::T,
     s::Integer, tol::AbstractFloat, maxiter::Integer; smoothing::Bool=false)
 
     R = C - op(X, args...)::T
