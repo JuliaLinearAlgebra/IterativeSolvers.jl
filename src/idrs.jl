@@ -1,4 +1,4 @@
-import Base.LinAlg.BLAS: axpy!, gemm!
+import Base.LinAlg.BLAS: axpy!
 export idrs, idrs!
 
 ####
@@ -91,7 +91,6 @@ function idrs_core!{T}(X::T, op, args, C::T, s::Int64, tol::Float64, maxiter::In
         X_s = copy(X)
         R_s = copy(R)
         T_s = zeros(R)
-        # gamma = zeros(size(R_s, 1), size(T_s, 1))
     end
 
     if normR <= tol           # Initial guess is a good enough solution
