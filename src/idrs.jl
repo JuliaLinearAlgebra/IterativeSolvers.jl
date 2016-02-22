@@ -81,7 +81,9 @@ idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2) =
 idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2) =
     idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter)
 
-function idrs_core!{T}(X::T, op, args, C, s::Integer, tol::AbstractFloat, maxiter::Integer; smoothing::Bool=false)
+function idrs_core!{T}(X::T, op, args, C,
+    s::Integer, tol::AbstractFloat, maxiter::Integer; smoothing::Bool=false)
+
     R = C - op(X, args...)::T
     normR = vecnorm(R)
     res = typeof(tol)[normR]
@@ -161,10 +163,16 @@ function idrs_core!{T}(X::T, op, args, C, s::Integer, tol::AbstractFloat, maxite
 
             normR = vecnorm(R)
             if smoothing
-                copy!(T_s, R_s); axpy!(-1., R, T_s) # T_s = R_s - R
-                gamma = vecdot(R_s, T_s)/vecnorm(T_s)^2
-                axpy!(-gamma, T_s, R_s) # R_s = R_s - gamma*T_s
-                copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s) # X_s = X_s - gamma*(X_s - X)
+                # T_s = R_s - R
+                copy!(T_s, R_s); axpy!(-1., R, T_s)
+
+                gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
+
+                # R_s = R_s - gamma*T_s
+                axpy!(-gamma, T_s, R_s)
+                # X_s = X_s - gamma*(X_s - X)
+                copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s)
+
                 normR = vecnorm(R_s)
             end
             res = [res; normR]
@@ -188,10 +196,16 @@ function idrs_core!{T}(X::T, op, args, C, s::Integer, tol::AbstractFloat, maxite
 
         normR = vecnorm(R)
         if smoothing
-            copy!(T_s, R_s); axpy!(-1., R, T_s) # T_s = R_s - R
-            gamma = vecdot(R_s, T_s)/vecnorm(T_s)^2
-            axpy!(-gamma, T_s, R_s) # R_s = R_s - gamma*T_s
-            copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s) # X_s = X_s - gamma*(X_s - X)
+            # T_s = R_s - R
+            copy!(T_s, R_s); axpy!(-1., R, T_s)
+
+            gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
+
+            # R_s = R_s - gamma*T_s
+            axpy!(-gamma, T_s, R_s)
+            # X_s = X_s - gamma*(X_s - X)
+            copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s)
+
             normR = vecnorm(R_s)
         end
         iter += 1
