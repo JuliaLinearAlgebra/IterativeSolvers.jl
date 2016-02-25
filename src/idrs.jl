@@ -83,7 +83,7 @@ idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2, sm
     idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter; smoothing=smoothing)
 
 function idrs_core!{T}(X, op, args, C::T,
-    s::Integer, tol::AbstractFloat, maxiter::Integer; smoothing::Bool=false)
+    s::Number, tol::Number, maxiter::Number; smoothing::Bool=false)
 
     R = C - op(X, args...)::T
     normR = vecnorm(R)
@@ -213,7 +213,7 @@ function idrs_core!{T}(X, op, args, C::T,
         res = [res; normR]
     end
     if smoothing
-        X = copy(X_s)
+        copy!(X, X_s)
     end
     return X, ConvergenceHistory(res[end]<tol, tol, length(res), res)
 end
