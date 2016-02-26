@@ -4,6 +4,7 @@ isdefined(:__precompile__) && __precompile__(true)
 
 include("common.jl")
 include("krylov.jl")
+include("hessenqr.jl")
 
 #Specialized factorizations
 include("factorization.jl")
@@ -18,6 +19,7 @@ include("idrs.jl")
 #Eigensolvers
 include("simple.jl")
 include("lanczos.jl")
+include("arnoldi.jl")
 
 #SVD solvers
 include("svdl.jl")
