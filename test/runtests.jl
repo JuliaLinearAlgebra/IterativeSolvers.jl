@@ -213,11 +213,15 @@ for T in (Float32, Float64, Complex64, Complex128)
     @fact norm(eval_rand-eval_ii) --> less_than(tol)
     end
 
-    #context("Rayleigh quotient iteration") do
-    #XXX broken?
-    #l = eigvals_rqi(A, eigvals_rand, 2000, √eps()).val
-    #@fact norm(eigvals_rand-l) --> less_than(tol)
-    #end
+    context("Rayleigh quotient iteration") do
+    irnd = ceil(Int, rand()*(n-2))
+    eval_rand = v[1+irnd] #Pick random eigenvalue
+    # Perturb the eigenvalue by < 1/4 of the distance to the nearest eigenvalue
+    eval_diff = min(abs(v[irnd]-eval_rand), abs(v[irnd+2]-eval_rand))
+    σ = eval_rand + eval_diff/2*(rand()-.5)
+    eval_rqi = eigvals_rqi(A, σ; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
+    @fact norm(eval_rand-eval_rqi) --> less_than(tol)
+    end
 
     end
 end
