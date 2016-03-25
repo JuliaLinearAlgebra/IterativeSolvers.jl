@@ -123,7 +123,10 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 
 - `Σ`: A list of the desired singular values if `vecs == :none` (the default),
     otherwise returns an `SVD` object with the desired singular vectors filled in
-- `L`: The computed partial factorization of A
+- `L`: The computed partial factorizations of A
+- `Bs`: The history of the computed projected matrices
+- `ritzvalhist`: Ritz values computed at each iteration
+- `convhist`: Convergence data
 
 # Implementation notes
 
@@ -201,7 +204,9 @@ function svdl(A, l::Int=6; k::Int=2l,
 
     #Save history of Ritz values
     ritzvalhist = Vector[]
+    βs = Float64[]
     convhist = []
+    Bs = AbstractMatrix[deepcopy(L.B)]
 
     if doplot
        ttyh, ttyw = Base.tty_size()
@@ -230,7 +235,8 @@ function svdl(A, l::Int=6; k::Int=2l,
 
         push!(convhist, conv)
         push!(ritzvalhist, F[:S])
-
+        push!(Bs, deepcopy(L.B))
+        push!(βs, L.β)
 
         if doplot
             if isdefined(Main, :UnicodePlots)
@@ -270,10 +276,11 @@ function svdl(A, l::Int=6; k::Int=2l,
         zeros(eltype(v0), 0, n)
     end
 
+    push!(βs, L.β)
     if vecs == :none
-        values, L
+        values, L, Bs, βs
     else
-        LinAlg.SVD(leftvecs, values, rightvecs), L
+        LinAlg.SVD(leftvecs, values, rightvecs), L, Bs, βs
     end
 end
 
@@ -360,29 +367,27 @@ function isconverged(L::PartialFactorization,
         verbose && println("Smallest empirical spectral gap: ", d)
         #Chatelein 1993 - normwise backward error associated with approximate invariant subspace
         #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-        #verbose && println("Normwise backward error associated with subspace: ", L.β/σ[1])
+        verbose && println("Normwise backward error associated with subspace: ", L.β/σ[1])
         for i in eachindex(Δσ)
             α = Δσ[i]
 
             #Simple error bound
-            #if 2α ≤ d
-
             if 2α ≤ d
                 #Rayleigh-Ritz bounds
                 x = abs(α/(d-α)*√(1+(α/(d-α))^2))
-                #verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
-                #2α ≤ d && (δσ[i] = min(δσ[i], x))
+                verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
+                #δσ[i] = min(δσ[i], x)
 
                 y = α^2/d #[Wilkinson:Ch.3 Appendix (4), p.188]
-                #verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
-                2α ≤ d && (δσ[i] = min(δσ[i], y))
+                verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
+                δσ[i] = min(δσ[i], y)
             end
 
 	    verbose && println("Ritz value ", i, ": ", σ[i], " ± ", signif(δσ[i], 3))
 
             #Estimate of the normwise backward error [Deif 1989]
             ##Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-            #verbose && println("Normwise backward error estimate: ", α/σ[1])
+            verbose && println("Normwise backward error estimate: ", α/σ[1])
 
             #Geurts, 1982 - componentwise backward error also known
             #A. J. Geurts, (1982), A contribution to the theory of condition,
