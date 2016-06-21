@@ -1,7 +1,8 @@
 export cg, cg!, master_cg, master_cg!
 
-macro conjugate_gradients!(x,K,b,Pl,tol,maxiter,init, tol_check, finish)
+macro conjugate_gradients!(_x,_K,_b,_Pl,_tol,_maxiter,init, tol_check, finish)
   quote
+    (x=$_x; K=$_K; b=$_b; Pl=$_Pl; tol=$_tol; maxiter=$_maxiter)
     $init
     tol = tol * norm(b)
     r = b - nextvec(K)
