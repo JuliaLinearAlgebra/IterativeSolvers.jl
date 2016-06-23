@@ -1,9 +1,6 @@
-export cg, cg!, master_cg, master_cg!
+export cg, cg!, master_cg, master_cg!, conjugate_gradients!
 
-macro conjugate_gradients!(_x,_K,_b,_Pl,_tol,_maxiter,init, tol_check, finish)
-  quote
-    (x=$_x; K=$_K; b=$_b; Pl=$_Pl; tol=$_tol; maxiter=$_maxiter)
-    $init
+function conjugate_gradients!(x,K,b,Pl,tol,maxiter, tol_check)
     tol = tol * norm(b)
     r = b - nextvec(K)
     p = z = isa(Pl, Function) ? Pl(r) : Pl\r
@@ -15,15 +12,13 @@ macro conjugate_gradients!(_x,_K,_b,_Pl,_tol,_maxiter,init, tol_check, finish)
       # α>=0 || throw(PosSemidefException("α=$α"))
       update!(x, α, p)
       r -= α*q
-      $tol_check
+      tol_check(r) && break
       z = isa(Pl, Function) ? Pl(r) : Pl\r
       oldγ = γ
       γ = dot(r, z)
       β = γ/oldγ
       p = z + β*p
     end
-    $finish
-  end
 end
 
 cg(A, b, Pl=1; kwargs...) =  cg!(zerox(A,b), A, b, Pl; kwargs...)
@@ -44,25 +39,24 @@ end
 
 function cg!(x, K::KrylovSubspace, b, Pl=1;
         tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2))
-  @conjugate_gradients!(
+  conjugate_gradients!(
     x,K,b,Pl,tol,maxiter,
-    Void,
-    (norm(r) < tol && break),
-    x
+    (r ->norm(r) < tol),
   )
+  x
 end
 
 function master_cg!(x, K::KrylovSubspace, b, Pl=1;
         tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2))
-  @conjugate_gradients!(
+  resnorms = zeros(maxiter)
+  conjugate_gradients!(
     x,K,b,Pl,tol,maxiter,
-    resnorms = zeros(maxiter),  #init
-    begin resnorms[iter] = norm(r)  #tol_check
+    r -> begin resnorms[iter] = norm(r)  #tol_check
       if resnorms[iter] < tol #Converged?
           resnorms = resnorms[1:iter]
-          break
+          true
       end
-    end,
-    (x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)) #finish
+    end
   )
+  (x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)) #finish
 end
