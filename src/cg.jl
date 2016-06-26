@@ -36,7 +36,7 @@ function conjugate_gradients!(x,K,b,Pl,Pr,tol,maxiter,resnorms,verbose)
     q = nextvec(K)
     α = γ/dot(p, q)
     # α>=0 || throw(PosSemidefException("α=$α"))
-    LinAlg.axpy!(α, p, x)   #Is it ok in performance for this function to automatically promote?
+    update!(x, α, p)
     r -= α*q
     resnorm = norm(r)
     verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
