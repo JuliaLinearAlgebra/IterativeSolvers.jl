@@ -54,7 +54,7 @@ cg(A, b; pl=1, pr=1, kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
 
 master_cg(A, b; pl=1, pr=1, kwargs...) =  master_cg!(zerox(A,b), A, b; kwargs...)
 
-function cg!(x, A, b; pl=1, pr=1, tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2), verbose=false, plot=false)
+function cg!(x, A, b; pl=1, pr=1, tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2), verbose=false)
   K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
   init!(K, x)
   cg!(x,K,b; pl=pl, pr=pr, tol=tol, maxiter=maxiter, verbose=verbose)
