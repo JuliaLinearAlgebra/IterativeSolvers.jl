@@ -2,8 +2,18 @@ using UnicodePlots
 import Base: \, eltype, empty!, eps, length, ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
 export A_mul_B
 
+\(f::Function, b::Vector) = f(b)
+
+#Borders are always white, issue on UnicodePlots? light terminals suffer
+function showplot(vals::Vector)
+  isdefined(Main, :UnicodePlots) || warn("UnicodePlots not found; no plotsies T.T ")
+  println(lineplot(1:length(vals), vals, title = "Convergence", name = "resnorm"))
+end
+
 abstract Residuals
-type ResNone <: Residuals end
+type ResSingle <: Residuals
+  residual::Float64
+end
 type ResArray <: Residuals
   top::Int
   residuals::Array{Float64,1}
@@ -13,25 +23,25 @@ type RestResArray <: Residuals
   residuals::Array{Float64,2}
   restart::Int
 end
-Resnorms(maxiter) = ResArray(1,zeros(maxiter))
-Resnorms(maxiter,restart) = RestResArray([1,1],zeros(maxiter,restart),restart)
-
-ResArray(dims,maxiter) = Residuals(dims,ones(length(dims)),zeros(dims...))
-add!(rn::ResNone) = rn
-function add!(ra::ResArray, res::Real)
+ResSingle() = ResSingle(0)
+ResArray(maxiter) = ResArray(1,zeros(maxiter))
+RestResArray(maxiter,restart) = RestResArray([1,1],zeros(maxiter,restart),restart)
+push!(rs::ResSingle, res::Real) = (rs.residual = res; nothing)
+function push!(ra::ResArray, res::Real)
   ra.residuals[ra.top] = res
   ra.top+=1
-  ra
+  nothing
 end
-function add!(ra::RestResArray, res::Real)
+function push!(ra::RestResArray, res::Real)
   ra.residuals[ra.top...] = res
   ra.top[2]+=1
   if ra.top[2] > ra.restart
     ra.top[2] = 1
     ra.top[1] += 1
   end
-  ra
+  nothing
 end
+extract(rs::ResSingle) = ra.residual
 extract(ra::ResArray) = ra.residuals[1:ra.top-1]
 function extract(ra::RestResArray)
   i = ra.top[1]
@@ -39,28 +49,11 @@ function extract(ra::RestResArray)
   ra.residuals[1:i,:]
 end
 
+last(rs::ResSingle) = rs.residual
+last(ra::ResArray) = ra.residuals[ra.top...]
+last(ra::RestResArray) = ra.residuals[ra.top...]
 
-\(f::Function, b::Vector) = f(b)
-
-#Borders are always white, issue on UnicodePlots? light terminals suffer
-function showplot(vals::Vector)
-  isdefined(Main, :UnicodePlots) || warn("UnicodePlots not found; no plotsies T.T ")
-  println(lineplot(1:length(vals), vals, title = "Convergence", name = "resnorm"))
-end
-
-check(tol::Real, resnorm::Real, ::Vector, ::Integer, ::Type{Val{true}}) = resnorm < tol
-
-function check(tol::Real, resnorm::Real, resnorms::Vector, iter::Int, ::Type{Val{false}})
-  resnorms[iter] = resnorm
-  if resnorms[iter] < tol
-    resize!(resnorms,iter)
-    return true
-  end
-  false
-end
-
-check(tol::Real, resnorm::Real, resnorms::Vector, iter::Integer) =
-  check(tol,resnorm,resnorms,iter,Val{length(resnorms)==1})
+isconverged(r::Residuals,tol::Real) = last(r) < tol
 
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
