@@ -1,31 +1,44 @@
-using UnicodePlots
-import Base: \
-export cg, cg!, master_cg, master_cg!, conjugate_gradients!
+export cg, cg!, master_cg, master_cg!
 
-\(f::Function, b::Vector) = f(b)
+cg(A, b; pl=1, pr=1, kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
 
-#Borders are always white, issue on UnicodePlots? light terminals suffer
-function showplot(vals::Vector)
-  isdefined(Main, :UnicodePlots) || warn("UnicodePlots not found; no plotsies T.T ")
-  println(lineplot(1:length(vals), vals, title = "Convergence", name = "resnorm"))
+function cg!(x, A, b; kwargs...)
+  K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
+  init!(K, x)
+  cg!(x,K,b; kwargs...)
 end
 
-check(tol::Real, resnorm::Real, ::Vector, ::Integer, ::Type{Val{true}}) = resnorm < tol
-
-function check(tol::Real, resnorm::Real, resnorms::Vector, iter::Int, ::Type{Val{false}})
-  resnorms[iter] = resnorm
-  if resnorms[iter] < tol
-    resize!(resnorms,iter)
-    return true
-  end
-  false
+function cg!(x, K::KrylovSubspace, b;
+  pl=1, pr=1, tol::Real=size(K.A,2)*eps(),
+  maxiter::Integer=size(K.A,2), verbose::Bool=false
+  )
+  cg_method!(x,K,b,pl,pr;tol=tol,maxiter=maxiter,resnorms=zeros(1),verbose=verbose)
+  x
 end
 
-check(tol::Real, resnorm::Real, resnorms::Vector, iter::Integer) =
-  check(tol,resnorm,resnorms,iter,Val{length(resnorms)==1})
+master_cg(A, b; pl=1, pr=1, kwargs...) =  master_cg!(zerox(A,b), A, b; kwargs...)
+
+function master_cg!(x, A, b; kwargs...)
+  K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
+  init!(K, x)
+  master_cg!(x,K,b; kwargs...)
+end
+
+function master_cg!(x, K::KrylovSubspace, b;
+  pl=1, pr=1, tol::Real=size(K.A,2)*eps(),
+  maxiter::Integer=size(K.A,2), verbose=false, plot=false
+  )
+  resnorms=zeros(maxiter)
+  cg_method!(x,K,b,pl,pr;tol=tol,maxiter=maxiter,resnorms=resnorms,verbose=verbose)
+  plot && showplot(resnorms)
+  (x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)) #finish
+end
 
 #Make macro predicate for method functions?
-function conjugate_gradients!(x,K,b,pl,pr,tol,maxiter,resnorms,verbose)
+function cg_method!(x,K,b,pl,pr;
+  tol::Real=size(K.A,2)*eps(),maxiter::Integer=size(K.A,2),
+  resnorms::Vector=zeros(1),verbose::Bool=true
+  )
   verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","relres")
   tol = tol * norm(b)
   r = b - nextvec(K)
@@ -48,34 +61,4 @@ function conjugate_gradients!(x,K,b,pl,pr,tol,maxiter,resnorms,verbose)
     p = z + β*p
   end
   verbose && @printf("\n");
-end
-
-cg(A, b; pl=1, pr=1, kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
-
-master_cg(A, b; pl=1, pr=1, kwargs...) =  master_cg!(zerox(A,b), A, b; kwargs...)
-
-function cg!(x, A, b; pl=1, pr=1, tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2), verbose=false)
-  K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
-  init!(K, x)
-  cg!(x,K,b; pl=pl, pr=pr, tol=tol, maxiter=maxiter, verbose=verbose)
-end
-
-function master_cg!(x, A, b; pl=1, pr=1, tol::Real=size(A,2)*eps(), maxiter::Int=size(A,2), verbose=false, plot=false)
-  K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
-  init!(K, x)
-  master_cg!(x,K,b; pl=pl, pr=pr, tol=tol, maxiter=maxiter, verbose=verbose, plot=plot)
-end
-
-function cg!(x, K::KrylovSubspace, b; pl=1, pr=1,
-        tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2), verbose=false)
-  conjugate_gradients!(x,K,b,pl,pr,tol,maxiter,zeros(1),verbose)
-  x
-end
-
-function master_cg!(x, K::KrylovSubspace, b; pl=1, pr=1,
-        tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2), verbose=false, plot=false)
-  resnorms=zeros(maxiter)
-  conjugate_gradients!(x,K,b,pl,pr,tol,maxiter,resnorms,verbose)
-  plot && showplot(resnorms)
-  (x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)) #finish
 end
