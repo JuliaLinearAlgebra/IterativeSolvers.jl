@@ -37,7 +37,7 @@ function master_chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, n:
     tol=tol,maxiter=maxiter,residuals=resarray,verbose=verbose)
   resnorms = extract(resarray)
   plot && showplot(resnorms)
-  (x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)) #finish
+  x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms) #finish
 end
 
 function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, pl=1, pr=1;

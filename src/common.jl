@@ -5,9 +5,11 @@ export A_mul_B
 \(f::Function, b::Vector) = f(b)
 
 #Borders are always white, issue on UnicodePlots? light terminals suffer
-function showplot(vals::Vector)
+function showplot{T <: Number}(vals::Array{T,1})
   isdefined(Main, :UnicodePlots) || warn("UnicodePlots not found; no plotsies T.T ")
   println(lineplot(1:length(vals), vals, title = "Convergence", name = "resnorm"))
+end
+function showplot{T <: Number}(vals::Array{T,2})
 end
 
 abstract Residuals
@@ -50,8 +52,11 @@ function extract(ra::RestResArray)
 end
 
 last(rs::ResSingle) = rs.residual
-last(ra::ResArray) = ra.residuals[ra.top...]
-last(ra::RestResArray) = ra.residuals[ra.top...]
+last(ra::ResArray) = ra.residuals[ra.top-1]
+function last(ra::RestResArray)
+    ra.top[2] == 1 && return ra.residuals[ra.top[1]-1, ra.restart]
+    ra.residuals[ra.top[1], ra.top[2]-1]
+end
 
 isconverged(r::Residuals,tol::Real) = last(r) < tol
 

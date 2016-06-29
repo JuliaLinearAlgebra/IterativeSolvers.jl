@@ -32,7 +32,7 @@ function master_cg!(x, K::KrylovSubspace, b;
   cg_method!(x,K,b,pl,pr; tol=tol,maxiter=maxiter,residuals=resarray,verbose=verbose)
   resnorms = extract(resarray)
   plot && showplot(resnorms)
-  (x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms)) #finish
+  x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms) #finish
 end
 
 #Make macro predicate for method functions?

@@ -1,4 +1,4 @@
-export gmres, gmres!
+export gmres, gmres!, master_gmres, master_gmres!
 
 #One Arnoldi iteration
 #Optionally takes a truncation parameter l
@@ -38,12 +38,40 @@ function compute_givens(a, b, i, j)
     end
 end
 
-gmres(A, b, Pl=1, Pr=1;
-      tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b))) =
-    gmres!(zerox(A,b), A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
+gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
 
-function gmres!(x, A, b, Pl=1, Pr=1;
-        tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
+function gmres!(x, A, b;
+    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))),
+    maxiter::Int=1, restart::Int=min(20,length(b)), verbose::Bool=false
+    )
+    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
+    gmres_method!(x,A,K,b,pl,pr;
+        tol=tol, maxiter=maxiter, restart=restart, verbose=verbose
+        )
+    x
+end
+
+master_gmres(A, b; kwargs...) = master_gmres!(zerox(A,b), A, b; kwargs...)
+
+function master_gmres!(x, A, b;
+    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))),
+    maxiter::Int=1, restart::Int=min(20,length(b)), verbose::Bool=false,
+    plot::Bool=false
+    )
+    rest_resarray=RestResArray(maxiter, restart)
+    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
+    gmres_method!(x,A,K,b,pl,pr;
+        tol=tol,maxiter=maxiter,restart=restart,verbose=verbose,residuals=rest_resarray
+        )
+    resnorms = extract(rest_resarray)
+    plot && showplot(resnorms)
+    x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms) #finish
+end
+
+function gmres_method!(x, A, K::KrylovSubspace, b, pl=1, pr=1;
+        tol=sqrt(eps(typeof(real(b[1])))), residuals::Residuals=ResSingle(),
+        maxiter::Int=1, restart::Int=min(20,length(b)), verbose::Bool=false
+        )
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
 #           2.3.4 Generalized Minimal Residual (GMRES)
@@ -53,34 +81,30 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 #
 #   Solve A*x=b using the Generalized Minimum RESidual Method with restarts
 #
-#   Effectively solves the equation inv(Pl)*A*inv(Pr)*y=b where x = inv(Pr)*y
+#   Effectively solves the equation inv(pl)*A*inv(pr)*y=b where x = inv(pr)*y
 #
 #   Required Arguments:
 #       A: Linear operator
 #       b: Right hand side
 #
 #   Named Arguments:
-#       Pl:      Left preconditioner
-#       Pr:      Right preconditioner
+#       pl:      Left preconditioner
+#       pr:      Right preconditioner
 #       restart: Number of iterations before restart (GMRES(restart))
 #       maxiter:  Maximum number of outer iterations
 #       tol:     Convergence Tolerance
 #
-#   The input A (resp. Pl, Pr) can be a matrix, a function returning A*x,
-#   (resp. inv(Pl)*x, inv(Pr)*x), or any type representing a linear operator
-#   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
+#   The input A (resp. pl, pr) can be a matrix, a function returning A*x,
+#   (resp. inv(pl)*x, inv(pr)*x), or any type representing a linear operator
+#   which implements *(A,x) (resp. \(pl,x), \(pr,x)).
     n = length(b)
     T = eltype(b)
     H = zeros(T,n+1,restart)       #Hessenberg matrix
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,3)         #Givens rotation values
-    tol = tol * norm(Pl\b)         #Relative tolerance
-    resnorms = zeros(typeof(real(b[1])), maxiter, restart)
-    isconverged = false
-    matvecs = 0
-    K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
+    tol = tol * norm(pl\b)         #Relative tolerance
     for iter = 1:maxiter
-        w    = Pl\(b - A*x)
+        w    = pl\(b - A*x)
         s[1] = rho = norm(w)
         init!(K, w / rho)
 
@@ -104,8 +128,9 @@ function gmres!(x, A, b, Pl=1, Pr=1;
             #-conj(G.s) * s[j]
             s[j]  *= J[j,1] #G.c
 
-            resnorms[iter, j] = rho = abs(s[j+1])
-            if rho < tol
+            rho = abs(s[j+1])
+            push!(residuals, rho)
+            if isconverged(residuals, tol)
                 N = j
                 break
             end
@@ -113,15 +138,8 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 
         @eval a = $(VERSION < v"0.4-" ? Triangular(H[1:N, 1:N], :U) \ s[1:N] : UpperTriangular(H[1:N, 1:N]) \ s[1:N])
         w = a[1:N] * K
-        update!(x, 1, isa(Pr, Function) ? Pr(w) : Pr\w) #Right preconditioner
+        update!(x, 1, pr\w) #Right preconditioner
 
-        if rho < tol
-            resnorms = resnorms[1:iter, :]
-            isconverged = true
-            matvecs = (iter-1)*restart + N
-            break
-        end
+        isconverged(residuals, tol) && break
     end
-
-    return x, ConvergenceHistory(isconverged, tol, matvecs, resnorms)
 end
