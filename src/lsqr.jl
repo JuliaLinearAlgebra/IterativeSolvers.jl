@@ -1,6 +1,26 @@
-export lsqr, lsqr!
+export lsqr, lsqr!, master_lsqr, master_lsqr!
 
 using Base.LinAlg # can be removed when 0.3 is no longer supported
+
+lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
+
+function lsqr!(x, A, b; kwargs...)
+    T = Adivtype(A, b)
+    z = zero(T)
+    ch = ConvergenceHistory(false, (z,z,z), 0, T[])
+    lsqr!(x, ch, A, b; kwargs...)
+    x, ch
+end
+
+master_lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
+
+function master_lsqr!(x, A, b; kwargs...)
+    T = Adivtype(A, b)
+    z = zero(T)
+    ch = ConvergenceHistory(false, (z,z,z), 0, T[])
+    lsqr!(x, ch, A, b; kwargs...)
+    x, ch
+end
 
 # Adapted from the BSD-licensed Matlab implementation at
 #    http://www.stanford.edu/group/SOL/software/lsqr.html
@@ -217,15 +237,4 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
             break
         end
     end
-    x
 end
-
-function lsqr!(x, A, b; kwargs...)
-    T = Adivtype(A, b)
-    z = zero(T)
-    ch = ConvergenceHistory(false, (z,z,z), 0, T[])
-    lsqr!(x, ch, A, b; kwargs...)
-    x, ch
-end
-
-lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)

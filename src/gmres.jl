@@ -63,9 +63,9 @@ function master_gmres!(x, A, b;
     gmres_method!(x,A,K,b,pl,pr;
         tol=tol,maxiter=maxiter,restart=restart,verbose=verbose,residuals=rest_resarray
         )
-    resnorms = extract(rest_resarray)
+    resnorms = extract!(rest_resarray)
     plot && showplot(resnorms)
-    x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms) #finish
+    x, ConvergenceHistory(0<=resnorms[end]<tol, tol, K.mvps, resnorms)
 end
 
 function gmres_method!(x, A, K::KrylovSubspace, b, pl=1, pr=1;
@@ -97,6 +97,7 @@ function gmres_method!(x, A, K::KrylovSubspace, b, pl=1, pr=1;
 #   The input A (resp. pl, pr) can be a matrix, a function returning A*x,
 #   (resp. inv(pl)*x, inv(pr)*x), or any type representing a linear operator
 #   which implements *(A,x) (resp. \(pl,x), \(pr,x)).
+    verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","relres")
     n = length(b)
     T = eltype(b)
     H = zeros(T,n+1,restart)       #Hessenberg matrix
@@ -130,11 +131,13 @@ function gmres_method!(x, A, K::KrylovSubspace, b, pl=1, pr=1;
 
             rho = abs(s[j+1])
             push!(residuals, rho)
+            verbose && @printf("%3d\t%3d\t%1.2e\n",iter,j,last(residuals))
             if isconverged(residuals, tol)
                 N = j
                 break
             end
         end
+        verbose && @printf("\n");
 
         @eval a = $(VERSION < v"0.4-" ? Triangular(H[1:N, 1:N], :U) \ s[1:N] : UpperTriangular(H[1:N, 1:N]) \ s[1:N])
         w = a[1:N] * K

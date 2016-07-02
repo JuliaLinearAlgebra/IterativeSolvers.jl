@@ -1,13 +1,42 @@
 #Stationary iterative methods
 #Templates, section 2.2
-export jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
+export  jacobi, jacobi!, master_jacobi, master_jacobi!,
+        gauss_seidel, gauss_seidel!, master_gauss_seidel, master_gauss_seidel!
+        sor, sor!, master_sor, master_sor!
+        ssor, ssor!, master_ssor, master_ssor!
 
-jacobi(A::AbstractMatrix, b;
-       tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2) =
-    jacobi!(zerox(A, b), A, b; tol=tol, maxiter=maxiter)
+jacobi(A::AbstractMatrix, b; kwargs...) =
+    jacobi!(zerox(A, b), A, b; kwargs...)
 
-function jacobi!(x, A::AbstractMatrix, b;
-        tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2)
+function jacobi!(x,A::AbstractMatrix, b;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
+    verbose::Bool=false
+    )
+    jacobi_method!(x, A, b; tol=tol, maxiter=maxiter, verbose=verbose)
+    x
+end
+
+master_jacobi(A::AbstractMatrix, b; kwargs...) =
+    jacobi!(zerox(A, b), A, b; kwargs...)
+
+function master_jacobi!(x,A::AbstractMatrix, b;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
+    verbose::Bool=false, plot::Bool=false
+    )
+    rest_resarray=RestResArray(maxiter, restart)
+    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
+    jacobi_method!(x, A, b;
+        tol=tol, residuals=ResArray(maxiter), maxiter=maxiter, verbose=verbose
+        )
+    resnorms = extract!(rest_resarray)
+    plot && showplot(resnorms)
+    x, ConvergenceHistory(0<=resnorms[end]<tol, tol, length(resnorms), resnorms)
+end
+
+function jacobi_method!(x, A::AbstractMatrix, b;
+    residuals::Residuals=ResSingle(), tol=size(A,2)^3*eps(typeof(real(b[1]))),
+    maxiter=size(A,2)^2, verbose::Bool=false
+    )
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
@@ -30,8 +59,7 @@ function jacobi!(x, A::AbstractMatrix, b;
 		end
 		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
-end	
+end
 
 gauss_seidel(A::AbstractMatrix, b;
         tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2) =

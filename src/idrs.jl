@@ -1,4 +1,4 @@
-export idrs, idrs!
+export idrs, idrs!, master_idrs, master_idrs!
 
 ####
 
@@ -74,21 +74,35 @@ References
         http://ta.twi.tudelft.nl/nw/users/gijzen/idrs.m
     [4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
 """
-idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2) =
-    idrs_core!(zerox(A,b), linsys_op, (A,), b, s, tol, maxiter)
+idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
 
-idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2) =
-    idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter)
+function idrs!(x, A, b;
+    s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
+    verbose::Bool=false
+    )
+    idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; verbose=verbose)
+    x
+end
 
-function idrs_core!{T}(X, op, args, C::T, s, tol, maxiter)
+master_idrs(A, b; kwargs...) = master_idrs!(zerox(A,b), A, b; kwargs...)
+
+function master_idrs!(x, A, b;
+    s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
+    verbose::Bool=false, plot::Bool=false
+    )
+    resarray = ResArray(maxiter)
+    idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; residuals=resarray, verbose=verbose)
+    resnorms = extract!(resarray)
+    plot && showplot(resnorms)
+    x, ConvergenceHistory(0<=resnorms[end]<tol, tol, length(resnorms), resnorms)
+end
+
+function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
+    residuals::Residuals=ResSingle(), verbose::Bool=false
+    )
     R = C - op(X, args...)::T
     normR = vecnorm(R)
-    res = typeof(tol)[normR]
 	iter = 0
-
-    if normR <= tol           # Initial guess is a good enough solution
-        return X, ConvergenceHistory(0<= res[end] < tol, tol, length(res), res)
-    end
 
     Z = zero(C)
 
@@ -154,11 +168,9 @@ function idrs_core!{T}(X, op, args, C::T, s, tol, maxiter)
             axpy!(beta, U[k], X)
 
             normR = vecnorm(R)
-            res = [res; normR]
             iter += 1
-            if normR < tol || iter > maxiter
-                return X, ConvergenceHistory(normR < tol, tol, length(res), res)
-            end
+            push!(residuals, normR)
+            ((normR < tol) | (iter > maxiter)) && return nothing
             if k < s
                 f[k+1:s] = f[k+1:s] - beta*M[k+1:s,k]
             end
@@ -177,7 +189,6 @@ function idrs_core!{T}(X, op, args, C::T, s, tol, maxiter)
 
         normR = vecnorm(R)
         iter += 1
-        res = [res; normR]
+        push!(residuals, normR)
     end
-    return X, ConvergenceHistory(res[end]<tol, tol, length(res), res)
 end

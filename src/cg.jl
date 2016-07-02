@@ -28,11 +28,11 @@ function master_cg!(x, K::KrylovSubspace, b;
   pl=1, pr=1, tol::Real=size(K.A,2)*eps(),
   maxiter::Integer=size(K.A,2), verbose=false, plot=false
   )
-  resarray = ResArray(maxiter)
-  cg_method!(x,K,b,pl,pr; tol=tol,maxiter=maxiter,residuals=resarray,verbose=verbose)
-  resnorms = extract(resarray)
-  plot && showplot(resnorms)
-  x, ConvergenceHistory(0<resnorms[end]<tol, tol, K.mvps, resnorms) #finish
+  residuals = ResArray(maxiter)
+  cg_method!(x,K,b,pl,pr; tol=tol,maxiter=maxiter,residuals=residuals,verbose=verbose)
+  shrink!(residuals)
+  plot && showplot(residuals)
+  x, ConvergenceHistory(K.mvps,residuals,tol)
 end
 
 #Make macro predicate for method functions?
@@ -54,7 +54,7 @@ function cg_method!(x,K,b,pl,pr;
     r -= α*q
     push!(residuals,norm(r))
     verbose && @printf("%3d\t%1.2e\n",iter,last(residuals))
-    isconverged(residuals,tol) && break
+    last(residuals) < tol && break
     z = pl\r
     oldγ = γ
     γ = dot(r, z)

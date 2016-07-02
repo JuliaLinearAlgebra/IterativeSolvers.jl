@@ -4,61 +4,60 @@ export A_mul_B
 
 \(f::Function, b::Vector) = f(b)
 
-#Borders are always white, issue on UnicodePlots? light terminals suffer
-function showplot{T <: Number}(vals::Array{T,1})
-  isdefined(Main, :UnicodePlots) || warn("UnicodePlots not found; no plotsies T.T ")
-  println(lineplot(1:length(vals), vals, title = "Convergence", name = "resnorm"))
+showplot(vals::Residuals) = println(buildplot(vals))
+
+function buildplot(ra::ResArray)
+    vals = ra.residuals
+    lineplot(collect(1:length(vals)), vals)
 end
-function showplot{T <: Number}(vals::Array{T,2})
+function buildplot(ra::RestResArray)
+    vals = ra.residuals
+    maxy = maximum(vals)
+    miny = minimum(vals)
+    iters = ra.restart
+    restarts = div(length(vals),iters)
+    plot = lineplot([0],[0],xlim=[1,restarts*iters],ylim=[miny,maxy])
+    for restart in 1:restarts
+        first = iters*(restart-1)
+        last = restart*iters-1
+        lineplot!(plot,collect(first:last),collect(vals[first:last]), color=:blue)
+        lineplot!(plot,[first,first],[miny,maxy], color=:white)
+    end
+    plot
 end
 
-abstract Residuals
-type ResSingle <: Residuals
-  residual::Float64
+abstract Residuals{T,N}
+typealias SolResidues Residuals{T,1}
+typealias EigResidues Residuals{T,2}
+type ResSingle{T,N} <: Residuals{T,N}
+  residuals::{T,N}
 end
-type ResArray <: Residuals
+type ResArray{T,N} <: Residuals{T,N}
   top::Int
-  residuals::Array{Float64,1}
+  residuals::Array{T,N}
 end
-type RestResArray <: Residuals
-  top::Array{Int,1}
-  residuals::Array{Float64,2}
+type RestResArray{T,N} <: Residuals{T,N}
+  top::Int
   restart::Int
+  residuals::Array{T,N}
 end
 ResSingle() = ResSingle(0)
 ResArray(maxiter) = ResArray(1,zeros(maxiter))
-RestResArray(maxiter,restart) = RestResArray([1,1],zeros(maxiter,restart),restart)
+RestResArray(maxiter,restart) = RestResArray(1,restart,zeros(maxiter*restart))
 push!(rs::ResSingle, res::Real) = (rs.residual = res; nothing)
-function push!(ra::ResArray, res::Real)
+function push!(ra::Union{ResArray,RestResArray}, res::Real)
   ra.residuals[ra.top] = res
   ra.top+=1
   nothing
 end
-function push!(ra::RestResArray, res::Real)
-  ra.residuals[ra.top...] = res
-  ra.top[2]+=1
-  if ra.top[2] > ra.restart
-    ra.top[2] = 1
-    ra.top[1] += 1
-  end
-  nothing
-end
-extract(rs::ResSingle) = ra.residual
-extract(ra::ResArray) = ra.residuals[1:ra.top-1]
-function extract(ra::RestResArray)
-  i = ra.top[1]
-  ra.top[2] == 1 && (i-=1)
-  ra.residuals[1:i,:]
-end
+shrink!(rs::ResSingle) = ra.residual
+shrink!(ra::Union{ResArray,RestResArray}) = resize!(ra.residuals,ra.top-1)
 
 last(rs::ResSingle) = rs.residual
-last(ra::ResArray) = ra.residuals[ra.top-1]
-function last(ra::RestResArray)
-    ra.top[2] == 1 && return ra.residuals[ra.top[1]-1, ra.restart]
-    ra.residuals[ra.top[1], ra.top[2]-1]
-end
+last(ra::Union{ResArray,RestResArray}) = ra.residuals[ra.top-1]
 
-isconverged(r::Residuals,tol::Real) = last(r) < tol
+iters(r::Union{ResArray,RestResArray}) = ra.top-1
+isconverged(r::Residuals,tol::Real) = 0 <= last(r) < tol
 
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
@@ -99,12 +98,14 @@ _randn!(v::Array{Float64}) = randn!(v)
 _randn!(v) = copy!(v, randn(length(v)))
 
 #### Reporting
-type ConvergenceHistory{T, R}
+type ConvergenceHistory{T}
     isconverged::Bool
     threshold::T
     mvps::Int
-    residuals::R
+    residuals::Residuals
 end
+ConvergenceHistory{T}(res::Residuals,tol::T,mvps::Int) =
+    ConvergenceHistory(isconverged(res,tol),tol,mvps,res)
 
 function empty!(ch::ConvergenceHistory)
     ch.isconverged = false
