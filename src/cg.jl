@@ -28,17 +28,18 @@ function master_cg!(x, K::KrylovSubspace, b;
   pl=1, pr=1, tol::Real=size(K.A,2)*eps(),
   maxiter::Integer=size(K.A,2), verbose=false, plot=false
   )
-  residuals = ResArray(maxiter)
-  cg_method!(x,K,b,pl,pr; tol=tol,maxiter=maxiter,residuals=residuals,verbose=verbose)
-  shrink!(residuals)
-  plot && showplot(residuals)
-  x, ConvergenceHistory(K.mvps,residuals,tol)
+  logger = MethodLog(maxiter)
+  add!(logger,:resnorm)
+  cg_method!(x,K,b,pl,pr; tol=tol,maxiter=maxiter,logger=logger,verbose=verbose)
+  shrink!(logger)
+  plot && showplot(logger)
+  x, ConvergenceHistory(isconverged(logger,:resnorm,tol),tol,K.mvps,logger)
 end
 
 #Make macro predicate for method functions?
 function cg_method!(x,K,b,pl,pr;
   tol::Real=size(K.A,2)*eps(),maxiter::Integer=size(K.A,2),
-  residuals::Residuals=ResSingle(),verbose::Bool=true
+  logger::MethodLog=MethodLog(),verbose::Bool=true
   )
   verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","relres")
   tol = tol * norm(b)
@@ -52,9 +53,10 @@ function cg_method!(x,K,b,pl,pr;
     # α>=0 || throw(PosSemidefException("α=$α"))
     update!(x, α, p)
     r -= α*q
-    push!(residuals,norm(r))
-    verbose && @printf("%3d\t%1.2e\n",iter,last(residuals))
-    last(residuals) < tol && break
+    rnorm = norm(r)
+    push!(logger,:resnorm,rnorm)
+    verbose && @printf("%3d\t%1.2e\n",iter,rnorm)
+    rnorm < tol && break
     z = pl\r
     oldγ = γ
     γ = dot(r, z)

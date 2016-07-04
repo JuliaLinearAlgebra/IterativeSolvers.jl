@@ -1,6 +1,6 @@
 import Base.LinAlg: axpy!
 
-export svdl
+export svdl, master_svdl
 
 """
 Matrix of the form
@@ -75,6 +75,22 @@ type PartialFactorization{T, Tr} <: Factorization{T}
     β :: Tr
 end
 
+function svdl(A; kwargs...)
+    X, L, _ = svdl_method(A; kwargs...)
+    X, L
+end
+
+function master_svdl(A; tol::Real=√eps(), plot::Bool=false, l::Int=6, k::Int=2l, maxiter::Int=minimum(size(A)), kwargs...)
+    logger = MethodLog(maxiter)
+    add!(logger,:ritz, n=k)
+    add!(logger,:resnorm, n=k)
+    add!(logger,:Bs, n=k)
+    add!(logger,:betas, n=k)
+    X, L, conv = svdl_method(A; logger=logger, k=k, l=l,maxiter=maxiter)
+    shrink!(logger)
+    plot && showplot(logger)
+    X, L, ConvergenceHistory(conv,tol,3,logger)
+end
 
 """
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
@@ -106,10 +122,6 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 - `restart`: Which restarting algorithm to use. Valid choices are:
              - `:ritz`: Thick restart with Ritz values [Wu2000]. Default
              - `:harmonic`: Restart with harmonic Ritz values [Baglama2005]
-- `doplot` : Plot a history of the Ritz value convergence. Requires the
-             [UnicodePlots.jl](https://github.com/Evizero/UnicodePlots.jl.git)
-             package to be installed.
-             Default: `false`
 - `vecs`   : Return singular vectors also.
              - `:both`: Both left and right singular vectors are returned
              - `:left`: Only the left singular vectors are returned
@@ -189,30 +201,19 @@ iteration.
 ```
 
 """
-function svdl(A, l::Int=6; k::Int=2l,
-    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
+function svdl_method(A;
+    l::Int=6, k::Int=2l, j::Int=l,
+    v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
-#function svdl(A, l::Int=6, k::Int=2l,
-#    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
-#    maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-#    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
+    verbose::Bool=false, method::Symbol=:ritz, vecs=:none,
+    dolock::Bool=false, logger::MethodLog=MethodLog()
+    )
 
     T0 = time_ns()
     @assert k>l
     L = build(A, v0, k)
-
-    #Save history of Ritz values
-    ritzvalhist = Vector[]
-    βs = Float64[]
     convhist = []
-    Bs = AbstractMatrix[deepcopy(L.B)]
-
-    if doplot
-       ttyh, ttyw = Base.tty_size()
-       ttyh -= l+1+5+2
-       ttyw -= 12
-    end
+    converged = false
 
     local F
     for iter in 1:maxiter
@@ -231,25 +232,12 @@ function svdl(A, l::Int=6; k::Int=2l,
 	        elapsedtime = round((time_ns()-T0)*1e-9, 3)
 	        info("Iteration $iter: $elapsedtime seconds")
         end
-        conv = isconverged(L, F, l, tol, reltol, verbose)
+        conv = isconverged(L, F, l, tol, reltol, logger, verbose)
 
         push!(convhist, conv)
-        push!(ritzvalhist, F[:S])
-        push!(Bs, deepcopy(L.B))
-        push!(βs, L.β)
-
-        if doplot
-            if isdefined(Main, :UnicodePlots)
-                xs = convert(Vector{Vector{Int}}, map(x->fill(x[1], length(x[2])), enumerate(ritzvalhist)))
-                layer1 = Main.UnicodePlots.scatterplot([xs...;], [ritzvalhist...;], height=ttyh, width=ttyw)::Main.UnicodePlots.Plot{Main.UnicodePlots.BrailleCanvas}
-                display(Main.UnicodePlots.scatterplot!(layer1,
-                    [[fill(x[1], sum(conv)) for x in enumerate(convhist)]...;],
-                    [[x[1:l][conv] for x in ritzvalhist]...;],
-                    height=ttyh, width=ttyw, color=:red))
-            else
-                warn("UnicodePlots not found; no plotsies")
-            end
-        end
+        push!(logger, :ritz, F[:S][1:k])
+        push!(logger, Bs, deepcopy(L.B))
+        push!(logger, betas, L.β)
 
         #Lock
         if method == :ritz && dolock
@@ -259,7 +247,8 @@ function svdl(A, l::Int=6; k::Int=2l,
                 end
             end
         end
-        all(conv) && break
+        converged = all(conv)
+        converged && break
     end
 
     #Compute singular vectors as necessary and return them in the output
@@ -276,11 +265,11 @@ function svdl(A, l::Int=6; k::Int=2l,
         zeros(eltype(v0), 0, n)
     end
 
-    push!(βs, L.β)
+    push!(betas, L.β)
     if vecs == :none
-        values, L, Bs, βs
+        values, L, converged
     else
-        LinAlg.SVD(leftvecs, values, rightvecs), L, Bs, βs
+        LinAlg.SVD(leftvecs, values, rightvecs), L, converged
     end
 end
 
@@ -369,7 +358,8 @@ year = {1989}
 ```
 """
 function isconverged(L::PartialFactorization,
-        F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real, verbose::Bool=false)
+        F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real,
+        logger::MethodLog, verbose::Bool=false)
 
     @assert tol ≥ 0
 
@@ -425,6 +415,7 @@ function isconverged(L::PartialFactorization,
         warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 
+    push!(logger, :resnorm, δσ[1:k])
     conv = (δσ[1:k] .< max(tol, reltol*σ[1]))::BitVector
 end
 
@@ -701,5 +692,3 @@ let
     B = BrokenArrowBidiagonal([1, 2, 3], [1, 2], Int[])
     @assert full(B) == [1 0 1; 0 2 2; 0 0 3]
 end
-
-

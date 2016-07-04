@@ -1,63 +1,126 @@
 using UnicodePlots
-import Base: \, eltype, empty!, eps, length, ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
+import  Base: keys, setindex!, getindex, \, eltype, empty!, eps, length, ndims, push!,
+        real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
 export A_mul_B
 
 \(f::Function, b::Vector) = f(b)
 
-showplot(vals::Residuals) = println(buildplot(vals))
-
-function buildplot(ra::ResArray)
-    vals = ra.residuals
-    lineplot(collect(1:length(vals)), vals)
+#Logging
+abstract IterLog{T}
+type SingleValue{T} <: IterLog{T}
+    data::T
 end
-function buildplot(ra::RestResArray)
-    vals = ra.residuals
+type MultiValue{T} <: IterLog{T}
+    data::Vector{T}
+end
+SingleValue(T::Type) = SingleValue(zero(T))
+MultiValue(T::Type, n::Int) = MultiValue(zeros(T,n))
+getindex(il::IterLog, i::Int) = il.data[i]
+setindex!(il::MultiValue, i::Int, val) = (il.data[i] = val)
+
+#typealias ElemLog Vector{IterLog}
+abstract MethodLog
+type DummyLog <: MethodLog
+    data::Dict{Symbol,IterLog}
+end
+MethodLog() = DummyLog(Dict{Symbol,IterLog}())
+
+getindex(ml::DummyLog, key::Symbol) = ml.data[key]
+setindex!(ml::DummyLog, val::IterLog, key::Symbol) = (ml.data[key]=val)
+
+type MasterLog <: MethodLog
+    iter::Int
+    maxiter::Int
+    restart::Int
+    data::Dict{Symbol,Vector{IterLog}}
+end
+MethodLog(maxiter::Int, restart::Int=maxiter) =
+    MasterLog(0,maxiter,restart,Dict{Symbol, Vector{IterLog}}())
+
+getindex(ml::MasterLog, key::Symbol) = ml.data[key]
+setindex!(ml::MasterLog, val::Vector{IterLog}, key::Symbol) = (ml.data[key]=val)
+getindex(ml::MasterLog, key::Symbol, i::Int) = ml.data[key][i]
+setindex!(ml::MasterLog, val::IterLog, key::Symbol, i::Int) = (ml.data[key][i]=val)
+
+function add!(ml::MasterLog, key::Symbol; n::Int=1, T::Type=Float64)
+    if n == 1
+        ml.data[key] = Vector{SingleValue{T}}([SingleValue(T) for i in 1:ml.maxiter])
+    else
+        ml.data[key] = Vector{MultiValue{T}}([MultiValue(T,n) for i in 1:ml.maxiter])
+    end
+    nothing
+end
+
+last(ml::DummyLog, key::Symbol) = ml[key].data
+last(ml::MasterLog, key::Symbol) = ml[key][ml.iter].data
+
+push!(ml::DummyLog, key::Symbol, val) = (ml[key] = SingleValue(val))
+function push!(ml::MasterLog, key::Symbol, val)
+    ml.iter += 1
+    ml[key][ml.iter].data = val
+end
+
+keys(ml::MethodLog) = keys(ml.data)
+
+shrink!(ml::MasterLog, key::Symbol) = (resize!(ml[key], ml.iter); nothing)
+function shrink!(ml::MasterLog)
+    for key in keys(ml.data)
+        shrink!(ml,key)
+    end
+end
+
+isconverged(ml::MethodLog, key::Symbol, tol) = 0 <= last(ml, key) < tol
+
+#Plotting
+function plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
+    restarts=ceil(iters/gap), color::Symbol=:blue, name::AbstractString="",
+    title::AbstractString="", left::Int=1
+    )
     maxy = maximum(vals)
     miny = minimum(vals)
-    iters = ra.restart
-    restarts = div(length(vals),iters)
-    plot = lineplot([0],[0],xlim=[1,restarts*iters],ylim=[miny,maxy])
-    for restart in 1:restarts
-        first = iters*(restart-1)
-        last = restart*iters-1
-        lineplot!(plot,collect(first:last),collect(vals[first:last]), color=:blue)
-        lineplot!(plot,[first,first],[miny,maxy], color=:white)
+    plot = lineplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
+    lineplot!(plot,collect(left:left+gap-1),vals[left:left+gap-1],color=color)
+    for restart in 2:restarts
+        left+=gap
+        lineplot!(plot,collect(left:left+gap-1),vals[left:left+gap-1],color=color)
+        lineplot!(plot,[left,left],[miny,maxy], color=:white)
     end
     plot
 end
 
-abstract Residuals{T,N}
-typealias SolResidues Residuals{T,1}
-typealias EigResidues Residuals{T,2}
-type ResSingle{T,N} <: Residuals{T,N}
-  residuals::{T,N}
+function plot{T<:Real}(vals::Vector{Vector{T}}, iters::Int, gap::Int;
+    restarts=ceil(iters/gap), color::Symbol=:blue, name::AbstractString="",
+    title::AbstractString="", left::Int=1
+    )
+    n = size(vals[1],1)
+    maxy = maximum(map(x -> maximum(x), vals))
+    miny = minimum(map(x -> minimum(x), vals))
+    plot = scatterplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
+    for i in left:iters
+        scatterplot!(plot,[i for j in 1:n],vals[i][1:n],color=color)
+    end
+    for restart in 2:restarts
+        left+=gap
+        scatterplot!(plot,[left,left],[miny,maxy], color=:white)
+    end
+    plot
 end
-type ResArray{T,N} <: Residuals{T,N}
-  top::Int
-  residuals::Array{T,N}
-end
-type RestResArray{T,N} <: Residuals{T,N}
-  top::Int
-  restart::Int
-  residuals::Array{T,N}
-end
-ResSingle() = ResSingle(0)
-ResArray(maxiter) = ResArray(1,zeros(maxiter))
-RestResArray(maxiter,restart) = RestResArray(1,restart,zeros(maxiter*restart))
-push!(rs::ResSingle, res::Real) = (rs.residual = res; nothing)
-function push!(ra::Union{ResArray,RestResArray}, res::Real)
-  ra.residuals[ra.top] = res
-  ra.top+=1
-  nothing
-end
-shrink!(rs::ResSingle) = ra.residual
-shrink!(ra::Union{ResArray,RestResArray}) = resize!(ra.residuals,ra.top-1)
 
-last(rs::ResSingle) = rs.residual
-last(ra::Union{ResArray,RestResArray}) = ra.residuals[ra.top-1]
+showplot{T<:Real}(::Type{SingleValue{T}}, els::Vector{IterLog}, iters::Int, gap::Int; kwargs...) =
+    println(plot(Real[els[i].data for i in 1:iters], iters, gap; kwargs...))
 
-iters(r::Union{ResArray,RestResArray}) = ra.top-1
-isconverged(r::Residuals,tol::Real) = 0 <= last(r) < tol
+showplot{T<:Real}(::Type{MultiValue{T}}, els::Vector{IterLog}, iters::Int, gap::Int; kwargs...) =
+    println(plot(Vector{Real}[els[i].data for i in 1:iters], iters, gap; kwargs...))
+
+showplot(els::Vector{IterLog}, iters::Int, gap::Int; kwargs...) =
+    showplot(typeof(els[1]), els::Vector{IterLog}, iters::Int, gap::Int; kwargs...)
+
+function showplot(ml::MasterLog; kwargs...)
+    for key in keys(ml)
+        showplot(ml[key], ml.iter, ml.restart; name=string(key), kwargs...)
+        println("\n\n")
+    end
+end
 
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
@@ -102,23 +165,8 @@ type ConvergenceHistory{T}
     isconverged::Bool
     threshold::T
     mvps::Int
-    residuals::Residuals
+    data::MethodLog
 end
-ConvergenceHistory{T}(res::Residuals,tol::T,mvps::Int) =
-    ConvergenceHistory(isconverged(res,tol),tol,mvps,res)
-
-function empty!(ch::ConvergenceHistory)
-    ch.isconverged = false
-    ch.mvps = 0
-    empty!(ch.residuals)
-    ch
-end
-
-function push!(ch::ConvergenceHistory, resnorm::Number)
-    push!(ch.residuals, resnorm)
-    ch
-end
-push!(ch::ConvergenceHistory, residual::AbstractVector) = push!(ch, norm(residual))
 
 #### Errors
 export PosSemidefException
