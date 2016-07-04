@@ -1,47 +1,43 @@
 export chebyshev, chebyshev!, master_chebyshev, master_chebyshev!
 
-chebyshev(A, b, λmin::Real, λmax::Real, n::Int = size(A,2); kwargs...) =
-  chebyshev!(zerox(A, b), A, b, λmin, λmax, n; kwargs...)
+chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
+    chebyshev!(zerox(A, b), A, b, λmin, λmax; kwargs...)
 
-function chebyshev!(x, A, b, λmin::Real, λmax::Real, n::Int = size(A,2); kwargs...)
+function chebyshev!(x, A, b, λmin::Real, λmax::Real; n::Int=size(A,2), kwargs...)
 	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
 	init!(K, x)
-	chebyshev!(x, K, b, λmin, λmax, n; kwargs...)
+	chebyshev!(x, K, b, λmin, λmax; kwargs...)
 end
 
-function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, n::Int = size(A,2);
-	pl=1, pr=1, tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = n^3,
-  verbose::Bool=false
-  )
-  chebyshev_method!(x, K, b, λmin, λmax, pl, pr;
-    tol=tol,maxiter=maxiter,verbose=verbose
+function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real; kwargs...)
+    chebyshev_method!(x, K, b, λmin, λmax; kwargs...)
+    x
+end
+
+master_chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
+    master_chebyshev!(zerox(A, b), A, b, λmin, λmax; kwargs...)
+
+function master_chebyshev!(x, A, b, λmin::Real, λmax::Real; n::Int=size(A,2), kwargs...)
+	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
+	init!(K, x)
+	master_chebyshev!(x, K, b, λmin, λmax; n=n, kwargs...)
+end
+
+function master_chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
+    n::Int=size(A,2), tol::Real = sqrt(eps(typeof(real(b[1])))),
+    maxiter::Int = n^3, plot::Bool=false, kwargs...
     )
-  x
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    chebyshev_method!(x,K,b,λmin,λmax; tol=tol,maxiter=maxiter,log=log,kwargs...)
+    shrink!(log)
+    plot && showplot(log)
+    x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,K.mvps,log)
 end
 
-master_chebyshev(A, b, λmin::Real, λmax::Real, n::Int = size(A,2); kwargs...) =
-  master_chebyshev!(zerox(A, b), A, b, λmin, λmax, n; kwargs...)
-
-function master_chebyshev!(x, A, b, λmin::Real, λmax::Real, n::Int = size(A,2); kwargs...)
-	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
-	init!(K, x)
-	master_chebyshev!(x, K, b, λmin, λmax, n; kwargs...)
-end
-
-function master_chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, n::Int = size(A,2);
-  pl=1, pr=1, tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = n^3,
-  verbose::Bool=false, plot::Bool=false
-  )
-  residuals=ResArray(maxiter)
-  chebyshev_method!(x,K,b,λmin,λmax,pl,pr;
-    tol=tol,maxiter=maxiter,residuals=residuals,verbose=verbose)
-  plot && showplot(residuals)
-  x, ConvergenceHistory(tol, K, residuals)
-end
-
-function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, pl=1, pr=1;
-    tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = K.n^3,
-    residuals::Residuals=ResSingle(), verbose::Bool=false
+function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
+    pr=1, tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = K.n^3,
+    log::MethodLog=MethodLog(), verbose::Bool=false
     )
     verbose && @printf("=== chebyshev ===\n%4s\t%7s\n","iter","relres")
     local α, p
@@ -63,9 +59,11 @@ function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real, pl
     	append!(K, p)
     	update!(x, α, p)
     	r -= α*nextvec(K)
-        push!(residuals,norm(r))
-        verbose && @printf("%3d\t%1.2e\n",iter,last(residuals))
-        isconverged(residuals,tol) && break
+        resnorm = norm(r)
+        next!(log)
+        push!(log, :resnorm, resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
+        resnorm < tol && break
 	end
-    verbose && @printf("\n");
+    verbose && @printf("\n")
 end

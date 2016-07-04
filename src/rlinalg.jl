@@ -305,4 +305,3 @@ function *(A, Ω::srft)
     B = vcat([fft(A[i,:]) for i=1:m]...) #Factor of √n cancels out
     B[:, randperm(n)[1:Ω.l]]
 end
-

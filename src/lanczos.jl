@@ -1,6 +1,6 @@
 import Base.LinAlg.BlasFloat
 
-export eigvals_lanczos
+export eiglancz, master_eiglancz
 
 function lanczos!{T}(K::KrylovSubspace{T})
     m = K.n
@@ -18,19 +18,39 @@ function lanczos!{T}(K::KrylovSubspace{T})
     SymTridiagonal(αs, βs)
 end
 
-function eigvals_lanczos(A, neigs::Int=size(A,1); tol::Real = size(A,1)^3*eps(real(eltype(A))), maxiter::Integer = size(A,1))
+function eiglancz(A; kwargs...)
+    eigs, _ = eiglancz_method(A; kwargs...)
+    eigs
+end
+
+function master_eiglancz(A;
+    maxiter::Integer=size(A,1), plot::Bool=false,
+    tol::Real = size(A,1)^3*eps(real(eltype(A))), kwargs...
+    )
+    log = MethodLog(maxiter)
+    add!(log, :resnorm)
+    eigs, mvps = eiglancz_method(A; maxiter=maxiter, log=log, kwargs...)
+    shrink!(log)
+    plot && showplot(log)
+    eigs, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,mvps,log)
+end
+
+function eiglancz_method(A;
+    neigs::Int=size(A,1), tol::Real = size(A,1)^3*eps(real(eltype(A))),
+    maxiter::Integer=size(A,1), verbose::Bool=false, log::MethodLog=MethodLog()
+    )
+    verbose && @printf("=== eiglancz ===\n%4s\t%7s\n","iter","relres")
     K = KrylovSubspace(A, size(A, 1), 2) #In Lanczos, only remember the last two vectors
     initrand!(K)
-    resnorms = zeros(maxiter)
     e1 = eigvals(lanczos!(K), 1:neigs)
     for iter=1:maxiter
         e0, e1 = e1, eigvals(lanczos!(K), 1:neigs)
-        resnorms[iter] = norm(e1-e0)
-        if resnorms[iter] < tol
-            resnorms = resnorms[1:iter]
-            break
-        end
+        resnorm = norm(e1-e0)
+        next!(log)
+        push!(log, :resnorm, resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
+        resnorm < tol && break
     end
-    e1, ConvergenceHistory(0<=resnorms[end]<tol, tol, K.mvps, resnorms)
+    verbose && @printf("\n")
+    e1, K.mvps
 end
-

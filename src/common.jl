@@ -34,8 +34,10 @@ type MasterLog <: MethodLog
     restart::Int
     data::Dict{Symbol,Vector{IterLog}}
 end
-MethodLog(maxiter::Int, restart::Int=maxiter) =
-    MasterLog(0,maxiter,restart,Dict{Symbol, Vector{IterLog}}())
+MethodLog(maxiter::Int) =
+    MasterLog(0,maxiter,maxiter,Dict{Symbol, Vector{IterLog}}())
+MethodLog(maxiter::Int, restart::Int) =
+    MasterLog(0,maxiter*restart,restart,Dict{Symbol, Vector{IterLog}}())
 
 getindex(ml::MasterLog, key::Symbol) = ml.data[key]
 setindex!(ml::MasterLog, val::Vector{IterLog}, key::Symbol) = (ml.data[key]=val)
@@ -51,12 +53,16 @@ function add!(ml::MasterLog, key::Symbol; n::Int=1, T::Type=Float64)
     nothing
 end
 
+iters(ml::MasterLog) = ml.iter
+
 last(ml::DummyLog, key::Symbol) = ml[key].data
 last(ml::MasterLog, key::Symbol) = ml[key][ml.iter].data
 
+next!(ml::DummyLog) = nothing
+next!(ml::MasterLog) = (ml.iter += 1; nothing)
+
 push!(ml::DummyLog, key::Symbol, val) = (ml[key] = SingleValue(val))
 function push!(ml::MasterLog, key::Symbol, val)
-    ml.iter += 1
     ml[key][ml.iter].data = val
 end
 
@@ -79,10 +85,12 @@ function plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     maxy = maximum(vals)
     miny = minimum(vals)
     plot = lineplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
-    lineplot!(plot,collect(left:left+gap-1),vals[left:left+gap-1],color=color)
+    right = min(left+gap-1,iters)
+    lineplot!(plot,collect(left:right),vals[left:right],color=color)
     for restart in 2:restarts
         left+=gap
-        lineplot!(plot,collect(left:left+gap-1),vals[left:left+gap-1],color=color)
+        right = min(left+gap-1,iters)
+        lineplot!(plot,collect(left:right),vals[left:right],color=color)
         lineplot!(plot,[left,left],[miny,maxy], color=:white)
     end
     plot
@@ -116,9 +124,14 @@ showplot(els::Vector{IterLog}, iters::Int, gap::Int; kwargs...) =
     showplot(typeof(els[1]), els::Vector{IterLog}, iters::Int, gap::Int; kwargs...)
 
 function showplot(ml::MasterLog; kwargs...)
+    println("\n")
     for key in keys(ml)
-        showplot(ml[key], ml.iter, ml.restart; name=string(key), kwargs...)
-        println("\n\n")
+        try
+            showplot(ml[key], ml.iter, ml.restart; name=string(key), kwargs...)
+            println("\n\n")
+        catch e
+            warn("When trying to plot got the following error: $e")
+        end
     end
 end
 

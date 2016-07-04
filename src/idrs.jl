@@ -90,15 +90,16 @@ function master_idrs!(x, A, b;
     s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
     verbose::Bool=false, plot::Bool=false
     )
-    resarray = ResArray(maxiter)
-    idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; residuals=resarray, verbose=verbose)
-    resnorms = extract!(resarray)
-    plot && showplot(resnorms)
-    x, ConvergenceHistory(0<=resnorms[end]<tol, tol, length(resnorms), resnorms)
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; log=log, verbose=verbose)
+    shrink!(log)
+    plot && showplot(log)
+    x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,iters(log),log)
 end
 
 function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
-    residuals::Residuals=ResSingle(), verbose::Bool=false
+    log::MethodLog=MethodLog(), verbose::Bool=false
     )
     R = C - op(X, args...)::T
     normR = vecnorm(R)
@@ -123,7 +124,6 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
             f[i] = vecdot(P[i], R)
         end
         for k in 1:s
-
             # Solve small system and make v orthogonal to P
 
             c = LowerTriangular(M[k:s,k:s])\f[k:s]
@@ -169,7 +169,8 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
 
             normR = vecnorm(R)
             iter += 1
-            push!(residuals, normR)
+            next!(log)
+            push!(log, :resnorm, normR)
             ((normR < tol) | (iter > maxiter)) && return nothing
             if k < s
                 f[k+1:s] = f[k+1:s] - beta*M[k+1:s,k]
@@ -186,9 +187,9 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
         axpy!(-om, Q, R)
         axpy!(om, V, X)
 
-
         normR = vecnorm(R)
         iter += 1
-        push!(residuals, normR)
+        next!(log)
+        push!(log, :resnorm, normR)
     end
 end

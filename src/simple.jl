@@ -1,83 +1,156 @@
 #Simple methods
 
-export eigvals_power, eigvals_ii, eigvals_rqi
+export powm, master_powm, invpowm, master_invpowm, rqi, master_rqi
+
+function powm(A; x=nothing, kwargs...)
+    K = KrylovSubspace(A, 1)
+    x==nothing ? initrand!(K) : init!(K, x/norm(x))
+    powm(K; kwargs...)
+end
+
+function powm(K::KrylovSubspace; kwargs...)
+    eigs, _ = powm_method(K; kwargs...)
+    eigs
+end
+
+function master_powm(A; x=nothing, kwargs...)
+    K = KrylovSubspace(A, 1)
+    x==nothing ? initrand!(K) : init!(K, x/norm(x))
+    master_powm(K; kwargs...)
+end
+
+function master_powm{T}(K::KrylovSubspace{T};
+    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+    plot::Bool=false, verbose::Bool=false
+    )
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    eigs, conv = powm_method(K; verbose=verbose,log=log,tol=tol,maxiter=maxiter)
+    shrink!(log)
+    plot && showplot(log)
+    eigs, ConvergenceHistory(conv, tol, K.mvps, log)
+end
 
 #Power method for finding largest eigenvalue and its eigenvector
-function eigvals_power{T}(K::KrylovSubspace{T}; tol::Real=eps(T)*K.n^3, maxiter::Int=K.n)
+function powm_method{T}(K::KrylovSubspace{T};
+    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+    verbose::Bool=false, log::MethodLog=MethodLog()
+    )
     θ = zero(T)
     v = Array(T, K.n)
-    resnorms=zeros(eltype(real(one(T))), maxiter)
     for iter=1:maxiter
         v = lastvec(K)
         y = nextvec(K)
         θ = dot(v, y)
-        resnorms[iter] = real(norm(y - θ*v))
-        if resnorms[iter] <= tol * abs(θ)
-            resnorms=resnorms[1:iter]
-            break
-        end
+        resnorm = real(norm(y - θ*v))
+        next!(log)
+        push!(log, :resnorm, resnorm)
+        resnorm <= tol*abs(θ) && break
         appendunit!(K, y)
     end
-    Eigenpair(θ, v), ConvergenceHistory(0<resnorms[end]<tol*abs(θ), tol, K.mvps, resnorms)
-
+    Eigenpair(θ, v), isconverged(log,:resnorm,tol*abs(θ))
 end
 
-function eigvals_power(A, x=nothing; tol::Real=size(A,1)^3*eps(), maxiter::Int=size(A,1))
+function invpowm(A, σ::Number; x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    eigvals_power(K; tol=tol, maxiter=maxiter)
+    invpowm(K, σ; kwargs...)
+end
+
+function invpowm(K::KrylovSubspace, σ::Number; kwargs...)
+    eigs, _ = invpowm_method(K, σ; kwargs...)
+    eigs
+end
+
+function master_invpowm(A, σ::Number; x=nothing, kwargs...)
+    K = KrylovSubspace(A, 1)
+    x==nothing ? initrand!(K) : init!(K, x/norm(x))
+    master_invpowm(K, σ; kwargs...)
+end
+
+function master_invpowm{T}(K::KrylovSubspace{T}, σ::Number;
+    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+    plot::Bool=false, verbose::Bool=false
+    )
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    eigs, conv = invpowm_method(K, σ;
+        verbose=verbose, log=log, tol=tol, maxiter=maxiter
+        )
+    shrink!(log)
+    plot && showplot(log)
+    eigs, ConvergenceHistory(conv, tol, K.mvps, log)
 end
 
 #Inverse iteration/inverse power method
-function eigvals_ii{T}(K::KrylovSubspace{T}, σ::Number=zero(T); tol::Real=eps(T)*K.n^3, maxiter::Int=K.n)
+function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
+    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+    log::MethodLog=MethodLog(), verbose::Bool=false
+    )
     θ = zero(T)
     v = Array(T, K.n)
     y = Array(T, K.n)
     σ = convert(T, σ)
-    resnorms=zeros(eltype(real(one(T))), maxiter)
     for iter=1:maxiter
         v = lastvec(K)
         y = (K.A-σ*eye(K))\v
         θ = dot(v, y)
-        resnorms[iter] = norm(y - θ*v)
-        if resnorms[iter] <= tol * abs(θ)
-            resnorms=resnorms[1:iter]
-            break
-        end
+        resnorm = norm(y - θ*v)
+        next!(log)
+        push!(log, :resnorm, resnorm)
+        resnorm <= tol*abs(θ) && break
         appendunit!(K, y)
     end
-    Eigenpair(σ+1/θ, y/θ), ConvergenceHistory(0<resnorms[end]<tol*abs(θ), tol, K.mvps, resnorms)
+    Eigenpair(σ+1/θ, y/θ), isconverged(log,:resnorm,tol*abs(θ))
 end
 
-function eigvals_ii(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=size(A,1))
+function rqi(A, σ::Number; x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    eigvals_ii(K, σ; tol=tol, maxiter=maxiter)
+    rqi(K, σ; kwargs...)
+end
+
+function rqi(K::KrylovSubspace, σ::Number; kwargs...)
+    eigs, _ = rqi_method(K, σ; kwargs...)
+    eigs
+end
+
+function master_rqi(A, σ::Number; x=nothing, kwargs...)
+    K = KrylovSubspace(A, 1)
+    x==nothing ? initrand!(K) : init!(K, x/norm(x))
+    master_rqi(K, σ; kwargs...)
+end
+
+function master_rqi{T}(K::KrylovSubspace{T}, σ::Number;
+    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+    plot::Bool=false, verbose::Bool=false
+    )
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    eigs, conv = rqi_method(K, σ; verbose=verbose, log=log, tol=tol, maxiter=maxiter)
+    shrink!(log)
+    plot && showplot(log)
+    eigs, ConvergenceHistory(conv, tol, K.mvps, log)
 end
 
 #Rayleigh quotient iteration
-function eigvals_rqi{T}(K::KrylovSubspace{T}, σ::Number=zero(T); tol::Real=eps(T)*K.n^3, maxiter::Int=K.n)
-    θ = zero(T)
-    v = Array(T, K.n)
-    y = Array(T, K.n)
-    σ = convert(T, σ)
+#XXX Doesn't work well
+function rqi_method{T}(K::KrylovSubspace{T}, σ::Number;
+    x=nothing, tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+    log::MethodLog=MethodLog(), verbose::Bool=false
+    )
+    v = lastvec(K)
+    ρ = dot(v, nextvec(K))
     resnorms=zeros(eltype(real(one(T))), maxiter)
     for iter=1:maxiter
-        v = lastvec(K)
-        y = (K.A-σ*eye(K))\v
-        θ = dot(v, y)
-	σ = σ+1/θ
-        resnorms[iter] = norm(y - θ*v)
-        if resnorms[iter] <= tol * abs(θ)
-            resnorms=resnorms[1:iter]
-            break
-        end
-        appendunit!(K, y)
+        y = (K.A-ρ*eye(K))\v
+        θ = norm(y)
+        ρ += dot(y,v)/θ^2
+        v = y/θ
+        resnorm=1/θ
+        next!(log)
+        push!(log,:resnorm,resnorm)
+        θ >= 1/tol && break
     end
-    Eigenpair(σ, y/norm(y)), ConvergenceHistory(0<resnorms[end]<tol*abs(θ), tol, K.mvps, resnorms)
-end
-function eigvals_rqi(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=size(A,1))
-    K = KrylovSubspace(A, 1)
-    x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    eigvals_rqi(K, σ; tol=tol, maxiter=maxiter)
+    Eigenpair(ρ, v), isconverged(log,:resnorm,tol)
 end

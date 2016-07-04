@@ -1,47 +1,41 @@
 #Stationary iterative methods
 #Templates, section 2.2
 export  jacobi, jacobi!, master_jacobi, master_jacobi!,
-        gauss_seidel, gauss_seidel!, master_gauss_seidel, master_gauss_seidel!
-        sor, sor!, master_sor, master_sor!
+        gauss_seidel, gauss_seidel!, master_gauss_seidel, master_gauss_seidel!,
+        sor, sor!, master_sor, master_sor!,
         ssor, ssor!, master_ssor, master_ssor!
 
 jacobi(A::AbstractMatrix, b; kwargs...) =
     jacobi!(zerox(A, b), A, b; kwargs...)
 
-function jacobi!(x,A::AbstractMatrix, b;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    verbose::Bool=false
-    )
-    jacobi_method!(x, A, b; tol=tol, maxiter=maxiter, verbose=verbose)
+function jacobi!(x, A::AbstractMatrix, b; kwargs...)
+    jacobi_method!(x, A, b; kwargs...)
     x
 end
 
 master_jacobi(A::AbstractMatrix, b; kwargs...) =
-    jacobi!(zerox(A, b), A, b; kwargs...)
+    master_jacobi!(zerox(A, b), A, b; kwargs...)
 
-function master_jacobi!(x,A::AbstractMatrix, b;
+function master_jacobi!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    verbose::Bool=false, plot::Bool=false
+    plot::Bool=false, verbose::Bool=false
     )
-    rest_resarray=RestResArray(maxiter, restart)
-    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
-    jacobi_method!(x, A, b;
-        tol=tol, residuals=ResArray(maxiter), maxiter=maxiter, verbose=verbose
-        )
-    resnorms = extract!(rest_resarray)
-    plot && showplot(resnorms)
-    x, ConvergenceHistory(0<=resnorms[end]<tol, tol, length(resnorms), resnorms)
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    jacobi_method!(x, A, b; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
+    shrink!(log)
+    plot && showplot(log)
+    x, ConvergenceHistory(isconverged(log,:resnorm,tol), tol, iters(log), log)
 end
 
 function jacobi_method!(x, A::AbstractMatrix, b;
-    residuals::Residuals=ResSingle(), tol=size(A,2)^3*eps(typeof(real(b[1]))),
-    maxiter=size(A,2)^2, verbose::Bool=false
+    tol=size(A,2)^3*eps(typeof(real(b[1]))),maxiter=size(A,2)^2,
+    verbose::Bool=false, log::MethodLog=MethodLog()
     )
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
-	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
 			xi = z
@@ -52,26 +46,45 @@ function jacobi_method!(x, A::AbstractMatrix, b;
 			x[i]=(b[i]-xi)/A[i,i]
 		end
 		#check convergence
-		resnorms[iter] = norm(A*x-b)
-		if resnorms[iter] < tol
-			resnorms=resnorms[1:iter]
-			break
-		end
+		resnorm = norm(A*x-b)
+        next!(log)
+        push!(log,:resnorm,resnorm)
+		resnorm < tol && break
 		copy!(xold, x)
 	end
 end
 
-gauss_seidel(A::AbstractMatrix, b;
-        tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2) =
-    gauss_seidel!(zerox(A, b), A, b; tol=tol, maxiter=maxiter)
+gauss_seidel(A::AbstractMatrix, b; kwargs...) =
+    gauss_seidel!(zerox(A, b), A, b; kwargs...)
 
-function gauss_seidel!(x, A::AbstractMatrix, b;
-        tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2)
+function gauss_seidel!(x, A::AbstractMatrix, b; kwargs...)
+    gauss_seidel_method!(x, A, b; kwargs...)
+    x
+end
+
+master_gauss_seidel(A::AbstractMatrix, b; kwargs...) =
+    master_gauss_seidel!(zerox(A, b), A, b; kwargs...)
+
+function master_gauss_seidel!(x, A::AbstractMatrix, b;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
+    plot::Bool=false, verbose::Bool=false
+    )
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    gauss_seidel_method!(x, A, b; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
+    shrink!(log)
+    plot && showplot(log)
+    x, ConvergenceHistory(isconverged(log,:resnorm,tol), tol, iters(log), log)
+end
+
+function gauss_seidel_method!(x, A::AbstractMatrix, b;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
+    verbose::Bool=false, log::MethodLog=MethodLog()
+    )
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
-	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
 			σ=z
@@ -85,30 +98,48 @@ function gauss_seidel!(x, A::AbstractMatrix, b;
 			x[i]=(b[i]-σ)/A[i,i]
 		end
 		#check convergence
-		resnorms[iter] = norm(A*x-b)
-		if resnorms[iter] < tol
-			resnorms=resnorms[1:iter]
-			break
-		end
+        resnorm = norm(A*x-b)
+        next!(log)
+        push!(log,:resnorm,resnorm)
+		resnorm < tol && break
 		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
 end
 
 #Successive overrelaxation
-sor(A::AbstractMatrix, b, ω::Real;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2) =
-    sor!(zerox(A, b), A, b, ω; tol=tol, maxiter=maxiter)
+sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
+    sor!(zerox(A, b), A, b, ω; kwargs...)
 
-function sor!(x, A::AbstractMatrix, b, ω::Real;
-        tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2)
+function sor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
+    sor_method!(x, A, b, ω; kwargs...)
+    x
+end
+
+master_sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
+    master_sor!(zerox(A, b), A, b, ω; kwargs...)
+
+function master_sor!(x,A::AbstractMatrix, b, ω::Real;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
+    plot::Bool=false, verbose::Bool=false
+    )
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    sor_method!(x, A, b, ω; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
+    shrink!(log)
+    plot && showplot(log)
+    x, ConvergenceHistory(isconverged(log,:resnorm,tol), tol, iters(log), log)
+end
+
+function sor_method!(x, A::AbstractMatrix, b, ω::Real;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
+    verbose::Bool=false, log::MethodLog=MethodLog()
+    )
 	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
 
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
-	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n
 			σ=z
@@ -123,31 +154,49 @@ function sor!(x, A::AbstractMatrix, b, ω::Real;
 			x[i]=xold[i]+ω*(σ-xold[i])
 		end
 		#check convergence
-		resnorms[iter] = norm(A*x-b)
-		if resnorms[iter] < tol
-			resnorms=resnorms[1:iter]
-			break
-		end
+        resnorm = norm(A*x-b)
+        next!(log)
+        push!(log,:resnorm,resnorm)
+		resnorm < tol && break
 		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
 end
 
 #Symmetric successive overrelaxation
 #A must be symmetric
-ssor(A::AbstractMatrix, b, ω::Real;
-     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)) =
-    ssor!(zerox(A, b), A, b, ω; tol=tol, maxiter=maxiter)
+ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
+    ssor!(zerox(A, b), A, b, ω; kwargs...)
 
-function ssor!(x, A::AbstractMatrix, b, ω::Real;
-        tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2))
+function ssor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
+    ssor_method!(x, A, b, ω; kwargs...)
+    x
+end
+
+master_ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
+    master_ssor!(zerox(A, b), A, b, ω; kwargs...)
+
+function master_ssor!(x,A::AbstractMatrix, b, ω::Real;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
+    plot::Bool=false, verbose::Bool=false
+    )
+    log = MethodLog(maxiter)
+    add!(log,:resnorm)
+    ssor_method!(x, A, b, ω; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
+    shrink!(log)
+    plot && showplot(log)
+    x, ConvergenceHistory(isconverged(log,:resnorm,tol), tol, iters(log), log)
+end
+
+function ssor_method!(x, A::AbstractMatrix, b, ω::Real;
+    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
+    verbose::Bool=false, log::MethodLog=MethodLog()
+    )
 	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
 
 	n = size(A,2)
     xold = copy(x)
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
-	resnorms = zeros(typeof(real(b[1])), maxiter)
 	for iter=1:maxiter
 		for i=1:n #Do a SOR sweep
 			σ=z
@@ -175,12 +224,10 @@ function ssor!(x, A::AbstractMatrix, b, ω::Real;
 			x[i]=xold[i]+ω*(σ-xold[i])
 		end
 		#check convergence
-		resnorms[iter] = norm(A*x-b)
-		if resnorms[iter] < tol
-			resnorms=resnorms[1:iter]
-			break
-		end
+        resnorm = norm(A*x-b)
+        next!(log)
+        push!(log,:resnorm,resnorm)
+		resnorm < tol && break
 		copy!(xold, x)
 	end
-	x, ConvergenceHistory(resnorms[end]<tol, tol, length(resnorms), resnorms)
 end

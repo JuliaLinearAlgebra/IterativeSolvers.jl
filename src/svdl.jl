@@ -80,13 +80,17 @@ function svdl(A; kwargs...)
     X, L
 end
 
-function master_svdl(A; tol::Real=√eps(), plot::Bool=false, l::Int=6, k::Int=2l, maxiter::Int=minimum(size(A)), kwargs...)
+function master_svdl(A;
+    tol::Real=√eps(), plot::Bool=false, l::Int=6, k::Int=2l,
+    maxiter::Int=minimum(size(A)), kwargs...
+    )
     logger = MethodLog(maxiter)
     add!(logger,:ritz, n=k)
     add!(logger,:resnorm, n=k)
     add!(logger,:Bs, n=k)
     add!(logger,:betas, n=k)
-    X, L, conv = svdl_method(A; logger=logger, k=k, l=l,maxiter=maxiter)
+    X, L, conv = svdl_method(A;
+        tol=tol, logger=logger, k=k, l=l,maxiter=maxiter, kwargs...)
     shrink!(logger)
     plot && showplot(logger)
     X, L, ConvergenceHistory(conv,tol,3,logger)
@@ -206,7 +210,7 @@ function svdl_method(A;
     v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, vecs=:none,
-    dolock::Bool=false, logger::MethodLog=MethodLog()
+    dolock::Bool=false, log::MethodLog=MethodLog()
     )
 
     T0 = time_ns()
@@ -232,9 +236,11 @@ function svdl_method(A;
 	        elapsedtime = round((time_ns()-T0)*1e-9, 3)
 	        info("Iteration $iter: $elapsedtime seconds")
         end
-        conv = isconverged(L, F, l, tol, reltol, logger, verbose)
+        conv = isconverged(L, F, l, tol, reltol, log, verbose)
 
         push!(convhist, conv)
+
+        next!(log)
         push!(logger, :ritz, F[:S][1:k])
         push!(logger, Bs, deepcopy(L.B))
         push!(logger, betas, L.β)
@@ -359,7 +365,7 @@ year = {1989}
 """
 function isconverged(L::PartialFactorization,
         F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real,
-        logger::MethodLog, verbose::Bool=false)
+        log::MethodLog, verbose::Bool=false)
 
     @assert tol ≥ 0
 
@@ -415,7 +421,7 @@ function isconverged(L::PartialFactorization,
         warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 
-    push!(logger, :resnorm, δσ[1:k])
+    push!(log, :resnorm, δσ[1:k])
     conv = (δσ[1:k] .< max(tol, reltol*σ[1]))::BitVector
 end
 

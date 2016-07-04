@@ -40,38 +40,31 @@ end
 
 gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
 
-function gmres!(x, A, b;
-    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))),
-    maxiter::Int=1, restart::Int=min(20,length(b)), verbose::Bool=false
-    )
-    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
-    gmres_method!(x,A,K,b,pl,pr;
-        tol=tol, maxiter=maxiter, restart=restart, verbose=verbose
-        )
+function gmres!(x, A, b; kwargs...)
+    gmres_method!(x,A,b; kwargs...)
     x
 end
 
 master_gmres(A, b; kwargs...) = master_gmres!(zerox(A,b), A, b; kwargs...)
 
 function master_gmres!(x, A, b;
-    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))),
-    maxiter::Int=1, restart::Int=min(20,length(b)), verbose::Bool=false,
-    plot::Bool=false
+    tol=sqrt(eps(typeof(real(b[1])))),
+    maxiter::Int=1, restart::Int=min(20,length(b)),
+    plot::Bool=false, kwargs...
     )
-    rest_resarray=RestResArray(maxiter, restart)
-    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
-    gmres_method!(x,A,K,b,pl,pr;
-        tol=tol,maxiter=maxiter,restart=restart,verbose=verbose,residuals=rest_resarray
-        )
-    resnorms = extract!(rest_resarray)
-    plot && showplot(resnorms)
-    x, ConvergenceHistory(0<=resnorms[end]<tol, tol, K.mvps, resnorms)
+    log = MethodLog(maxiter, restart)
+    add!(log,:resnorm)
+    gmres_method!(x,A,b; restart=restart,tol=tol,maxiter=maxiter,log=log, kwargs...)
+    shrink!(log)
+    plot && showplot(log)
+    x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,iters(log),log)
 end
 
-function gmres_method!(x, A, K::KrylovSubspace, b, pl=1, pr=1;
-        tol=sqrt(eps(typeof(real(b[1])))), residuals::Residuals=ResSingle(),
-        maxiter::Int=1, restart::Int=min(20,length(b)), verbose::Bool=false
-        )
+function gmres_method!(x, A, b;
+    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1,
+    restart::Int=min(20,length(b)), verbose::Bool=false,
+    log::MethodLog=MethodLog()
+    )
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
 #           2.3.4 Generalized Minimal Residual (GMRES)
@@ -104,6 +97,7 @@ function gmres_method!(x, A, K::KrylovSubspace, b, pl=1, pr=1;
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,3)         #Givens rotation values
     tol = tol * norm(pl\b)         #Relative tolerance
+    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
     for iter = 1:maxiter
         w    = pl\(b - A*x)
         s[1] = rho = norm(w)
@@ -130,19 +124,20 @@ function gmres_method!(x, A, K::KrylovSubspace, b, pl=1, pr=1;
             s[j]  *= J[j,1] #G.c
 
             rho = abs(s[j+1])
-            push!(residuals, rho)
-            verbose && @printf("%3d\t%3d\t%1.2e\n",iter,j,last(residuals))
-            if isconverged(residuals, tol)
+            next!(log)
+            push!(log, :resnorm, rho)
+            verbose && @printf("%3d\t%3d\t%1.2e\n",iter,j,rho)
+            if rho < tol
                 N = j
                 break
             end
         end
-        verbose && @printf("\n");
+        verbose && @printf("\n")
 
         @eval a = $(VERSION < v"0.4-" ? Triangular(H[1:N, 1:N], :U) \ s[1:N] : UpperTriangular(H[1:N, 1:N]) \ s[1:N])
         w = a[1:N] * K
         update!(x, 1, pr\w) #Right preconditioner
 
-        isconverged(residuals, tol) && break
+        isconverged(log, :resnorm, tol) && break
     end
 end
