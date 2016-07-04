@@ -36,7 +36,7 @@ end
 #Make macro predicate for method functions?
 function cg_method!(x,K,b;
     pl=1,tol::Real=size(K.A,2)*eps(),maxiter::Integer=size(K.A,2),
-    log::MethodLog=MethodLog(),verbose::Bool=true
+    log::MethodLog=MethodLog(),verbose::Bool=false
     )
     verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","relres")
     tol = tol * norm(b)
