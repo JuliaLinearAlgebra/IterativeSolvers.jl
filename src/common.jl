@@ -1,7 +1,7 @@
 using UnicodePlots
-import  Base: keys, setindex!, getindex, \, eltype, empty!, eps, length, ndims, push!,
-        real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
-export A_mul_B
+import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
+        ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
+export A_mul_B, iters, last
 
 \(f::Function, b::Vector) = f(b)
 
@@ -180,6 +180,10 @@ type ConvergenceHistory{T}
     mvps::Int
     data::MethodLog
 end
+
+iters(ch::ConvergenceHistory) = iters(ch.data)
+
+last(ch::ConvergenceHistory, key::Symbol) = last(ch.data,key)
 
 #### Errors
 export PosSemidefException

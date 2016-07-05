@@ -23,11 +23,11 @@ end
 
 function master_cg!(x, K::KrylovSubspace, b;
     tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2),
-    verbose::Bool=false, plot=false
+    verbose::Bool=false, plot=false, pl=1
     )
     log = MethodLog(maxiter)
     add!(log,:resnorm)
-    cg_method!(x,K,b; tol=tol,maxiter=maxiter,log=log,verbose=verbose)
+    cg_method!(x,K,b; pl=pl,tol=tol,maxiter=maxiter,log=log,verbose=verbose)
     shrink!(log)
     plot && showplot(log)
     x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,K.mvps,log)

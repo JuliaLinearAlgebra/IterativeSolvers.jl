@@ -81,7 +81,7 @@ function svdl(A; kwargs...)
 end
 
 function master_svdl(A;
-    tol::Real=√eps(), plot::Bool=false, l::Int=6, k::Int=2l,
+    tol::Real=√eps(), plot::Bool=false, ns::Int=6, k::Int=2ns,
     maxiter::Int=minimum(size(A)), kwargs...
     )
     logger = MethodLog(maxiter)
@@ -90,10 +90,10 @@ function master_svdl(A;
     add!(logger,:Bs, n=k)
     add!(logger,:betas, n=k)
     X, L, conv = svdl_method(A;
-        tol=tol, logger=logger, k=k, l=l,maxiter=maxiter, kwargs...)
-    shrink!(logger)
-    plot && showplot(logger)
-    X, L, ConvergenceHistory(conv,tol,3,logger)
+        tol=tol, log=log, k=k, ns=ns, maxiter=maxiter, kwargs...)
+    shrink!(log)
+    plot && showplot(log)
+    X, L, ConvergenceHistory(conv,tol,3,log)
 end
 
 """
@@ -103,7 +103,7 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 # Inputs
 
 - `A` : The matrix or matrixlike object whose singular values are desired
-- `l` : The number of singular values requested.
+- `ns` : The number of singular values requested.
         Default: 6
 
 # Keyword inputs
@@ -112,9 +112,9 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
          The length of `q` should be the number of columns in `A`.
          Default: A random unit vector.
 - `k` : The maximum number of Lanczos vectors to compute before restarting.
-        Default: `2*l`
+        Default: `2*ns`
 - `j` : The number of vectors to keep at the end of the restart.
-        Default: `l`. We don't recommend j < l.
+        Default: `ns`. We don't recommend j < ns.
 - `maxiter`: Maximum number of iterations to run
              Default: `minimum(size(A))`
 - `verbose`: Whether to print information at each iteration
@@ -206,7 +206,7 @@ iteration.
 
 """
 function svdl_method(A;
-    l::Int=6, k::Int=2l, j::Int=l,
+    ns::Int=6, k::Int=2ns, j::Int=ns,
     v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, vecs=:none,
@@ -214,7 +214,7 @@ function svdl_method(A;
     )
 
     T0 = time_ns()
-    @assert k>l
+    @assert k>ns
     L = build(A, v0, k)
     convhist = []
     converged = false
@@ -236,11 +236,11 @@ function svdl_method(A;
 	        elapsedtime = round((time_ns()-T0)*1e-9, 3)
 	        info("Iteration $iter: $elapsedtime seconds")
         end
-        conv = isconverged(L, F, l, tol, reltol, log, verbose)
+        conv = isconverged(L, F, ns, tol, reltol, log, verbose)
 
         push!(convhist, conv)
 
-        next!(log)
+        next!(logger)
         push!(logger, :ritz, F[:S][1:k])
         push!(logger, Bs, deepcopy(L.B))
         push!(logger, betas, L.β)
@@ -258,15 +258,15 @@ function svdl_method(A;
     end
 
     #Compute singular vectors as necessary and return them in the output
-    values = F[:S][1:l]
+    values = F[:S][1:ns]
     m, n = size(A)
     leftvecs = if vecs == :left || vecs == :both
-        L.P*sub(F[:U], :, 1:l)
+        L.P*sub(F[:U], :, 1:ns)
     else
         zeros(eltype(v0), m, 0)
     end
     rightvecs = if vecs == :right || vecs == :both
-        (sub(L.Q, :, 1:size(L.Q,2)-1)*sub(F[:V], :, 1:l))'
+        (sub(L.Q, :, 1:size(L.Q,2)-1)*sub(F[:V], :, 1:ns))'
     else
         zeros(eltype(v0), 0, n)
     end

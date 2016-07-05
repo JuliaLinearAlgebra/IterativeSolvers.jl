@@ -17,6 +17,7 @@ function master_lsqr!(x, A, b;
     plot::Bool=false, maxiter::Int=max(size(A,1), size(A,2)), kwargs...
     )
     log = MethodLog(maxiter)
+    add!(log,:resnorm)
     add!(log,:anorm)
     add!(log,:rnorm)
     add!(log,:cnorm)
@@ -206,6 +207,7 @@ function lsqr_method!(x, A, b;
         rnorm   =   sqrt(res1 + res2)
         Arnorm  =   alpha*abs(tau)
 
+        next!(log)
         # 07 Aug 2002:
         # Distinguish between
         #    r1norm = ||b - Ax|| and
@@ -217,6 +219,7 @@ function lsqr_method!(x, A, b;
         r1sq    =   abs2(rnorm) - dampsq*xxnorm
         r1norm  =   sqrt(abs(r1sq));   if r1sq < 0 r1norm = - r1norm; end
         r2norm  =   rnorm
+        push!(log, :resnorm, r1norm)
 
         # Now use these norms to estimate certain other quantities,
         # some of which will be small near a solution.
@@ -226,7 +229,6 @@ function lsqr_method!(x, A, b;
         t1      =   test1/(1 + Anorm*xnorm/bnorm)
         rtol    =   btol + atol*Anorm*xnorm/bnorm
 
-        next!(log)
         push!(log, :cnorm, test3)
         push!(log, :anorm, test2)
         push!(log, :rnorm, test1)
