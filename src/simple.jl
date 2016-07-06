@@ -83,7 +83,7 @@ function invpowm{T}(::Type{Master}, K::KrylovSubspace{T}, σ::Number;
 end
 
 #Inverse iteration/inverse power method
-function invpowm{T}(::Type{Master}, K::KrylovSubspace{T}, σ::Number;
+function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     log::MethodLog=MethodLog(), verbose::Bool=false
     )

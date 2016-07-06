@@ -1,7 +1,7 @@
 using UnicodePlots
 import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
         ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
-export A_mul_B, iters, last
+export A_mul_B, iters, last, Master
 
 \(f::Function, b::Vector) = f(b)
 

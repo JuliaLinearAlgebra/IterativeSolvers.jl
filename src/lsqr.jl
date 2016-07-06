@@ -9,7 +9,7 @@ function lsqr!(x, A, b; kwargs...)
     x
 end
 
-lsqr(::Type{Master}, A, b; kwargs...) = master_lsqr!(Master, zerox(A, b), A, b; kwargs...)
+lsqr(::Type{Master}, A, b; kwargs...) = lsqr!(Master, zerox(A, b), A, b; kwargs...)
 
 function lsqr!(::Type{Master}, x, A, b;
     atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),

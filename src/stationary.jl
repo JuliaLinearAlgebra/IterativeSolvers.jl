@@ -118,7 +118,7 @@ end
 sor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
     sor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
-function sor!(::Type{Master}, ::Type{Master}, x,A::AbstractMatrix, b, ω::Real;
+function sor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
     )
@@ -164,7 +164,7 @@ end
 
 #Symmetric successive overrelaxation
 #A must be symmetric
-ssor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
+ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     ssor!(zerox(A, b), A, b, ω; kwargs...)
 
 function ssor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
@@ -175,7 +175,7 @@ end
 ssor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
     ssor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
-function ssor!(::Type{Master}, x,A::AbstractMatrix, b, ω::Real;
+function ssor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
     plot::Bool=false, verbose::Bool=false
     )
