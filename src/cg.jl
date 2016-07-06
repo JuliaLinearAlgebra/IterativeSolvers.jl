@@ -13,15 +13,15 @@ function cg!(x, K::KrylovSubspace, b; kwargs...)
     x
 end
 
-master_cg(A, b; kwargs...) =  master_cg!(zerox(A,b), A, b; kwargs...)
+cg(::Type{Master}, A, b; kwargs...) =  cg!(Master, zerox(A,b), A, b; kwargs...)
 
-function master_cg!(x, A, b; kwargs...)
+function cg!(::Type{Master}, x, A, b; kwargs...)
     K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
     init!(K, x)
-    master_cg!(x,K,b; kwargs...)
+    cg!(Master, x,K,b; kwargs...)
 end
 
-function master_cg!(x, K::KrylovSubspace, b;
+function cg!(::Type{Master}, x, K::KrylovSubspace, b;
     tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2),
     verbose::Bool=false, plot=false, pl=1
     )

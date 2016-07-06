@@ -5,6 +5,9 @@ export A_mul_B, iters, last
 
 \(f::Function, b::Vector) = f(b)
 
+#Master type
+typealias Master Tuple{Any,ConvergenceHistory}
+
 #Logging
 abstract IterLog{T}
 type SingleValue{T} <: IterLog{T}

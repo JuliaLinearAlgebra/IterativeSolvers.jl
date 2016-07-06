@@ -13,14 +13,14 @@ function powm(K::KrylovSubspace; kwargs...)
     eigs
 end
 
-function master_powm(A; x=nothing, kwargs...)
+function powm(::Type{Master}, A; x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    master_powm(K; kwargs...)
+    powm(Master, K; kwargs...)
 end
 
-function master_powm{T}(K::KrylovSubspace{T};
-    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+function powm{T}(::Type{Master}, K::KrylovSubspace{T};
+    tol::Real=epsMaster, (T)*K.n^3, maxiter::Int=K.n,
     plot::Bool=false, verbose::Bool=false
     )
     log = MethodLog(maxiter)
@@ -62,13 +62,13 @@ function invpowm(K::KrylovSubspace, σ::Number; kwargs...)
     eigs
 end
 
-function master_invpowm(A, σ::Number; x=nothing, kwargs...)
+function invpowm(::Type{Master}, A, σ::Number; x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    master_invpowm(K, σ; kwargs...)
+    invpowm(Master, K, σ; kwargs...)
 end
 
-function master_invpowm{T}(K::KrylovSubspace{T}, σ::Number;
+function invpowm{T}(::Type{Master}, K::KrylovSubspace{T}, σ::Number;
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     plot::Bool=false, verbose::Bool=false
     )
@@ -83,7 +83,7 @@ function master_invpowm{T}(K::KrylovSubspace{T}, σ::Number;
 end
 
 #Inverse iteration/inverse power method
-function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
+function invpowm{T}(::Type{Master}, K::KrylovSubspace{T}, σ::Number;
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     log::MethodLog=MethodLog(), verbose::Bool=false
     )
@@ -115,13 +115,13 @@ function rqi(K::KrylovSubspace, σ::Number; kwargs...)
     eigs
 end
 
-function master_rqi(A, σ::Number; x=nothing, kwargs...)
+function rqi(::Type{Master}, A, σ::Number; x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    master_rqi(K, σ; kwargs...)
+    rqi(Master, K, σ; kwargs...)
 end
 
-function master_rqi{T}(K::KrylovSubspace{T}, σ::Number;
+function rqi{T}(::Type{Master}, K::KrylovSubspace{T}, σ::Number;
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     plot::Bool=false, verbose::Bool=false
     )

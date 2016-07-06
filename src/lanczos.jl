@@ -23,7 +23,7 @@ function eiglancz(A; kwargs...)
     eigs
 end
 
-function master_eiglancz(A;
+function eiglancz(::Type{Master}, A;
     maxiter::Integer=size(A,1), plot::Bool=false,
     tol::Real = size(A,1)^3*eps(real(eltype(A))), kwargs...
     )

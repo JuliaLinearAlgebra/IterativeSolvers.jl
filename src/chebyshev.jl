@@ -14,16 +14,16 @@ function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real; kwargs...
     x
 end
 
-master_chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
-    master_chebyshev!(zerox(A, b), A, b, λmin, λmax; kwargs...)
+chebyshev(::Type{Master}, A, b, λmin::Real, λmax::Real; kwargs...) =
+    chebyshev!(Master, zerox(A, b), A, b, λmin, λmax; kwargs...)
 
-function master_chebyshev!(x, A, b, λmin::Real, λmax::Real; n::Int=size(A,2), kwargs...)
+function chebyshev!(::Type{Master}, x, A, b, λmin::Real, λmax::Real; n::Int=size(A,2), kwargs...)
 	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
 	init!(K, x)
-	master_chebyshev!(x, K, b, λmin, λmax; n=n, kwargs...)
+	chebyshev!(Master, x, K, b, λmin, λmax; n=n, kwargs...)
 end
 
-function master_chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
+function chebyshev!(::Type{Master}, x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
     n::Int=size(A,2), tol::Real = sqrt(eps(typeof(real(b[1])))),
     maxiter::Int = n^3, plot::Bool=false, kwargs...
     )

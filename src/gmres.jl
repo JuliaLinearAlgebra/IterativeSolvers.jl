@@ -45,9 +45,9 @@ function gmres!(x, A, b; kwargs...)
     x
 end
 
-master_gmres(A, b; kwargs...) = master_gmres!(zerox(A,b), A, b; kwargs...)
+gmres(::Type{Master}, A, b; kwargs...) = gmres!(Master, zerox(A,b), A, b; kwargs...)
 
-function master_gmres!(x, A, b;
+function gmres!(::Type{Master}, x, A, b;
     tol=sqrt(eps(typeof(real(b[1])))),
     maxiter::Int=1, restart::Int=min(20,length(b)),
     plot::Bool=false, kwargs...

@@ -84,9 +84,9 @@ function idrs!(x, A, b;
     x
 end
 
-master_idrs(A, b; kwargs...) = master_idrs!(zerox(A,b), A, b; kwargs...)
+idrs(::Type{Master}, A, b; kwargs...) = idrs!(Master, zerox(A,b), A, b; kwargs...)
 
-function master_idrs!(x, A, b;
+function idrs!(::Type{Master}, x, A, b;
     s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
     verbose::Bool=false, plot::Bool=false
     )

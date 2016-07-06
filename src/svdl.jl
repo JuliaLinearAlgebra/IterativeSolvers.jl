@@ -80,7 +80,7 @@ function svdl(A; kwargs...)
     X, L
 end
 
-function master_svdl(A;
+function svdl(::Type{Master}, A;
     tol::Real=√eps(), plot::Bool=false, ns::Int=6, k::Int=2ns,
     maxiter::Int=minimum(size(A)), kwargs...
     )

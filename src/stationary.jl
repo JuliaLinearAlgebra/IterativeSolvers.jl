@@ -13,10 +13,10 @@ function jacobi!(x, A::AbstractMatrix, b; kwargs...)
     x
 end
 
-master_jacobi(A::AbstractMatrix, b; kwargs...) =
-    master_jacobi!(zerox(A, b), A, b; kwargs...)
+jacobi(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
+    jacobi!(Master, zerox(A, b), A, b; kwargs...)
 
-function master_jacobi!(x, A::AbstractMatrix, b;
+function ::Type{Master}, jacobi!(::Type{Master}, x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
     )
@@ -62,10 +62,10 @@ function gauss_seidel!(x, A::AbstractMatrix, b; kwargs...)
     x
 end
 
-master_gauss_seidel(A::AbstractMatrix, b; kwargs...) =
-    master_gauss_seidel!(zerox(A, b), A, b; kwargs...)
+gauss_seidel(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
+    gauss_seidel!(Master, zerox(A, b), A, b; kwargs...)
 
-function master_gauss_seidel!(x, A::AbstractMatrix, b;
+function gauss_seidel!(::Type{Master}, x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
     )
@@ -115,10 +115,10 @@ function sor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
     x
 end
 
-master_sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
-    master_sor!(zerox(A, b), A, b, ω; kwargs...)
+sor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
+    sor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
-function master_sor!(x,A::AbstractMatrix, b, ω::Real;
+function sor!(::Type{Master}, ::Type{Master}, x,A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
     )
@@ -164,7 +164,7 @@ end
 
 #Symmetric successive overrelaxation
 #A must be symmetric
-ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
+ssor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
     ssor!(zerox(A, b), A, b, ω; kwargs...)
 
 function ssor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
@@ -172,10 +172,10 @@ function ssor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
     x
 end
 
-master_ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
-    master_ssor!(zerox(A, b), A, b, ω; kwargs...)
+ssor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
+    ssor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
-function master_ssor!(x,A::AbstractMatrix, b, ω::Real;
+function ssor!(::Type{Master}, x,A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
     plot::Bool=false, verbose::Bool=false
     )

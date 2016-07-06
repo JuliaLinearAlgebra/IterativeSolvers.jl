@@ -9,9 +9,9 @@ function lsqr!(x, A, b; kwargs...)
     x
 end
 
-master_lsqr(A, b; kwargs...) = master_lsqr!(zerox(A, b), A, b; kwargs...)
+lsqr(::Type{Master}, A, b; kwargs...) = master_lsqr!(Master, zerox(A, b), A, b; kwargs...)
 
-function master_lsqr!(x, A, b;
+function lsqr!(::Type{Master}, x, A, b;
     atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
     conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
     plot::Bool=false, maxiter::Int=max(size(A,1), size(A,2)), kwargs...

@@ -16,11 +16,11 @@ function lsmr!(x, A, b; kwargs...)
     x
 end
 
-function master_lsmr(A, b; kwargs...)
-    master_lsmr!(zerox(A, b), A, b; kwargs...)
+function lsmr(::Type{Master}, A, b; kwargs...)
+    lsmr!(Master, zerox(A, b), A, b; kwargs...)
 end
 
-function master_lsmr!(x, A, b;
+function lsmr!(::Type{Master}, x, A, b;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
     maxiter::Integer = max(size(A,1), size(A,2)), plot::Bool=false, kwargs...
     )
