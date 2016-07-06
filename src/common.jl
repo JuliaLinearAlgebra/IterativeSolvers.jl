@@ -5,9 +5,6 @@ export A_mul_B, iters, last
 
 \(f::Function, b::Vector) = f(b)
 
-#Master type
-typealias Master Tuple{Any,ConvergenceHistory}
-
 #Logging
 abstract IterLog{T}
 type SingleValue{T} <: IterLog{T}
@@ -187,6 +184,9 @@ end
 iters(ch::ConvergenceHistory) = iters(ch.data)
 
 last(ch::ConvergenceHistory, key::Symbol) = last(ch.data,key)
+
+#Master type
+typealias Master Tuple{Any,ConvergenceHistory}
 
 #### Errors
 export PosSemidefException

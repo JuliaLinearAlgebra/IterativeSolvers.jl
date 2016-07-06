@@ -16,7 +16,7 @@ end
 jacobi(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
     jacobi!(Master, zerox(A, b), A, b; kwargs...)
 
-function ::Type{Master}, jacobi!(::Type{Master}, x, A::AbstractMatrix, b;
+function jacobi!(::Type{Master}, x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
     )

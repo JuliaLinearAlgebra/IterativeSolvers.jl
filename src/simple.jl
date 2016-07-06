@@ -20,7 +20,7 @@ function powm(::Type{Master}, A; x=nothing, kwargs...)
 end
 
 function powm{T}(::Type{Master}, K::KrylovSubspace{T};
-    tol::Real=epsMaster, (T)*K.n^3, maxiter::Int=K.n,
+    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     plot::Bool=false, verbose::Bool=false
     )
     log = MethodLog(maxiter)
