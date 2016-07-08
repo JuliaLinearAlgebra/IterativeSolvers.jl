@@ -74,7 +74,7 @@ function eigvals_rqi{T}(K::KrylovSubspace{T}, σ::Number=zero(T); tol::Real=eps(
         end
         appendunit!(K, y)
     end
-    Eigenpair(σ, y/θ), ConvergenceHistory(0<resnorms[end]<tol*abs(θ), tol, K.mvps, resnorms)
+    Eigenpair(σ, y/norm(y)), ConvergenceHistory(0<resnorms[end]<tol*abs(θ), tol, K.mvps, resnorms)
 end
 function eigvals_rqi(A, σ::Number, x=nothing; tol::Real=eps(), maxiter::Int=size(A,1))
     K = KrylovSubspace(A, 1)
