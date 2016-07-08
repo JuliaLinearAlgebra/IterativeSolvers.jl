@@ -123,7 +123,10 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 
 - `Σ`: A list of the desired singular values if `vecs == :none` (the default),
     otherwise returns an `SVD` object with the desired singular vectors filled in
-- `L`: The computed partial factorization of A
+- `L`: The computed partial factorizations of A
+- `Bs`: The history of the computed projected matrices
+- `ritzvalhist`: Ritz values computed at each iteration
+- `convhist`: Convergence data
 
 # Implementation notes
 
@@ -201,7 +204,9 @@ function svdl(A, l::Int=6; k::Int=2l,
 
     #Save history of Ritz values
     ritzvalhist = Vector[]
+    βs = Float64[]
     convhist = []
+    Bs = AbstractMatrix[deepcopy(L.B)]
 
     if doplot
        ttyh, ttyw = Base.tty_size()
@@ -230,7 +235,8 @@ function svdl(A, l::Int=6; k::Int=2l,
 
         push!(convhist, conv)
         push!(ritzvalhist, F[:S])
-
+        push!(Bs, deepcopy(L.B))
+        push!(βs, L.β)
 
         if doplot
             if isdefined(Main, :UnicodePlots)
@@ -270,10 +276,11 @@ function svdl(A, l::Int=6; k::Int=2l,
         zeros(eltype(v0), 0, n)
     end
 
+    push!(βs, L.β)
     if vecs == :none
-        values, L
+        values, L, Bs, βs
     else
-        LinAlg.SVD(leftvecs, values, rightvecs), L
+        LinAlg.SVD(leftvecs, values, rightvecs), L, Bs, βs
     end
 end
 
@@ -334,6 +341,31 @@ described in [Wilkinson1965:Ch.3 §54-55 p.173, Yamamoto1980, Ortega1990]
     volume = {34},
     year = 1980
 }
+
+@article{Geurts1982,
+author = {Geurts, A J},
+doi = {10.1007/BF01399313},
+journal = {Numerische Mathematik},
+month = feb,
+number = {1},
+pages = {85--96},
+title = {A contribution to the theory of condition},
+volume = {39},
+year = {1982}
+}
+
+@article{Deif1989,
+author = {Deif, A.},
+doi = {10.1007/BF01396348},
+journal = {Numerische Mathematik},
+month = jun,
+number = {6},
+pages = {625--626},
+title = {A relative backward perturbation theorem for the eigenvalue problem},
+volume = {56},
+year = {1989}
+}
+
 ```
 """
 function isconverged(L::PartialFactorization,
@@ -360,29 +392,27 @@ function isconverged(L::PartialFactorization,
         verbose && println("Smallest empirical spectral gap: ", d)
         #Chatelein 1993 - normwise backward error associated with approximate invariant subspace
         #Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-        #verbose && println("Normwise backward error associated with subspace: ", L.β/σ[1])
+        verbose && println("Normwise backward error associated with subspace: ", L.β/σ[1])
         for i in eachindex(Δσ)
             α = Δσ[i]
 
             #Simple error bound
-            #if 2α ≤ d
-
             if 2α ≤ d
                 #Rayleigh-Ritz bounds
                 x = abs(α/(d-α)*√(1+(α/(d-α))^2))
-                #verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
-                #2α ≤ d && (δσ[i] = min(δσ[i], x))
+                verbose && println("Rayleigh-Ritz error bound on eigenvector: $x")
+                #δσ[i] = min(δσ[i], x)
 
                 y = α^2/d #[Wilkinson:Ch.3 Appendix (4), p.188]
-                #verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
-                2α ≤ d && (δσ[i] = min(δσ[i], y))
+                verbose && println("Rayleigh-Ritz error bound on eigenvalue: $y")
+                δσ[i] = min(δσ[i], y)
             end
 
 	    verbose && println("Ritz value ", i, ": ", σ[i], " ± ", signif(δσ[i], 3))
 
             #Estimate of the normwise backward error [Deif 1989]
             ##Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
-            #verbose && println("Normwise backward error estimate: ", α/σ[1])
+            verbose && println("Normwise backward error estimate: ", α/σ[1])
 
             #Geurts, 1982 - componentwise backward error also known
             #A. J. Geurts, (1982), A contribution to the theory of condition,
@@ -561,15 +591,47 @@ The reorthogonalization method used is using double classical Gram-Schmidt
 full reorthogonalization. As explained in the numerical analysis literature by
 Kahan, Golub, Rutishauser, and others in the 1970s, double classical
 Gram-Schmidt reorthogonalization always suffices to keep vectors orthogonal to
-within machine precision. As described in [Rutishauser2015], α is a threshold
+within machine precision. As described in [Bjorck2015], α is a threshold
 for determinining when the second orthogonalization is necessary. -log10(α) is
 the number of (decimal) digits lost due to cancellation. Common choices are
-α=0.1 [Rutishauser1967] and α=1/√2 [Daniel1976, Reichel1990] (our default).
+α=0.1 [Rutishauser] and α=1/√2 [Daniel1976] (our default).
 
 In most situations it suffices to orthogonalize either the left vectors or the
 right vectors, except when the matrix norm exceeds `1/√eps(eltype(A))`, in
 which case it will be necessary to orthogonalize both sets of vectors. See
 [Simon2000].
+
+@book{Bjorck2015,
+author = {Bj{\"{o}}rck, {\AA}ke},
+doi = {10.1007/978-3-319-05089-8},
+publisher = {Springer},
+series = {Texts in Applied Mathematics},
+title = {Numerical Methods in Matrix Computations},
+year = {2015}
+}
+
+@article{Simon2000,
+        author = {Simon, Horst D. and Zha, Hongyuan},
+        doi = {10.1137/S1064827597327309},
+        journal = {SIAM Journal on Scientific Computing},
+        number = {6},
+        pages = {2257--2274},
+        title = {Low-Rank Matrix Approximation Using the {Lanczos} Bidiagonalization Process with Applications},
+        volume = {21},
+        year = {2000}
+}
+
+@article{Daniel1976,
+author = {Daniel, J. W. and Gragg, W. B. and Kaufman, L. and Stewart, G. W.},
+doi = {10.1090/S0025-5718-1976-0431641-8},
+journal = {Mathematics of Computation},
+number = {136},
+pages = {772--795},
+title = {Reorthogonalization and stable algorithms for updating the {Gram-Schmidt QR} factorization},
+volume = {30},
+year = {1976}
+}
+
 """
 function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
     orthleft::Bool=false, orthright::Bool=true, α::Real = 1/√2)
