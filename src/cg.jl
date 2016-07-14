@@ -1,4 +1,4 @@
-export cg, cg!, master_cg, master_cg!
+export cg, cg!
 
 cg(A, b; kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
 
@@ -25,18 +25,19 @@ function cg!(::Type{Master}, x, K::KrylovSubspace, b;
     tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2),
     verbose::Bool=false, plot=false, pl=1
     )
-    log = MethodLog(maxiter)
-    add!(log,:resnorm)
+    log = ConvergenceHistory()
+    log[:tol] = tol
+    reserve!(log,:resnorm, maxiter)
     cg_method!(x,K,b; pl=pl,tol=tol,maxiter=maxiter,log=log,verbose=verbose)
     shrink!(log)
     plot && showplot(log)
-    x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,K.mvps,log)
+    x, log
 end
 
 #Make macro predicate for method functions?
 function cg_method!(x,K,b;
     pl=1,tol::Real=size(K.A,2)*eps(),maxiter::Integer=size(K.A,2),
-    log::MethodLog=MethodLog(),verbose::Bool=false
+    log::MethodLog=DummyHistory(),verbose::Bool=false
     )
     verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","relres")
     tol = tol * norm(b)
@@ -51,7 +52,7 @@ function cg_method!(x,K,b;
         update!(x, α, p)
         r -= α*q
         resnorm = norm(r)
-        next!(log)
+        nextiter!(log)
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm < tol && break
@@ -61,5 +62,7 @@ function cg_method!(x,K,b;
         β = γ/oldγ
         p = z + β*p
     end
+    setmvps(log, K.mvps)
+    setconv(log, 0<=norm(r)<tol)
     verbose && @printf("\n")
 end

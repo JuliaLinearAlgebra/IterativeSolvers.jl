@@ -139,7 +139,7 @@ facts(string("lsmr")) do
     context("Small dense matrix") do
         A = rand(10, 5)
         b = rand(10)
-        x, = master_lsmr(A, b)
+        x, = lsmr(Master, A, b)
         @fact norm(x - A\b) --> less_than(√eps())
     end
 
@@ -169,7 +169,7 @@ facts(string("lsmr")) do
             xtrue = n:-1:1
             b = Array(Float64, m)
             b = float(A_mul_B!(1.0, A, xtrue, 0.0, b))
-            x, = master_lsmr(A, b, atol = 1e-7, btol = 1e-7, conlim = 1e10, maxiter = 10n)
+            x, = lsmr(Master, A, b, atol = 1e-7, btol = 1e-7, conlim = 1e10, maxiter = 10n)
             r = A_mul_B!(-1, A, x, 1, b)
             @fact norm(r) --> less_than_or_equal(1e-4)
         end
@@ -189,7 +189,7 @@ facts(string("lsmr")) do
             v = rand(n)
             Adampened = DampenedMatrix(A, v)
             bdampened = DampenedVector(b, zeros(n))
-            x, ch = master_lsmr(Adampened, bdampened)
+            x, ch = lsmr(Master, Adampened, bdampened)
             @fact norm((A'A + diagm(v).^2)x - A'b) --> less_than(1e-3)
         end
         DampenedTest(10, 10)

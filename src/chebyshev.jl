@@ -1,4 +1,4 @@
-export chebyshev, chebyshev!, master_chebyshev, master_chebyshev!
+export chebyshev, chebyshev!
 
 chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
     chebyshev!(zerox(A, b), A, b, λmin, λmax; kwargs...)
@@ -27,17 +27,18 @@ function chebyshev!(::Type{Master}, x, K::KrylovSubspace, b, λmin::Real, λmax:
     n::Int=size(A,2), tol::Real = sqrt(eps(typeof(real(b[1])))),
     maxiter::Int = n^3, plot::Bool=false, kwargs...
     )
-    log = MethodLog(maxiter)
-    add!(log,:resnorm)
+    log = ConvergenceHistory()
+    log[:tol] = tol
+    reserve!(log,:resnorm,maxiter)
     chebyshev_method!(x,K,b,λmin,λmax; tol=tol,maxiter=maxiter,log=log,kwargs...)
     shrink!(log)
     plot && showplot(log)
-    x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,K.mvps,log)
+    x, log
 end
 
 function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
     pr=1, tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = K.n^3,
-    log::MethodLog=MethodLog(), verbose::Bool=false
+    log::MethodLog=DummyHistory(), verbose::Bool=false
     )
     verbose && @printf("=== chebyshev ===\n%4s\t%7s\n","iter","relres")
     local α, p
@@ -60,10 +61,12 @@ function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
     	update!(x, α, p)
     	r -= α*nextvec(K)
         resnorm = norm(r)
-        next!(log)
+        nextiter!(log)
         push!(log, :resnorm, resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm < tol && break
 	end
+    setmvps(log, K.mvps)
+    setconv(log, 0<=norm(r)<tol)
     verbose && @printf("\n")
 end

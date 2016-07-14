@@ -1,4 +1,4 @@
-export lsmr, lsmr!, master_lsmr, master_lsmr!
+export lsmr, lsmr!
 
 using Base.LinAlg
 
@@ -24,23 +24,23 @@ function lsmr!(::Type{Master}, x, A, b;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
     maxiter::Integer = max(size(A,1), size(A,2)), plot::Bool=false, kwargs...
     )
-    log = MethodLog(maxiter)
-    add!(log,:anorm)
-    add!(log,:rnorm)
-    add!(log,:cnorm)
+    log = ConvergenceHistory()
+    log[:atol] = atol
+    log[:btol] = btol
+    reserve!(log,:anorm,maxiter)
+    reserve!(log,:rnorm,maxiter)
+    reserve!(log,:cnorm,maxiter)
     T = Adivtype(A, b)
     m, n = size(A, 1), size(A, 2)
     btmp = similar(b, T)
     copy!(btmp, b)
     v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
-    Tr = real(T)
-    conlim > 0 ? ctol = convert(Tr, inv(conlim)) : ctol = zero(Tr)
-    conv = lsmr_method!(x, A, btmp, v, h, hbar;
+    lsmr_method!(x, A, btmp, v, h, hbar;
         atol=atol,btol=btol,conlim=conlim,maxiter=maxiter,log=log,kwargs...
         )
     shrink!(log)
     plot && showplot(log)
-    x, ConvergenceHistory(conv,(atol, btol, ctol),2*iters(log),log)
+    x, log
 end
 
 ##############################################################################
@@ -83,7 +83,7 @@ end
 function lsmr_method!(x, A, b, v, h, hbar;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
     maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0,
-    log::MethodLog=MethodLog(), verbose::Bool=false
+    log::MethodLog=DummyHistory(), verbose::Bool=false
     )
 
     # Sanity-checking
@@ -100,6 +100,7 @@ function lsmr_method!(x, A, b, v, h, hbar;
     normrs = Tr[]
     normArs = Tr[]
     conlim > 0 ? ctol = convert(Tr, inv(conlim)) : ctol = zero(Tr)
+    log[:ctol] = ctol
     # form the first vectors u and v (satisfy  β*u = b,  α*v = A'u)
     u = A_mul_B!(-1, A, x, 1, b)
     β = norm(u)
@@ -240,7 +241,7 @@ function lsmr_method!(x, A, b, v, h, hbar;
             test1 = normr / normb
             test2 = normAr / (normA * normr)
             test3 = inv(condA)
-            next!(log)
+            nextiter!(log)
             push!(log, :cnorm, test3)
             push!(log, :anorm, test2)
             push!(log, :rnorm, test1)
@@ -262,7 +263,8 @@ function lsmr_method!(x, A, b, v, h, hbar;
             if test1 <= rtol  istop = 1; break end
         end
     end
-    converged = istop ∉ (3, 6, 7)
+    setmvps(log, 2*iter)
+    setconv(log, istop ∉ (3, 6, 7))
 end
 
 for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))

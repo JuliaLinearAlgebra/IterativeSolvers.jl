@@ -5,80 +5,102 @@ export A_mul_B, iters, last, Master
 
 \(f::Function, b::Vector) = f(b)
 
-#Logging
-abstract IterLog{T}
-type SingleValue{T} <: IterLog{T}
-    data::T
-end
-type MultiValue{T} <: IterLog{T}
-    data::Vector{T}
-end
-SingleValue(T::Type) = SingleValue(zero(T))
-MultiValue(T::Type, n::Int) = MultiValue(zeros(T,n))
-getindex(il::IterLog, i::Int) = il.data[i]
-setindex!(il::MultiValue, i::Int, val) = (il.data[i] = val)
-
-#typealias ElemLog Vector{IterLog}
+#### Reporting
 abstract MethodLog
-type DummyLog <: MethodLog
-    data::Dict{Symbol,IterLog}
+type DummyHistory <: MethodLog end
+type ConvergenceHistory{T} <: MethodLog
+    mvps::Int
+    mtvps::Int
+    iters::Int
+    restart::T
+    isconverged::Bool
+    tol::Dict{Symbol, Real}
+    data::Dict{Symbol, Vector}
 end
-MethodLog() = DummyLog(Dict{Symbol,IterLog}())
+typealias PlainHistory ConvergenceHistory{Void}
+typealias RestartedHistory ConvergenceHistory{Int}
 
-getindex(ml::DummyLog, key::Symbol) = ml.data[key]
-setindex!(ml::DummyLog, val::IterLog, key::Symbol) = (ml.data[key]=val)
+DummyHistory() = DummyHistory()
+ConvergenceHistory() = ConvergenceHistory(0,0,0,nothing,false,
+                        Dict{Symbol, Real}(), Dict{Symbol, Vector}()
+                        )
+ConvergenceHistory(restart::Int) = ConvergenceHistory(0,0,0,restart,false,
+                                    Dict{Symbol, Real}(), Dict{Symbol, Vector}()
+                                    )
 
-type MasterLog <: MethodLog
-    iter::Int
-    maxiter::Int
-    restart::Int
-    data::Dict{Symbol,Vector{IterLog}}
+# Consulting
+
+function getindex(ch::ConvergenceHistory, s::Symbol)
+    haskey(ch.tol, s) && return ch.tol[s]
+    ch.data[s]
 end
-MethodLog(maxiter::Int) =
-    MasterLog(0,maxiter,maxiter,Dict{Symbol, Vector{IterLog}}())
-MethodLog(maxiter::Int, restart::Int) =
-    MasterLog(0,maxiter*restart,restart,Dict{Symbol, Vector{IterLog}}())
+getindex(ch::ConvergenceHistory, s::Symbol, i::Int) = ch.data[s][i]
 
-getindex(ml::MasterLog, key::Symbol) = ml.data[key]
-setindex!(ml::MasterLog, val::Vector{IterLog}, key::Symbol) = (ml.data[key]=val)
-getindex(ml::MasterLog, key::Symbol, i::Int) = ml.data[key][i]
-setindex!(ml::MasterLog, val::IterLog, key::Symbol, i::Int) = (ml.data[key][i]=val)
+products(ch::ConvergenceHistory) = ch.mvps+ch.mtvps
 
-function add!(ml::MasterLog, key::Symbol; n::Int=1, T::Type=Float64)
-    if n == 1
-        ml.data[key] = Vector{SingleValue{T}}([SingleValue(T) for i in 1:ml.maxiter])
-    else
-        ml.data[key] = Vector{MultiValue{T}}([MultiValue(T,n) for i in 1:ml.maxiter])
+iters(ch::PlainHistory) = ch.iters
+iters(ch::RestartedHistory) = ceil(ch.iters/ch.restart)
+
+last(ch::ConvergenceHistory, key::Symbol) = ch.data[key][ch.iters]
+
+tolkeys(ch::ConvergenceHistory) = keys(ch.tol)
+datakeys(ch::ConvergenceHistory) = keys(ch.data)
+
+# State change
+
+setmvps(ch::DummyHistory, val::Int) = nothing
+setmvps(ch::ConvergenceHistory, val::Int) = ch.mvps=val
+
+setmtvps(ch::DummyHistory, val::Int) = nothing
+setmtvps(ch::ConvergenceHistory, val::Int) = ch.mtvps=val
+
+setconv(ch::DummyHistory, val::Bool) = nothing
+setconv(ch::ConvergenceHistory, val::Bool) = ch.isconverged=val
+
+function reserve!(ch::PlainHistory, s::Symbol, maxiter::Int; T::Type=Float64)
+    ch.data[s] = Vector{T}(maxiter)
+end
+function reserve!(ch::RestartedHistory, s::Symbol, maxiter::Int; T::Type=Float64)
+    ch.data[s] = Vector{T}(maxiter*ch.restart)
+end
+function reserve!(ch::PlainHistory, s::Symbol, maxiter::Int, size::Int; T::Type=Float64)
+    aux = ch.data[s] = Vector{Vector{T}}(maxiter)
+    for i in 1:length(aux)
+        aux[i] = Vector{T}(size)
     end
-    nothing
 end
-
-iters(ml::MasterLog) = ml.iter
-
-last(ml::DummyLog, key::Symbol) = ml[key].data
-last(ml::MasterLog, key::Symbol) = ml[key][ml.iter].data
-
-next!(ml::DummyLog) = nothing
-next!(ml::MasterLog) = (ml.iter += 1; nothing)
-
-push!(ml::DummyLog, key::Symbol, val) = (ml[key] = SingleValue(val))
-function push!(ml::MasterLog, key::Symbol, val)
-    ml[key][ml.iter].data = val
-end
-
-keys(ml::MethodLog) = keys(ml.data)
-
-shrink!(ml::MasterLog, key::Symbol) = (resize!(ml[key], ml.iter); nothing)
-function shrink!(ml::MasterLog)
-    for key in keys(ml.data)
-        shrink!(ml,key)
+function reserve!(ch::RestartedHistory, s::Symbol, maxiter::Int, size::Int; T::Type=Float64)
+    aux = ch.data[s] = Vector{Vector{T}}(maxiter*ch.restart)
+    for i in 1:length(aux)
+        aux[i] = Vector{T}(size)
     end
 end
 
-isconverged(ml::MethodLog, key::Symbol, tol) = 0 <= last(ml, key) < tol
+setindex!(ch::DummyHistory, tol::Real, s::Symbol) = nothing
+setindex!(ch::ConvergenceHistory, tol::Real, s::Symbol) = ch.tol[s] = tol
+
+setindex!(ch::DummyHistory, val, s::Symbol, i::Int) = nothing
+setindex!(ch::ConvergenceHistory, val, s::Symbol, i::Int) = ch.data[s][i] = val
+
+setindex!(ch::DummyHistory, vec::Vector, s::Symbol) = nothing
+setindex!(ch::ConvergenceHistory, vec::Vector, s::Symbol) = ch.data[s] = vec
+
+nextiter!(::DummyHistory) = nothing
+nextiter!(ch::ConvergenceHistory) = ch.iters+=1
+
+push!(::DummyHistory, ::Symbol, ::Any) = nothing
+push!(ch::ConvergenceHistory, key::Symbol, val) = ch.data[key][ch.iters] = val
+
+shrink!(::DummyHistory) = nothing
+shrink!(ch::ConvergenceHistory, key::Symbol) = resize!(ch.data[key], ch.iters)
+function shrink!(ch::ConvergenceHistory)
+    for key in datakeys(ch)
+        shrink!(ch,key)
+    end
+end
 
 #Plotting
-function plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
+function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     restarts=ceil(iters/gap), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
     )
@@ -96,7 +118,7 @@ function plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     plot
 end
 
-function plot{T<:Real}(vals::Vector{Vector{T}}, iters::Int, gap::Int;
+function _plot{T<:Real}(vals::Vector{Vector{T}}, iters::Int, gap::Int;
     restarts=ceil(iters/gap), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
     )
@@ -114,23 +136,15 @@ function plot{T<:Real}(vals::Vector{Vector{T}}, iters::Int, gap::Int;
     plot
 end
 
-showplot{T<:Real}(::Type{SingleValue{T}}, els::Vector{IterLog}, iters::Int, gap::Int; kwargs...) =
-    println(plot(Real[els[i].data for i in 1:iters], iters, gap; kwargs...))
-
-showplot{T<:Real}(::Type{MultiValue{T}}, els::Vector{IterLog}, iters::Int, gap::Int; kwargs...) =
-    println(plot(Vector{Real}[els[i].data for i in 1:iters], iters, gap; kwargs...))
-
-showplot(els::Vector{IterLog}, iters::Int, gap::Int; kwargs...) =
-    showplot(typeof(els[1]), els::Vector{IterLog}, iters::Int, gap::Int; kwargs...)
-
-function showplot(ml::MasterLog; kwargs...)
+function showplot(ch::ConvergenceHistory; kwargs...)
     println("\n")
-    for key in keys(ml)
+    for key in datakeys(ch)
         try
-            showplot(ml[key], ml.iter, ml.restart; name=string(key), kwargs...)
-            println("\n\n")
+            restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
+            draw = _plot(ch.data[key], ch.iters, restart; name=string(key), kwargs...)
+            println("$draw\n\n")
         catch e
-            warn("When trying to plot got the following error: $e")
+            error("$e")
         end
     end
 end
@@ -172,18 +186,6 @@ function initrand!(v::Vector)
 end
 _randn!(v::Array{Float64}) = randn!(v)
 _randn!(v) = copy!(v, randn(length(v)))
-
-#### Reporting
-type ConvergenceHistory{T}
-    isconverged::Bool
-    threshold::T
-    mvps::Int
-    data::MethodLog
-end
-
-iters(ch::ConvergenceHistory) = iters(ch.data)
-
-last(ch::ConvergenceHistory, key::Symbol) = last(ch.data,key)
 
 #Master type
 typealias Master Tuple{Any,ConvergenceHistory}

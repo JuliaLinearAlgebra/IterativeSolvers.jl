@@ -1,4 +1,4 @@
-export gmres, gmres!, master_gmres, master_gmres!
+export gmres, gmres!
 
 #One Arnoldi iteration
 #Optionally takes a truncation parameter l
@@ -52,18 +52,19 @@ function gmres!(::Type{Master}, x, A, b;
     maxiter::Int=1, restart::Int=min(20,length(b)),
     plot::Bool=false, kwargs...
     )
-    log = MethodLog(maxiter, restart)
-    add!(log,:resnorm)
+    log = ConvergenceHistory(restart)
+    log[:tol] = tol
+    reserve!(log,:resnorm,maxiter)
     gmres_method!(x,A,b; restart=restart,tol=tol,maxiter=maxiter,log=log, kwargs...)
     shrink!(log)
     plot && showplot(log)
-    x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,iters(log),log)
+    x, log
 end
 
 function gmres_method!(x, A, b;
     pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1,
     restart::Int=min(20,length(b)), verbose::Bool=false,
-    log::MethodLog=MethodLog()
+    log::MethodLog=DummyHistory()
     )
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
@@ -91,6 +92,7 @@ function gmres_method!(x, A, b;
 #   (resp. inv(pl)*x, inv(pr)*x), or any type representing a linear operator
 #   which implements *(A,x) (resp. \(pl,x), \(pr,x)).
     verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","relres")
+    iter=0
     n = length(b)
     T = eltype(b)
     H = zeros(T,n+1,restart)       #Hessenberg matrix
@@ -124,7 +126,7 @@ function gmres_method!(x, A, b;
             s[j]  *= J[j,1] #G.c
 
             rho = abs(s[j+1])
-            next!(log)
+            nextiter!(log)
             push!(log, :resnorm, rho)
             verbose && @printf("%3d\t%3d\t%1.2e\n",iter,j,rho)
             if rho < tol
@@ -138,6 +140,8 @@ function gmres_method!(x, A, b;
         w = a[1:N] * K
         update!(x, 1, pr\w) #Right preconditioner
 
-        isconverged(log, :resnorm, tol) && break
+        0<=rho<tol && (setconv(log, true); break)
     end
+    setmvps(log, iter)
+    verbose && @printf("\n")
 end

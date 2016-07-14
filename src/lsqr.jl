@@ -1,4 +1,4 @@
-export lsqr, lsqr!, master_lsqr, master_lsqr!
+export lsqr, lsqr!
 
 using Base.LinAlg # can be removed when 0.3 is no longer supported
 
@@ -16,20 +16,22 @@ function lsqr!(::Type{Master}, x, A, b;
     conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
     plot::Bool=false, maxiter::Int=max(size(A,1), size(A,2)), kwargs...
     )
-    log = MethodLog(maxiter)
-    add!(log,:resnorm)
-    add!(log,:anorm)
-    add!(log,:rnorm)
-    add!(log,:cnorm)
+    log = ConvergenceHistory()
+    log[:atol] = atol
+    log[:btol] = btol
+    reserve!(log,:resnorm,maxiter)
+    reserve!(log,:anorm,maxiter)
+    reserve!(log,:rnorm,maxiter)
+    reserve!(log,:cnorm,maxiter)
     T = Adivtype(A, b)
     Tr = real(T)
     ctol = conlim > 0 ? convert(Tr, 1/conlim) : zero(Tr)
-    conv = lsqr_method!(x, A, b;
+    lsqr_method!(x, A, b;
         atol=atol, btol=btol, conlim=conlim, maxiter=maxiter, log=log, kwargs...
         )
     shrink!(log)
     plot && showplot(log)
-    x, ConvergenceHistory(conv,(atol, btol, ctol),2*iters(log)+2,log)
+    x, log
 end
 
 # Adapted from the BSD-licensed Matlab implementation at
@@ -76,7 +78,7 @@ function lsqr_method!(x, A, b;
     damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
     conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
     maxiter::Int=max(size(A,1), size(A,2)), verbose::Bool=false,
-    log::MethodLog=MethodLog()
+    log::MethodLog=DummyHistory()
     )
     # Sanity-checking
     m = size(A,1)
@@ -92,6 +94,7 @@ function lsqr_method!(x, A, b;
     Tr = real(T)
     itn = istop = 0
     ctol = conlim > 0 ? convert(Tr, 1/conlim) : zero(Tr)
+    log[:ctol] = ctol
     Anorm = Acond = ddnorm = res2 = xnorm = xxnorm = z = sn2 = zero(Tr)
     cs2 = -one(Tr)
     dampsq = abs2(damp)
@@ -207,7 +210,7 @@ function lsqr_method!(x, A, b;
         rnorm   =   sqrt(res1 + res2)
         Arnorm  =   alpha*abs(tau)
 
-        next!(log)
+        nextiter!(log)
         # 07 Aug 2002:
         # Distinguish between
         #    r1norm = ||b - Ax|| and
@@ -248,5 +251,6 @@ function lsqr_method!(x, A, b;
         if  test2 <= atol  istop = 2; end
         if  test1 <= rtol  istop = 1; end
     end
-    istop > 0
+    setmvps(log, 2*itn+2)
+    setconv(log, istop > 0)
 end

@@ -1,6 +1,6 @@
 import Base.LinAlg: axpy!
 
-export svdl, master_svdl
+export svdl
 
 """
 Matrix of the form
@@ -75,25 +75,23 @@ type PartialFactorization{T, Tr} <: Factorization{T}
     β :: Tr
 end
 
-function svdl(A; kwargs...)
-    X, L, _ = svdl_method(A; kwargs...)
-    X, L
-end
+svdl(A; kwargs...) = svdl_method(A; kwargs...)
 
 function svdl(::Type{Master}, A;
     tol::Real=√eps(), plot::Bool=false, ns::Int=6, k::Int=2ns,
     maxiter::Int=minimum(size(A)), kwargs...
     )
-    logger = MethodLog(maxiter)
-    add!(logger,:ritz, n=k)
-    add!(logger,:resnorm, n=k)
-    add!(logger,:Bs, n=k)
-    add!(logger,:betas, n=k)
-    X, L, conv = svdl_method(A;
+    log = ConvergenceHistory()
+    log[:tol] = tol
+    reserve!(log,:ritz, maxiter, k)
+    reserve!(log,:resnorm, maxiter, k)
+    reserve!(log,:Bs, maxiter, k)
+    reserve!(log,:betas, maxiter, k)
+    X, L = svdl_method(A;
         tol=tol, log=log, k=k, ns=ns, maxiter=maxiter, kwargs...)
     shrink!(log)
     plot && showplot(log)
-    X, L, ConvergenceHistory(conv,tol,3,log)
+    X, L, log
 end
 
 """
@@ -210,15 +208,16 @@ function svdl_method(A;
     v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, vecs=:none,
-    dolock::Bool=false, log::MethodLog=MethodLog()
+    dolock::Bool=false, log::MethodLog=DummyHistory()
     )
 
     T0 = time_ns()
     @assert k>ns
     L = build(A, v0, k)
-    convhist = []
+
     converged = false
 
+    iter = 0
     local F
     for iter in 1:maxiter
         #@assert size(L.B) == (k, k)
@@ -236,14 +235,13 @@ function svdl_method(A;
 	        elapsedtime = round((time_ns()-T0)*1e-9, 3)
 	        info("Iteration $iter: $elapsedtime seconds")
         end
+
         conv = isconverged(L, F, ns, tol, reltol, log, verbose)
 
-        push!(convhist, conv)
-
-        next!(logger)
-        push!(logger, :ritz, F[:S][1:k])
-        push!(logger, Bs, deepcopy(L.B))
-        push!(logger, betas, L.β)
+        nextiter!(log)
+        push!(log, :ritz, F[:S][1:k])
+        push!(log, Bs, deepcopy(L.B))
+        push!(log, betas, L.β)
 
         #Lock
         if method == :ritz && dolock
@@ -253,9 +251,9 @@ function svdl_method(A;
                 end
             end
         end
-        converged = all(conv)
-        converged && break
+        all(conv) && (setconv(log, true); break)
     end
+    setmvps(log, iter)
 
     #Compute singular vectors as necessary and return them in the output
     values = F[:S][1:ns]

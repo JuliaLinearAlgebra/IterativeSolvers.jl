@@ -90,12 +90,13 @@ function idrs!(::Type{Master}, x, A, b;
     s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
     verbose::Bool=false, plot::Bool=false
     )
-    log = MethodLog(maxiter)
-    add!(log,:resnorm)
+    log = ConvergenceHistory()
+    log[:tol] = tol
+    reserve!(log,:resnorm,maxiter)
     idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; log=log, verbose=verbose)
     shrink!(log)
     plot && showplot(log)
-    x, ConvergenceHistory(isconverged(log,:resnorm,tol),tol,iters(log),log)
+    x, log
 end
 
 function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
@@ -169,9 +170,9 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
 
             normR = vecnorm(R)
             iter += 1
-            next!(log)
+            nextiter!(log)
             push!(log, :resnorm, normR)
-            ((normR < tol) | (iter > maxiter)) && return nothing
+            ((normR < tol) | (iter > maxiter)) && (setconv(log, 0<=normR<tol); return)
             if k < s
                 f[k+1:s] = f[k+1:s] - beta*M[k+1:s,k]
             end
@@ -189,7 +190,9 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
 
         normR = vecnorm(R)
         iter += 1
-        next!(log)
+        nextiter!(log)
         push!(log, :resnorm, normR)
     end
+    setconv(log, 0<=normR<tol)
+    setmvps(log, iter)
 end
