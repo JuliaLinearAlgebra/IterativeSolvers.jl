@@ -1,7 +1,8 @@
 using UnicodePlots
 import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
         ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
-export A_mul_B, iters, last, Master
+export  A_mul_B, niters, products, tolkeys, datakeys, nrestarts, setindex!,
+        getindex, last, Master
 
 \(f::Function, b::Vector) = f(b)
 
@@ -15,17 +16,17 @@ type ConvergenceHistory{T} <: MethodLog
     restart::T
     isconverged::Bool
     tol::Dict{Symbol, Real}
-    data::Dict{Symbol, Vector}
+    data::Dict{Symbol, VecOrMat}
 end
 typealias PlainHistory ConvergenceHistory{Void}
 typealias RestartedHistory ConvergenceHistory{Int}
 
 DummyHistory() = DummyHistory()
 ConvergenceHistory() = ConvergenceHistory(0,0,0,nothing,false,
-                        Dict{Symbol, Real}(), Dict{Symbol, Vector}()
+                        Dict{Symbol, Real}(), Dict{Symbol, VecOrMat}()
                         )
 ConvergenceHistory(restart::Int) = ConvergenceHistory(0,0,0,restart,false,
-                                    Dict{Symbol, Real}(), Dict{Symbol, Vector}()
+                                    Dict{Symbol, Real}(), Dict{Symbol, VecOrMat}()
                                     )
 
 # Consulting
@@ -34,14 +35,12 @@ function getindex(ch::ConvergenceHistory, s::Symbol)
     haskey(ch.tol, s) && return ch.tol[s]
     ch.data[s]
 end
-getindex(ch::ConvergenceHistory, s::Symbol, i::Int) = ch.data[s][i]
+getindex(ch::ConvergenceHistory, s::Symbol, kwargs...) = ch.data[s][kwargs...]
 
 products(ch::ConvergenceHistory) = ch.mvps+ch.mtvps
 
-iters(ch::PlainHistory) = ch.iters
-iters(ch::RestartedHistory) = ceil(ch.iters/ch.restart)
-
-last(ch::ConvergenceHistory, key::Symbol) = ch.data[key][ch.iters]
+niters(ch::ConvergenceHistory) = ch.iters
+nrestarts(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
 
 tolkeys(ch::ConvergenceHistory) = keys(ch.tol)
 datakeys(ch::ConvergenceHistory) = keys(ch.data)
@@ -57,51 +56,48 @@ setmtvps(ch::ConvergenceHistory, val::Int) = ch.mtvps=val
 setconv(ch::DummyHistory, val::Bool) = nothing
 setconv(ch::ConvergenceHistory, val::Bool) = ch.isconverged=val
 
-function reserve!(ch::PlainHistory, s::Symbol, maxiter::Int; T::Type=Float64)
+function reserve!(ch::ConvergenceHistory, s::Symbol, maxiter::Int; T::Type=Float64)
     ch.data[s] = Vector{T}(maxiter)
 end
-function reserve!(ch::RestartedHistory, s::Symbol, maxiter::Int; T::Type=Float64)
-    ch.data[s] = Vector{T}(maxiter*ch.restart)
-end
-function reserve!(ch::PlainHistory, s::Symbol, maxiter::Int, size::Int; T::Type=Float64)
-    aux = ch.data[s] = Vector{Vector{T}}(maxiter)
-    for i in 1:length(aux)
-        aux[i] = Vector{T}(size)
-    end
-end
-function reserve!(ch::RestartedHistory, s::Symbol, maxiter::Int, size::Int; T::Type=Float64)
-    aux = ch.data[s] = Vector{Vector{T}}(maxiter*ch.restart)
-    for i in 1:length(aux)
-        aux[i] = Vector{T}(size)
-    end
+function reserve!(ch::ConvergenceHistory, s::Symbol, maxiter::Int, size::Int; T::Type=Float64)
+    ch.data[s] = Matrix{T}(maxiter,size)
 end
 
 setindex!(ch::DummyHistory, tol::Real, s::Symbol) = nothing
 setindex!(ch::ConvergenceHistory, tol::Real, s::Symbol) = ch.tol[s] = tol
 
-setindex!(ch::DummyHistory, val, s::Symbol, i::Int) = nothing
-setindex!(ch::ConvergenceHistory, val, s::Symbol, i::Int) = ch.data[s][i] = val
-
-setindex!(ch::DummyHistory, vec::Vector, s::Symbol) = nothing
-setindex!(ch::ConvergenceHistory, vec::Vector, s::Symbol) = ch.data[s] = vec
+setindex!(ch::DummyHistory, val, s::Symbol, kwargs...) = nothing
+setindex!(ch::ConvergenceHistory, val, s::Symbol, kwargs...) = ch.data[s][kwargs...] = val
 
 nextiter!(::DummyHistory) = nothing
 nextiter!(ch::ConvergenceHistory) = ch.iters+=1
 
 push!(::DummyHistory, ::Symbol, ::Any) = nothing
+function push!(ch::ConvergenceHistory, key::Symbol, vec::Union{Vector,Tuple})
+    matrix = ch.data[key]
+    width = size(matrix,2)
+    base = (ch.iters-1)*width
+    for i in 1:min(width,length(vec))
+        matrix[base+i] = vec[i]
+    end
+end
 push!(ch::ConvergenceHistory, key::Symbol, val) = ch.data[key][ch.iters] = val
 
 shrink!(::DummyHistory) = nothing
-shrink!(ch::ConvergenceHistory, key::Symbol) = resize!(ch.data[key], ch.iters)
 function shrink!(ch::ConvergenceHistory)
     for key in datakeys(ch)
-        shrink!(ch,key)
+        elem = ch.data[key]
+        if isa(elem, Vector)
+            resize!(elem, ch.iters)
+        elseif isa(elem, Matrix)
+            ch.data[key] = elem[1:ch.iters, :]
+        end
     end
 end
 
 #Plotting
 function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
-    restarts=ceil(iters/gap), color::Symbol=:blue, name::AbstractString="",
+    restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
     )
     maxy = maximum(vals)
@@ -118,16 +114,16 @@ function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     plot
 end
 
-function _plot{T<:Real}(vals::Vector{Vector{T}}, iters::Int, gap::Int;
-    restarts=ceil(iters/gap), color::Symbol=:blue, name::AbstractString="",
+function _plot{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
+    restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
     )
-    n = size(vals[1],1)
-    maxy = maximum(map(x -> maximum(x), vals))
-    miny = minimum(map(x -> minimum(x), vals))
+    n = size(vals,2)
+    maxy = maximum(vals)
+    miny = minimum(vals)
     plot = scatterplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
     for i in left:iters
-        scatterplot!(plot,[i for j in 1:n],vals[i][1:n],color=color)
+        scatterplot!(plot,[i for j in 1:n],vals[i,1:n],color=color)
     end
     for restart in 2:restarts
         left+=gap

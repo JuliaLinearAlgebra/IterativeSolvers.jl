@@ -18,12 +18,12 @@ context("Small full system") do
 
     # If you start from the exact solution, you should converge immediately
     x2,ch2 = cg!(Master, A\rhs, A, rhs; tol=tol*10)
-    @fact iters(ch2) --> less_than_or_equal(1)
+    @fact niters(ch2) --> less_than_or_equal(1)
 
     # Test with cholfact should converge immediately
     F = cholfact(A)
     x2,ch2 = cg(Master, A, rhs; pl=F)
-    @fact iters(ch2) --> less_than_or_equal(2)
+    @fact niters(ch2) --> less_than_or_equal(2)
 end
 
 context("Sparse Laplacian") do
@@ -67,9 +67,9 @@ context("Sparse Laplacian") do
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
 
-        iterCG = iters(hCG)
-        iterJAC = iters(hJAC)
-        iterSGS = iters(hSGS)
+        iterCG = niters(hCG)
+        iterJAC = niters(hJAC)
+        iterSGS = niters(hSGS)
         @fact iterJAC --> iterCG
         @fact iterSGS --> less_than_or_equal(iterJAC) "Preconditioner increased the number of iterations"
     end

@@ -49,7 +49,7 @@ gmres(::Type{Master}, A, b; kwargs...) = gmres!(Master, zerox(A,b), A, b; kwargs
 
 function gmres!(::Type{Master}, x, A, b;
     tol=sqrt(eps(typeof(real(b[1])))),
-    maxiter::Int=1, restart::Int=min(20,length(b)),
+    restart::Int=min(20,length(b)), maxiter::Int=restart,
     plot::Bool=false, kwargs...
     )
     log = ConvergenceHistory(restart)
@@ -62,9 +62,8 @@ function gmres!(::Type{Master}, x, A, b;
 end
 
 function gmres_method!(x, A, b;
-    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1,
-    restart::Int=min(20,length(b)), verbose::Bool=false,
-    log::MethodLog=DummyHistory()
+    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
+    maxiter::Int=restart, verbose::Bool=false, log::MethodLog=DummyHistory()
     )
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
@@ -85,14 +84,15 @@ function gmres_method!(x, A, b;
 #       pl:      Left preconditioner
 #       pr:      Right preconditioner
 #       restart: Number of iterations before restart (GMRES(restart))
-#       maxiter:  Maximum number of outer iterations
+#       maxiters:  Maximum number of iterations
 #       tol:     Convergence Tolerance
 #
 #   The input A (resp. pl, pr) can be a matrix, a function returning A*x,
 #   (resp. inv(pl)*x, inv(pr)*x), or any type representing a linear operator
 #   which implements *(A,x) (resp. \(pl,x), \(pr,x)).
     verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","relres")
-    iter=0
+    macroiter=0
+    macroiters=Int(ceil(maxiter/restart))
     n = length(b)
     T = eltype(b)
     H = zeros(T,n+1,restart)       #Hessenberg matrix
@@ -100,7 +100,7 @@ function gmres_method!(x, A, b;
     J = zeros(T,restart,3)         #Givens rotation values
     tol = tol * norm(pl\b)         #Relative tolerance
     K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
-    for iter = 1:maxiter
+    for macroiter = 1:macroiters
         w    = pl\(b - A*x)
         s[1] = rho = norm(w)
         init!(K, w / rho)
@@ -128,8 +128,8 @@ function gmres_method!(x, A, b;
             rho = abs(s[j+1])
             nextiter!(log)
             push!(log, :resnorm, rho)
-            verbose && @printf("%3d\t%3d\t%1.2e\n",iter,j,rho)
-            if rho < tol
+            verbose && @printf("%3d\t%3d\t%1.2e\n",macroiter,j,rho)
+            if (rho < tol) | (macroiter*restart+j == maxiter)
                 N = j
                 break
             end
@@ -140,8 +140,11 @@ function gmres_method!(x, A, b;
         w = a[1:N] * K
         update!(x, 1, pr\w) #Right preconditioner
 
-        0<=rho<tol && (setconv(log, true); break)
+        if (0<=rho<tol) | (macroiter*restart+N == maxiter)
+            setconv(log, 0<=rho<tol)
+            break
+        end
     end
-    setmvps(log, iter)
+    setmvps(log, macroiter)
     verbose && @printf("\n")
 end

@@ -83,7 +83,7 @@ context("Issue 64") do
     resnorm = norm(A*x - b)
     @fact resnorm --> less_than(√eps())
     @fact ch.isconverged --> true
-    @fact last(ch,:resnorm) --> roughly(resnorm, atol=√eps())
+    @fact last(ch[:resnorm]) --> roughly(resnorm, atol=√eps())
 end
 
 end
