@@ -236,12 +236,12 @@ function svdl_method(A;
 	        info("Iteration $iter: $elapsedtime seconds")
         end
 
+        nextiter!(log)
         conv = isconverged(L, F, ns, tol, reltol, log, verbose)
 
-        nextiter!(log)
         push!(log, :ritz, F[:S][1:k])
-        push!(log, Bs, deepcopy(L.B))
-        push!(log, betas, L.β)
+        push!(log, :Bs, deepcopy(L.B))
+        push!(log, :betas, L.β)
 
         #Lock
         if method == :ritz && dolock
