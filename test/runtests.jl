@@ -73,15 +73,15 @@ for T in (Float32, Float64, Complex64, Complex128)
     F = lufact(A)
     b = b/norm(b)
 
-    x_gmres, c_gmres = gmres(Master, A, b; pl=L, pr=R)
+    x_gmres, c_gmres = gmres(Master, A, b; Pl=L, Pr=R)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(Master, A, b; pl=F, restart=1)
+    x_gmres, c_gmres = gmres(Master, A, b; Pl=F, restart=1)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(Master, A, b; pr=F, restart=1)
+    x_gmres, c_gmres = gmres(Master, A, b; Pr=F, restart=1)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
     end
@@ -102,15 +102,15 @@ for T in (Float64, Complex128)
     F = lufact(A)
     b = b / norm(b)
 
-    x_gmres, c_gmres= gmres(Master, A, b; pl=L, pr=R)
+    x_gmres, c_gmres= gmres(Master, A, b; Pl=L, Pr=R)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(Master, A, b; pl=F, restart=1)
+    x_gmres, c_gmres = gmres(Master, A, b; Pl=F, restart=1)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(Master, A, b; pr=F, restart=1)
+    x_gmres, c_gmres = gmres(Master, A, b; Pr=F, restart=1)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
     end
