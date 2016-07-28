@@ -79,16 +79,17 @@ svdl(A; kwargs...) = svdl_method(A; kwargs...)
 
 function svdl(::Type{Master}, A;
     tol::Real=√eps(), plot::Bool=false, ns::Int=6, k::Int=2ns,
-    maxiter::Int=minimum(size(A)), kwargs...
+    maxiter::Int=minimum(size(A)), method::Symbol=:ritz, kwargs...
     )
     log = ConvergenceHistory()
     log[:tol] = tol
     reserve!(log,:ritz, maxiter, k)
     reserve!(log,:resnorm, maxiter, k)
-    reserve!(log,:Bs, maxiter, k, T=BrokenArrowBidiagonal)
-    reserve!(log,:betas, maxiter, k)
+    Bs_type = (method == :ritz) ? BrokenArrowBidiagonal : UpperTriangular
+    reserve!(log,:Bs, maxiter, T=Bs_type)
+    reserve!(log,:betas, maxiter)
     X, L = svdl_method(A;
-        tol=tol, log=log, k=k, ns=ns, maxiter=maxiter, kwargs...)
+        tol=tol, log=log, k=k, ns=ns, maxiter=maxiter, method=method, kwargs...)
     shrink!(log)
     plot && showplot(log)
     X, L, log
@@ -242,7 +243,6 @@ function svdl_method(A;
         push!(log, :ritz, F[:S][1:k])
         push!(log, :Bs, deepcopy(L.B))
         push!(log, :betas, L.β)
-        println(typeof(L.β))
 
         #Lock
         if method == :ritz && dolock
@@ -259,11 +259,13 @@ function svdl_method(A;
     #Compute singular vectors as necessary and return them in the output
     values = F[:S][1:ns]
     m, n = size(A)
+
     leftvecs = if vecs == :left || vecs == :both
         L.P*sub(F[:U], :, 1:ns)
     else
         zeros(eltype(v0), m, 0)
     end
+
     rightvecs = if vecs == :right || vecs == :both
         (sub(L.Q, :, 1:size(L.Q,2)-1)*sub(F[:V], :, 1:ns))'
     else
