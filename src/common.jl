@@ -21,7 +21,6 @@ end
 typealias PlainHistory ConvergenceHistory{Void}
 typealias RestartedHistory ConvergenceHistory{Int}
 
-DummyHistory() = DummyHistory()
 ConvergenceHistory() = ConvergenceHistory(0,0,0,nothing,false,
                         Dict{Symbol, Real}(), Dict{Symbol, VecOrMat}()
                         )
