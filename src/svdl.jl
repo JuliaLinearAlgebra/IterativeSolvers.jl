@@ -78,7 +78,7 @@ end
 svdl(A; kwargs...) = svdl_method(A; kwargs...)
 
 function svdl(::Type{Master}, A;
-    tol::Real=√eps(), plot::Bool=false, ns::Int=6, k::Int=2ns,
+    tol::Real=√eps(), plot::Bool=false, nsv::Int=6, k::Int=2nsv,
     maxiter::Int=minimum(size(A)), method::Symbol=:ritz, kwargs...
     )
     log = ConvergenceHistory()
@@ -89,7 +89,7 @@ function svdl(::Type{Master}, A;
     reserve!(log,:Bs, maxiter, T=Bs_type)
     reserve!(log,:betas, maxiter)
     X, L = svdl_method(A;
-        tol=tol, log=log, k=k, ns=ns, maxiter=maxiter, method=method, kwargs...)
+        tol=tol, log=log, k=k, nsv=nsv, maxiter=maxiter, method=method, kwargs...)
     shrink!(log)
     plot && showplot(log)
     X, L, log
@@ -111,9 +111,9 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
          The length of `q` should be the number of columns in `A`.
          Default: A random unit vector.
 - `k` : The maximum number of Lanczos vectors to compute before restarting.
-        Default: `2*ns`
+        Default: `2*nsv`
 - `j` : The number of vectors to keep at the end of the restart.
-        Default: `ns`. We don't recommend j < ns.
+        Default: `nsv`. We don't recommend j < nsv.
 - `maxiter`: Maximum number of iterations to run
              Default: `minimum(size(A))`
 - `verbose`: Whether to print information at each iteration
@@ -205,7 +205,7 @@ iteration.
 
 """
 function svdl_method(A;
-    ns::Int=6, k::Int=2ns, j::Int=ns,
+    nsv::Int=6, k::Int=2nsv, j::Int=nsv,
     v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, vecs=:none,
@@ -238,7 +238,7 @@ function svdl_method(A;
         end
 
         nextiter!(log)
-        conv = isconverged(L, F, ns, tol, reltol, log, verbose)
+        conv = isconverged(L, F, nsv, tol, reltol, log, verbose)
 
         push!(log, :ritz, F[:S][1:k])
         push!(log, :Bs, deepcopy(L.B))
@@ -257,17 +257,17 @@ function svdl_method(A;
     setmvps(log, iter)
 
     #Compute singular vectors as necessary and return them in the output
-    values = F[:S][1:ns]
+    values = F[:S][1:nsv]
     m, n = size(A)
 
     leftvecs = if vecs == :left || vecs == :both
-        L.P*sub(F[:U], :, 1:ns)
+        L.P*sub(F[:U], :, 1:nsv)
     else
         zeros(eltype(v0), m, 0)
     end
 
     rightvecs = if vecs == :right || vecs == :both
-        (sub(L.Q, :, 1:size(L.Q,2)-1)*sub(F[:V], :, 1:ns))'
+        (sub(L.Q, :, 1:size(L.Q,2)-1)*sub(F[:V], :, 1:nsv))'
     else
         zeros(eltype(v0), 0, n)
     end
