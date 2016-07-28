@@ -50,28 +50,28 @@ function powm_method{T}(K::KrylovSubspace{T};
     Eigenpair(θ, v)
 end
 
-function invpowm(A, σ::Number; x=nothing, kwargs...)
+function invpowm(A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    invpowm(K, σ; kwargs...)
+    invpowm(K; shift=shift, kwargs...)
 end
 
-invpowm(K::KrylovSubspace, σ::Number; kwargs...) = invpowm_method(K, σ; kwargs...)
+invpowm(K::KrylovSubspace; shift::Number=0, kwargs...) = invpowm_method(K, shift; kwargs...)
 
-function invpowm(::Type{Master}, A, σ::Number; x=nothing, kwargs...)
+function invpowm(::Type{Master}, A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    invpowm(Master, K, σ; kwargs...)
+    invpowm(Master, K; shift=shift, kwargs...)
 end
 
-function invpowm{T}(::Type{Master}, K::KrylovSubspace{T}, σ::Number;
-    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+function invpowm{T}(::Type{Master}, K::KrylovSubspace{T};
+    shift::Number=0, tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     plot::Bool=false, verbose::Bool=false
     )
     log = ConvergenceHistory()
     log[:tol] = tol
     reserve!(log,:resnorm,maxiter)
-    eigs = invpowm_method(K, σ;
+    eigs = invpowm_method(K, shift;
         verbose=verbose, log=log, tol=tol, maxiter=maxiter
         )
     shrink!(log)
@@ -102,28 +102,28 @@ function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
     Eigenpair(σ+1/θ, y/θ)
 end
 
-function rqi(A, σ::Number; x=nothing, kwargs...)
+function rqi(A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    rqi(K, σ; kwargs...)
+    rqi(K; shift=shift, kwargs...)
 end
 
-rqi(K::KrylovSubspace, σ::Number; kwargs...) = rqi_method(K, σ; kwargs...)
+rqi(K::KrylovSubspace; shift::Number=0, kwargs...) = rqi_method(K, shift; kwargs...)
 
-function rqi(::Type{Master}, A, σ::Number; x=nothing, kwargs...)
+function rqi(::Type{Master}, A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    rqi(Master, K, σ; kwargs...)
+    rqi(Master, K; shift=shift, kwargs...)
 end
 
-function rqi{T}(::Type{Master}, K::KrylovSubspace{T}, σ::Number;
-    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
+function rqi{T}(::Type{Master}, K::KrylovSubspace{T};
+    shift::Number=0, tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     plot::Bool=false, verbose::Bool=false
     )
     log = ConvergenceHistory()
     log[:tol] = tol
     reserve!(log,:resnorm,maxiter)
-    eigs = rqi_method(K, σ; verbose=verbose, log=log, tol=tol, maxiter=maxiter)
+    eigs = rqi_method(K, shift; verbose=verbose, log=log, tol=tol, maxiter=maxiter)
     shrink!(log)
     plot && showplot(log)
     eigs, log
