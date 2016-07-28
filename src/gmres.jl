@@ -62,7 +62,7 @@ function gmres!(::Type{Master}, x, A, b;
 end
 
 function gmres_method!(x, A, b;
-    pl=1, pr=1, tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
+    Pl=1, Pr=1, tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
     maxiter::Int=restart, verbose::Bool=false, log::MethodLog=DummyHistory()
     )
 #Generalized Minimum RESidual
@@ -74,22 +74,22 @@ function gmres_method!(x, A, b;
 #
 #   Solve A*x=b using the Generalized Minimum RESidual Method with restarts
 #
-#   Effectively solves the equation inv(pl)*A*inv(pr)*y=b where x = inv(pr)*y
+#   Effectively solves the equation inv(Pl)*A*inv(Pr)*y=b where x = inv(Pr)*y
 #
 #   Required Arguments:
 #       A: Linear operator
 #       b: Right hand side
 #
 #   Named Arguments:
-#       pl:       Left preconditioner
-#       pr:       Right preconditioner
+#       Pl:       Left preconditioner
+#       Pr:       Right preconditioner
 #       restart:  Number of iterations before restart (GMRES(restart))
 #       maxiter:  Maximum total number of iterations (macroiters = ceil(maxiter/restart))
 #       tol:      Convergence Tolerance
 #
-#   The input A (resp. pl, pr) can be a matrix, a function returning A*x,
-#   (resp. inv(pl)*x, inv(pr)*x), or any type representing a linear operator
-#   which implements *(A,x) (resp. \(pl,x), \(pr,x)).
+#   The input A (resp. Pl, Pr) can be a matrix, a function returning A*x,
+#   (resp. inv(Pl)*x, inv(Pr)*x), or any type representing a linear operator
+#   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
     verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","relres")
     macroiter=0
     macroiters=Int(ceil(maxiter/restart))
@@ -98,10 +98,10 @@ function gmres_method!(x, A, b;
     H = zeros(T,n+1,restart)       #Hessenberg matrix
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,3)         #Givens rotation values
-    tol = tol * norm(pl\b)         #Relative tolerance
-    K = KrylovSubspace(x->pl\(A*(pr\x)), length(b), restart+1, eltype(b))
+    tol = tol * norm(Pl\b)         #Relative tolerance
+    K = KrylovSubspace(x->Pl\(A*(Pr\x)), length(b), restart+1, eltype(b))
     for macroiter = 1:macroiters
-        w    = pl\(b - A*x)
+        w    = Pl\(b - A*x)
         s[1] = rho = norm(w)
         init!(K, w / rho)
 
@@ -138,7 +138,7 @@ function gmres_method!(x, A, b;
 
         @eval a = $(VERSION < v"0.4-" ? Triangular(H[1:N, 1:N], :U) \ s[1:N] : UpperTriangular(H[1:N, 1:N]) \ s[1:N])
         w = a[1:N] * K
-        update!(x, 1, pr\w) #Right preconditioner
+        update!(x, 1, Pr\w) #Right preconditioner
 
         if (0<=rho<tol) | ((macroiter-1)*restart+N >= maxiter)
             setconv(log, 0<=rho<tol)
