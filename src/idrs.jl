@@ -1,4 +1,4 @@
-export idrs, idrs!, master_idrs, master_idrs!
+export idrs, idrs!
 
 ####
 
