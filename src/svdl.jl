@@ -189,7 +189,7 @@ iteration.
 ```
 
 """
-function svdl(A, l::Int=6; k::Int=2l,
+function svdl(A, l::Int=min(6, size(A,1)); k::Int=2l,
     j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
@@ -701,5 +701,3 @@ let
     B = BrokenArrowBidiagonal([1, 2, 3], [1, 2], Int[])
     @assert full(B) == [1 0 1; 0 2 2; 0 0 3]
 end
-
-
