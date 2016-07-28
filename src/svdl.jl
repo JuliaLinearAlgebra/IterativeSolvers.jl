@@ -213,7 +213,7 @@ function svdl_method(A;
     )
 
     T0 = time_ns()
-    @assert k>ns
+    @assert k>1
     L = build(A, v0, k)
 
     converged = false
