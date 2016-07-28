@@ -129,7 +129,7 @@ function gmres_method!(x, A, b;
             nextiter!(log)
             push!(log, :resnorm, rho)
             verbose && @printf("%3d\t%3d\t%1.2e\n",macroiter,j,rho)
-            if (rho < tol) | (macroiter*restart+j == maxiter)
+            if (rho < tol) | ((macroiter-1)*restart+j >= maxiter)
                 N = j
                 break
             end
@@ -140,7 +140,7 @@ function gmres_method!(x, A, b;
         w = a[1:N] * K
         update!(x, 1, pr\w) #Right preconditioner
 
-        if (0<=rho<tol) | (macroiter*restart+N == maxiter)
+        if (0<=rho<tol) | ((macroiter-1)*restart+N >= maxiter)
             setconv(log, 0<=rho<tol)
             break
         end
