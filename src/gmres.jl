@@ -81,11 +81,11 @@ function gmres_method!(x, A, b;
 #       b: Right hand side
 #
 #   Named Arguments:
-#       pl:      Left preconditioner
-#       pr:      Right preconditioner
-#       restart: Number of iterations before restart (GMRES(restart))
-#       maxiters:  Maximum number of iterations
-#       tol:     Convergence Tolerance
+#       pl:       Left preconditioner
+#       pr:       Right preconditioner
+#       restart:  Number of iterations before restart (GMRES(restart))
+#       maxiter:  Maximum total number of iterations (macroiters = ceil(maxiter/restart))
+#       tol:      Convergence Tolerance
 #
 #   The input A (resp. pl, pr) can be a matrix, a function returning A*x,
 #   (resp. inv(pl)*x, inv(pr)*x), or any type representing a linear operator
