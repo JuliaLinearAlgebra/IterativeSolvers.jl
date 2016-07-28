@@ -85,7 +85,7 @@ function svdl(::Type{Master}, A;
     log[:tol] = tol
     reserve!(log,:ritz, maxiter, k)
     reserve!(log,:resnorm, maxiter, k)
-    reserve!(log,:Bs, maxiter, k)
+    reserve!(log,:Bs, maxiter, k, T=BrokenArrowBidiagonal)
     reserve!(log,:betas, maxiter, k)
     X, L = svdl_method(A;
         tol=tol, log=log, k=k, ns=ns, maxiter=maxiter, kwargs...)
@@ -242,6 +242,7 @@ function svdl_method(A;
         push!(log, :ritz, F[:S][1:k])
         push!(log, :Bs, deepcopy(L.B))
         push!(log, :betas, L.β)
+        println(typeof(L.β))
 
         #Lock
         if method == :ritz && dolock
@@ -269,7 +270,6 @@ function svdl_method(A;
         zeros(eltype(v0), 0, n)
     end
 
-    push!(betas, L.β)
     if vecs == :none
         values, L, converged
     else
