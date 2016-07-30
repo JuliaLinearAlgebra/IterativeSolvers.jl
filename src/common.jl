@@ -1,10 +1,10 @@
-using UnicodePlots
 import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
         ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
 export  A_mul_B, niters, products, tolkeys, datakeys, nrestarts, setindex!,
         getindex, last, Master
 
-\(f::Function, b::Vector) = f(b)
+\(f::Function, b::VecOrMat) = f(b)
+*(f::Function, b::VecOrMat) = f(b)
 
 #### Reporting
 abstract MethodLog
@@ -94,6 +94,42 @@ function shrink!(ch::ConvergenceHistory)
     end
 end
 
+#Recipes
+@recipe function chef(ch::ConvergenceHistory)
+    frame = 1
+    n = count_plotables(ch)
+    n > 0 || error("No plotables")
+    layout := (count_plotables(ch), 1)
+    for (name, draw) in ch.data
+        plotable(draw) || continue
+        @series begin
+            isa(draw, Vector) && (seriestype := :line; label:="$name")
+            isa(draw, Matrix) && (seriestype := :scatter; title:="$name"; label:="")
+            subplot := frame
+            draw
+        end
+        frame+=1
+    end
+end
+
+@recipe function chef(ch::ConvergenceHistory, name::Symbol)
+    draw = ch[name]
+    plotable(draw) || error("Not plotable")
+    isa(draw, Vector) && (seriestype := :line; label:="$name")
+    isa(draw, Matrix) && (seriestype := :scatter; title:="$name"; label:="")
+    @series begin
+        draw
+    end
+end
+
+function count_plotables(ch::ConvergenceHistory)
+    candidates = collect(values(ch.data))
+    length(filter(identity, map(plotable, candidates)))
+end
+
+plotable{T<:Real}(::VecOrMat{T}) = true
+plotable(::Any) = false
+
 #Plotting
 function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
@@ -138,8 +174,7 @@ function showplot(ch::ConvergenceHistory; kwargs...)
             restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
             draw = _plot(ch.data[key], ch.iters, restart; name=string(key), kwargs...)
             println("$draw\n\n")
-        catch e
-            error("$e")
+        catch
         end
     end
 end

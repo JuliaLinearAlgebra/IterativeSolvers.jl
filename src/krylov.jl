@@ -2,8 +2,6 @@ import Base: append!, eye, size
 
 export ConvergenceHistory, KrylovSubspace
 
-*(f::Function, v::AbstractVector)=f(v) #Syntax to mimic matvec product
-
 type Eigenpair{S,T}
     val::S
     vec::Vector{T}

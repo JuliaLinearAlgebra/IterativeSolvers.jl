@@ -2,6 +2,9 @@ module IterativeSolvers
 
 isdefined(:__precompile__) && __precompile__(true)
 
+using RecipesBase
+using UnicodePlots
+
 include("common.jl")
 include("krylov.jl")
 
