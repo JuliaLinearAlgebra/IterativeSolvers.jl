@@ -96,17 +96,18 @@ end
 
 #Recipes
 @recipe function chef(ch::ConvergenceHistory)
+    candidates = collect(values(ch.data))
+    plotables = map(plotable, candidates)
+    n = length(filter(identity, plotables))
+    n > 0 || error("No plotable")
     frame = 1
-    n = count_plotables(ch)
-    n > 0 || error("No plotables")
-    layout := (count_plotables(ch), 1)
-    for (name, draw) in ch.data
-        plotable(draw) || continue
+    layout := (n, 1)
+    for (name, draw) in collect(ch.data)[plotables]
         @series begin
-            isa(draw, Vector) && (seriestype := :line; label:="$name")
-            isa(draw, Matrix) && (seriestype := :scatter; title:="$name"; label:="")
+            isa(draw, Vector) && (seriestype:= :line; label:="$name")
+            isa(draw, Matrix) && (seriestype:= :scatter; title:="$name"; label:="")
             subplot := frame
-            draw
+            map(x->isnan(x) ? typeof(x)(0) : x,draw)
         end
         frame+=1
     end
@@ -115,16 +116,11 @@ end
 @recipe function chef(ch::ConvergenceHistory, name::Symbol)
     draw = ch[name]
     plotable(draw) || error("Not plotable")
-    isa(draw, Vector) && (seriestype := :line; label:="$name")
-    isa(draw, Matrix) && (seriestype := :scatter; title:="$name"; label:="")
+    isa(draw, Vector) && (seriestype-->:line; label-->"$name")
+    isa(draw, Matrix) && (seriestype-->:scatter; title-->"$name"; label-->"")
     @series begin
         draw
     end
-end
-
-function count_plotables(ch::ConvergenceHistory)
-    candidates = collect(values(ch.data))
-    length(filter(identity, map(plotable, candidates)))
 end
 
 plotable{T<:Real}(::VecOrMat{T}) = true
@@ -158,7 +154,7 @@ function _plot{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
     miny = minimum(vals)
     plot = scatterplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
     for i in left:iters
-        scatterplot!(plot,[i for j in 1:n],vals[i,1:n],color=color)
+        scatterplot!(plot,[i for j in 1:n],vec(vals[i,1:n]),color=color)
     end
     for restart in 2:restarts
         left+=gap
@@ -168,13 +164,16 @@ function _plot{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
 end
 
 function showplot(ch::ConvergenceHistory; kwargs...)
+    candidates = collect(values(ch.data))
+    plotables = map(plotable, candidates)
+    n = length(filter(identity, plotables))
+    n > 0 || return
     println("\n")
-    for key in datakeys(ch)
+    for (name, draw) in collect(ch.data)[plotables]
         try
             restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
-            draw = _plot(ch.data[key], ch.iters, restart; name=string(key), kwargs...)
-            println("$draw\n\n")
-        catch
+            drawing = _plot(draw, ch.iters, restart; name=string(name), kwargs...)
+            println("$drawing\n\n")
         end
     end
 end
