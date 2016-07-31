@@ -109,6 +109,21 @@ end
             subplot := frame
             map(x->isnan(x) ? typeof(x)(0) : x,draw)
         end
+        if isa(ch, RestartedHistory)
+            label := ""
+            linecolor := :white
+
+            left=1
+            maxy = round(maximum(draw),2)
+            miny = round(minimum(draw),2)
+            for restart in 2:nrestarts(ch)
+                @series begin
+                    left+=ch.restart
+                    subplot := frame
+                    [left,left],[miny,maxy]
+                end
+            end
+        end
         frame+=1
     end
 end
@@ -121,6 +136,20 @@ end
     @series begin
         draw
     end
+    if isa(ch, RestartedHistory)
+        label := ""
+        linecolor := :white
+
+        left=1
+        maxy = round(maximum(draw),2)
+        miny = round(minimum(draw),2)
+        for restart in 2:nrestarts(ch)
+            @series begin
+                left+=ch.restart
+                [left,left],[miny,maxy]
+            end
+        end
+    end
 end
 
 plotable{T<:Real}(::VecOrMat{T}) = true
@@ -131,8 +160,8 @@ function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
     )
-    maxy = maximum(vals)
-    miny = minimum(vals)
+    maxy = round(maximum(vals),2)
+    miny = round(minimum(vals),2)
     plot = lineplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
     right = min(left+gap-1,iters)
     lineplot!(plot,collect(left:right),vals[left:right],color=color)
@@ -150,15 +179,15 @@ function _plot{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
     title::AbstractString="", left::Int=1
     )
     n = size(vals,2)
-    maxy = maximum(vals)
-    miny = minimum(vals)
+    maxy = round(maximum(vals),2)
+    miny = round(minimum(vals),2)
     plot = scatterplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
     for i in left:iters
         scatterplot!(plot,[i for j in 1:n],vec(vals[i,1:n]),color=color)
     end
     for restart in 2:restarts
         left+=gap
-        scatterplot!(plot,[left,left],[miny,maxy], color=:white)
+        lineplot!(plot,[left,left],[miny,maxy], color=:white)
     end
     plot
 end
@@ -170,11 +199,9 @@ function showplot(ch::ConvergenceHistory; kwargs...)
     n > 0 || return
     println("\n")
     for (name, draw) in collect(ch.data)[plotables]
-        try
-            restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
-            drawing = _plot(draw, ch.iters, restart; name=string(name), kwargs...)
-            println("$drawing\n\n")
-        end
+        restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
+        drawing = _plot(draw, ch.iters, restart; name=string(name), kwargs...)
+        println("$drawing\n\n")
     end
 end
 
