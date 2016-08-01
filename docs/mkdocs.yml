@@ -1,0 +1,37 @@
+site_name:          IterativeSolvers.jl
+site_description:   Iterative numerical linear algebra in Julia
+repo_url:           https://github.com/lopezm94/IterativeSolvers.jl
+site_author:        lopezm94
+
+markdown_extensions:
+  - extra
+  - codehilite
+  #- mdx_math
+
+extra_css:
+  - assets/Documenter.css
+
+extra_javascript:
+  - https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML
+  - assets/mathjaxhelper.js
+
+theme: material
+
+extra:
+  palette:
+    primary: 'blue'
+    accent:  'orange'
+
+docs_dir: ./src #'build'
+
+pages:
+    - Home: index.md
+    - Manual:
+        - A: user_manual/c.md
+    - Library:
+        - Public: library/public.md
+        - Internal: library/internal.md
+    - About:
+        - Release Notes: about/release_notes.md
+        - Contributing: about/contributing.md
+        - License: about/license.md
