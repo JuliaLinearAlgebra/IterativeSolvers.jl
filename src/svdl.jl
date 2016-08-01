@@ -75,6 +75,10 @@ type PartialFactorization{T, Tr} <: Factorization{T}
     β :: Tr
 end
 
+####################
+# API method calls #
+####################
+
 svdl(A; kwargs...) = svdl_method(A; kwargs...)
 
 function svdl(::Type{Master}, A;
@@ -204,6 +208,11 @@ iteration.
 ```
 
 """
+
+#########################
+# Method Implementation #
+#########################
+
 function svdl_method(A;
     nsv::Int=6, k::Int=2nsv, j::Int=nsv,
     v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),

@@ -1,78 +1,51 @@
 export idrs, idrs!
 
-####
-
-@inline function omega(t, s)
-    angle = sqrt(2.)/2
-    ns = vecnorm(s)
-    nt = vecnorm(t)
-    ts = vecdot(t,s)
-    rho = abs(ts/(nt*ns))
-    om = ts/(nt*nt)
-    if rho < angle
-        om = om*convert(typeof(om),angle)/rho
-    end
-    om
-end
-
-@inline linsys_op(x, A) = A*x
+####################
+# API method calls #
+####################
 
 """
-IDRsSolver.jl
-============================
+    idrs(A, b)
+
+Solve a*x=b using the induced dimension reduction method.
 
 The Induced Dimension Reduction method is a family of simple and fast Krylov
 subspace algorithms for solving large nonsymmetric linear systems. The idea
 behind the IDR(s) variant is to generate residuals that are in the nested
-subspaces of shrinking dimension s.
+subspaces of shrinking dimensions.
 
+# Arguments
 
+* `A`: linear operator.
+* `b`: right hand side.
 
-Syntax
-------
+## Keywords
 
-        X, h::ConvergenceHistory = idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2))
+* `s` : dimension reduction number. Normally, a higher s gives faster convergence,
+but also  makes the method more expensive.
+* `Pl = 1`: left preconditioner of the method.
+* `Pr = 1`: left preconditioner of the method.
+* `tol::Real = sqrt(eps())`: stopping tolerance.
+* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+* `verbose::Bool = false`: verbose flag.
 
-        The operator A must support multiplication with b,
-        the right hand side b must support vecnorm, vecdot, copy, rand! and axpy!.
-        .
+# Output
 
-Arguments
----------
+* approximated solution.
 
-       s -- dimension reduction number. Normally, a higher s gives faster convergence,
-            but also  makes the method more expensive.
-       tol -- tolerance of the method.
-       maxiter -- maximum number of iterations
+# References
 
+[1] IDR(s): a family of simple and fast algorithms for solving large
+    nonsymmetric linear systems. P. Sonneveld and M. B. van Gijzen
+    SIAM J. Sci. Comput. Vol. 31, No. 2, pp. 1035--1062, 2008
+[2] Algorithm 913: An Elegant IDR(s) Variant that Efficiently Exploits
+    Bi-orthogonality Properties. M. B. van Gijzen and P. Sonneveld
+    ACM Trans. Math. Software,, Vol. 38, No. 1, pp. 5:1-5:19, 2011
+[3] This file is a translation of the following MATLAB implementation:
+    http://ta.twi.tudelft.nl/nw/users/gijzen/idrs.m
+[4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
 
-Output
-------
-
-        X -- Approximated solution by IDR(s)
-        h -- Convergence history
-
-
-        The [`ConvergenceHistory`](https://github.com/JuliaLang/IterativeSolvers.jl/issues/6) type provides information about the iteration history.
-            - `isconverged::Bool`, a flag for whether or not the algorithm is converged.
-            - `threshold`, the convergence threshold
-            - `residuals::Vector`, the value of the convergence criteria at each iteration
-
-
-
-
-References
-----------
-
-    [1] IDR(s): a family of simple and fast algorithms for solving large
-        nonsymmetric linear systems. P. Sonneveld and M. B. van Gijzen
-        SIAM J. Sci. Comput. Vol. 31, No. 2, pp. 1035--1062, 2008
-    [2] Algorithm 913: An Elegant IDR(s) Variant that Efficiently Exploits
-        Bi-orthogonality Properties. M. B. van Gijzen and P. Sonneveld
-        ACM Trans. Math. Software,, Vol. 38, No. 1, pp. 5:1-5:19, 2011
-    [3] This file is a translation of the following MATLAB implementation:
-        http://ta.twi.tudelft.nl/nw/users/gijzen/idrs.m
-    [4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
 """
 idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
 
@@ -98,6 +71,25 @@ function idrs!(::Type{Master}, x, A, b;
     plot && showplot(log)
     x, log
 end
+
+#########################
+# Method Implementation #
+#########################
+
+@inline function omega(t, s)
+    angle = sqrt(2.)/2
+    ns = vecnorm(s)
+    nt = vecnorm(t)
+    ts = vecdot(t,s)
+    rho = abs(ts/(nt*ns))
+    om = ts/(nt*nt)
+    if rho < angle
+        om = om*convert(typeof(om),angle)/rho
+    end
+    om
+end
+
+@inline linsys_op(x, A) = A*x
 
 function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
     log::MethodLog=MethodLog(), verbose::Bool=false

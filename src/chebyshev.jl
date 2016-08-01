@@ -1,5 +1,33 @@
 export chebyshev, chebyshev!
 
+####################
+# API method calls #
+####################
+
+"""
+    chebyshev(A, b, λmin, λmax)
+
+Solve A*x=b using the chebyshev method.
+
+# Arguments
+
+* `A`: linear operator.
+* `b`: light hand side.
+* `λmin`: minimum eigenvalue lower estimation.
+* `λmax`: maximum eigenvalue upper estimation.
+
+## Keywords
+
+* `Pr = 1`: right preconditioner of the method.
+* `tol::Real = sqrt(eps())`: stopping tolerance.
+* `maxiter::Integer = size(A,2)^3`: maximum number of iterations.
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+"""
 chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
     chebyshev!(zerox(A, b), A, b, λmin, λmax; kwargs...)
 
@@ -36,8 +64,12 @@ function chebyshev!(::Type{Master}, x, K::KrylovSubspace, b, λmin::Real, λmax:
     x, log
 end
 
+#########################
+# Method Implementation #
+#########################
+
 function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
-    pr=1, tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = K.n^3,
+    Pr=1, tol::Real = sqrt(eps(typeof(real(b[1])))), maxiter::Int = K.n^3,
     log::MethodLog=DummyHistory(), verbose::Bool=false
     )
     verbose && @printf("=== chebyshev ===\n%4s\t%7s\n","iter","relres")
@@ -48,7 +80,7 @@ function chebyshev_method!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
     d::eltype(b) = (λmax + λmin)/2
     c::eltype(b) = (λmax - λmin)/2
     for iter = 1:maxiter
-    	z = pr\r
+    	z = Pr\r
     	if iter == 1
     		p = z
     		α = 2/d

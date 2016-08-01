@@ -1,5 +1,60 @@
 export gmres, gmres!
 
+####################
+# API method calls #
+####################
+
+"""
+    gmres(A, b)
+
+Solve A*x=b using the generalized minimal residual method with restarts.
+
+# Arguments
+
+* `A`: linear operator.
+* `b`: right hand side.
+
+## Keywords
+
+* `Pl = 1`: left preconditioner of the method.
+* `Pr = 1`: left preconditioner of the method.
+* `tol::Real = sqrt(eps())`: stopping tolerance.
+* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+"""
+gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
+
+function gmres!(x, A, b; kwargs...)
+    gmres_method!(x,A,b; kwargs...)
+    x
+end
+
+gmres(::Type{Master}, A, b; kwargs...) = gmres!(Master, zerox(A,b), A, b; kwargs...)
+
+function gmres!(::Type{Master}, x, A, b;
+    tol=sqrt(eps(typeof(real(b[1])))),
+    restart::Int=min(20,length(b)), maxiter::Int=restart,
+    plot::Bool=false, kwargs...
+    )
+    log = ConvergenceHistory(restart)
+    log[:tol] = tol
+    reserve!(log,:resnorm,maxiter)
+    gmres_method!(x,A,b; restart=restart,tol=tol,maxiter=maxiter,log=log, kwargs...)
+    shrink!(log)
+    plot && showplot(log)
+    x, log
+end
+
+#########################
+# Method Implementation #
+#########################
+
 #One Arnoldi iteration
 #Optionally takes a truncation parameter l
 function arnoldi!(K::KrylovSubspace, w; l=K.order)
@@ -38,58 +93,10 @@ function compute_givens(a, b, i, j)
     end
 end
 
-gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
-
-function gmres!(x, A, b; kwargs...)
-    gmres_method!(x,A,b; kwargs...)
-    x
-end
-
-gmres(::Type{Master}, A, b; kwargs...) = gmres!(Master, zerox(A,b), A, b; kwargs...)
-
-function gmres!(::Type{Master}, x, A, b;
-    tol=sqrt(eps(typeof(real(b[1])))),
-    restart::Int=min(20,length(b)), maxiter::Int=restart,
-    plot::Bool=false, kwargs...
-    )
-    log = ConvergenceHistory(restart)
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    gmres_method!(x,A,b; restart=restart,tol=tol,maxiter=maxiter,log=log, kwargs...)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
-end
-
 function gmres_method!(x, A, b;
     Pl=1, Pr=1, tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
     maxiter::Int=restart, verbose::Bool=false, log::MethodLog=DummyHistory()
     )
-#Generalized Minimum RESidual
-#Reference: http://www.netlib.org/templates/templates.pdf
-#           2.3.4 Generalized Minimal Residual (GMRES)
-#
-#           http://www.netlib.org/lapack/lawnspdf/lawn148.pdf
-#           Givens rotation based on Algorithm 1
-#
-#   Solve A*x=b using the Generalized Minimum RESidual Method with restarts
-#
-#   Effectively solves the equation inv(Pl)*A*inv(Pr)*y=b where x = inv(Pr)*y
-#
-#   Required Arguments:
-#       A: Linear operator
-#       b: Right hand side
-#
-#   Named Arguments:
-#       Pl:       Left preconditioner
-#       Pr:       Right preconditioner
-#       restart:  Number of iterations before restart (GMRES(restart))
-#       maxiter:  Maximum total number of iterations (macroiters = ceil(maxiter/restart))
-#       tol:      Convergence Tolerance
-#
-#   The input A (resp. Pl, Pr) can be a matrix, a function returning A*x,
-#   (resp. inv(Pl)*x, inv(Pr)*x), or any type representing a linear operator
-#   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
     verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","relres")
     macroiter=0
     macroiters=Int(ceil(maxiter/restart))

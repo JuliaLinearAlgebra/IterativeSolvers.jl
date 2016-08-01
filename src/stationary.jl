@@ -2,6 +2,10 @@
 #Templates, section 2.2
 export  jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 
+####################
+# API method calls #
+####################
+
 jacobi(A::AbstractMatrix, b; kwargs...) =
     jacobi!(zerox(A, b), A, b; kwargs...)
 
@@ -25,6 +29,10 @@ function jacobi!(::Type{Master}, x, A::AbstractMatrix, b;
     plot && showplot(log)
     x, log
 end
+
+#########################
+# Method Implementation #
+#########################
 
 function jacobi_method!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))),maxiter=size(A,2)^2,
@@ -54,6 +62,10 @@ function jacobi_method!(x, A::AbstractMatrix, b;
     setmvps(log, iter)
 end
 
+####################
+# API method calls #
+####################
+
 gauss_seidel(A::AbstractMatrix, b; kwargs...) =
     gauss_seidel!(zerox(A, b), A, b; kwargs...)
 
@@ -77,6 +89,10 @@ function gauss_seidel!(::Type{Master}, x, A::AbstractMatrix, b;
     plot && showplot(log)
     x, log
 end
+
+#########################
+# Method Implementation #
+#########################
 
 function gauss_seidel_method!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
@@ -109,6 +125,10 @@ function gauss_seidel_method!(x, A::AbstractMatrix, b;
     setmvps(log, iter)
 end
 
+####################
+# API method calls #
+####################
+
 #Successive overrelaxation
 sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     sor!(zerox(A, b), A, b, ω; kwargs...)
@@ -133,6 +153,10 @@ function sor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
     plot && showplot(log)
     x, log
 end
+
+#########################
+# Method Implementation #
+#########################
 
 function sor_method!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
@@ -167,6 +191,10 @@ function sor_method!(x, A::AbstractMatrix, b, ω::Real;
     setmvps(log, iter)
 end
 
+####################
+# API method calls #
+####################
+
 #Symmetric successive overrelaxation
 #A must be symmetric
 ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
@@ -192,6 +220,10 @@ function ssor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
     plot && showplot(log)
     x, log
 end
+
+#########################
+# Method Implementation #
+#########################
 
 function ssor_method!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),

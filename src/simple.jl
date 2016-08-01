@@ -2,6 +2,10 @@
 
 export powm, invpowm, rqi
 
+####################
+# API method calls #
+####################
+
 function powm(A; x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
@@ -29,6 +33,9 @@ function powm{T}(::Type{Master}, K::KrylovSubspace{T};
     eigs, log
 end
 
+#########################
+# Method Implementation #
+#########################
 #Power method for finding largest eigenvalue and its eigenvector
 function powm_method{T}(K::KrylovSubspace{T};
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
@@ -49,6 +56,10 @@ function powm_method{T}(K::KrylovSubspace{T};
     setmvps(log, K.mvps)
     Eigenpair(θ, v)
 end
+
+####################
+# API method calls #
+####################
 
 function invpowm(A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
@@ -79,6 +90,10 @@ function invpowm{T}(::Type{Master}, K::KrylovSubspace{T};
     eigs, log
 end
 
+#########################
+# Method Implementation #
+#########################
+
 #Inverse iteration/inverse power method
 function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
@@ -101,6 +116,10 @@ function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
     setmvps(log, K.mvps)
     Eigenpair(σ+1/θ, y/θ)
 end
+
+####################
+# API method calls #
+####################
 
 function rqi(A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
@@ -128,6 +147,11 @@ function rqi{T}(::Type{Master}, K::KrylovSubspace{T};
     plot && showplot(log)
     eigs, log
 end
+
+
+#########################
+# Method Implementation #
+#########################
 
 #Rayleigh quotient iteration
 #XXX Doesn't work well

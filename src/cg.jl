@@ -1,5 +1,31 @@
 export cg, cg!
 
+####################
+# API method calls #
+####################
+
+"""
+    cg(A, b)
+
+Solve A*x=b with the conjugate gradients method.
+
+# Arguments
+
+* `A`: linear operator.
+* `b`: right hand side.
+
+## Keywords
+
+* `Pl = 1`: left preconditioner of the method.
+* `tol::Real = size(A,2)*eps()`: stopping tolerance.
+* `maxiter::Integer = size(A,2)`: maximum number of iterations.
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+"""
 cg(A, b; kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
 
 function cg!(x, A, b; kwargs...)
@@ -34,7 +60,10 @@ function cg!(::Type{Master}, x, K::KrylovSubspace, b;
     x, log
 end
 
-#Make macro predicate for method functions?
+#########################
+# Method Implementation #
+#########################
+
 function cg_method!(x,K,b;
     Pl=1,tol::Real=size(K.A,2)*eps(),maxiter::Integer=size(K.A,2),
     log::MethodLog=DummyHistory(),verbose::Bool=false

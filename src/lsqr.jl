@@ -1,7 +1,60 @@
 export lsqr, lsqr!
 
-using Base.LinAlg # can be removed when 0.3 is no longer supported
+####################
+# API method calls #
+####################
 
+"""
+    lsqr(A, b)
+
+LSQR solves Ax = b or min ||b - Ax||^2 if damp = 0,
+or   min ||(b) - (  A   )x||   otherwise.
+         ||(0)   (damp*I) ||^2
+
+The method is based on the Golub-Kahan bidiagonalization process.
+It is algebraically equivalent to applying CG to the normal equation (ATA+λ2I)x=ATb,
+but has better numerical properties, especially if A is ill-conditioned.
+
+# Arguments
+
+* `A`: linear operator.
+* `b`: right hand side.
+
+## Keywords
+
+* `λ::Number = 0`: lambda.
+* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+    1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+    (The final x will usually have fewer correct digits,
+    depending on cond(A) and the size of damp.)
+* `conlim::Number = 1e8`: stopping tolerance.  lsqr terminates if an estimate
+    of cond(A) exceeds conlim.  For compatible systems Ax = b,
+    conlim could be as large as 1.0e+12 (say).  For least-squares
+    problems, conlim should be less than 1.0e+8.
+    Maximum precision can be obtained by setting
+    atol = btol = conlim = zero, but the number of iterations
+    may then be excessive.
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+# References
+
+Adapted from: http://web.stanford.edu/group/SOL/software/lsqr/
+
+1. C. C. Paige and M. A. Saunders (1982a).
+    LSQR: An algorithm for sparse linear equations and sparse least squares,
+    ACM TOMS 8(1), 43-71.
+2. C. C. Paige and M. A. Saunders (1982b).
+    Algorithm 583.  LSQR: Sparse linear equations and least squares problems,
+    ACM TOMS 8(2), 195-209.
+3. M. A. Saunders (1995).  Solution of sparse rectangular systems using
+    LSQR and CRAIG, BIT 35, 588-604.
+
+"""
 lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
 
 function lsqr!(x, A, b; kwargs...)
@@ -34,46 +87,17 @@ function lsqr!(::Type{Master}, x, A, b;
     x, log
 end
 
-# Adapted from the BSD-licensed Matlab implementation at
-#    http://www.stanford.edu/group/SOL/software/lsqr.html
-#
-# LSQR solves Ax = b or min ||b - Ax||_2 if damp = 0,
-# or   min ||(b) - (  A   )x||   otherwise.
-#          ||(0)   (damp*I) ||_2
+#########################
+# Method Implementation #
+#########################
 
-#-----------------------------------------------------------------------
-# LSQR uses an iterative (conjugate-gradient-like) method.
-# For further information, see
-# 1. C. C. Paige and M. A. Saunders (1982a).
-#    LSQR: An algorithm for sparse linear equations and sparse least squares,
-#    ACM TOMS 8(1), 43-71.
-# 2. C. C. Paige and M. A. Saunders (1982b).
-#    Algorithm 583.  LSQR: Sparse linear equations and least squares problems,
-#    ACM TOMS 8(2), 195-209.
-# 3. M. A. Saunders (1995).  Solution of sparse rectangular systems using
-#    LSQR and CRAIG, BIT 35, 588-604.
-#
-# Input parameters:
-# atol, btol  are stopping tolerances.  If both are 1.0e-9 (say),
-#             the final residual norm should be accurate to about 9 digits.
-#             (The final x will usually have fewer correct digits,
-#             depending on cond(A) and the size of damp.)
-# conlim      is also a stopping tolerance.  lsqr terminates if an estimate
-#             of cond(A) exceeds conlim.  For compatible systems Ax = b,
-#             conlim could be as large as 1.0e+12 (say).  For least-squares
-#             problems, conlim should be less than 1.0e+8.
-#             Maximum precision can be obtained by setting
-#             atol = btol = conlim = zero, but the number of iterations
-#             may then be excessive.
-# maxiter      is an explicit limit on iterations (for safety).
-#
-#              Michael Saunders, Systems Optimization Laboratory,
-#              Dept of MS&E, Stanford University.
+# Michael Saunders, Systems Optimization Laboratory,
+# Dept of MS&E, Stanford University.
 #
 # Adapted for Julia by Timothy E. Holy with the following changes:
 #    - Allow an initial guess for x
 #    - Eliminate printing
-#-----------------------------------------------------------------------
+#----------------------------------------------------------------------
 function lsqr_method!(x, A, b;
     damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
     conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),

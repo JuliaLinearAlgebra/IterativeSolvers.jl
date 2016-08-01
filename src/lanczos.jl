@@ -2,6 +2,50 @@ import Base.LinAlg.BlasFloat
 
 export eiglancz
 
+####################
+# API method calls #
+####################
+
+"""
+    eiglancz(A)
+
+Find the most useful eigenvalues using the lanczos method.
+
+# Arguments
+
+* `A`: linear operator.
+
+## Keywords
+
+* `neigs::Int = size(A,1)`: number of eigen values.
+* `tol::Real = size(A,1)^3*eps()`: stopping tolerance.
+* `maxiter::Integer=size(A,1)`: maximum number of iterations.
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* (::Vector): eigen values.
+
+"""
+eiglancz(A; kwargs...) = eiglancz_method(A; kwargs...)
+
+function eiglancz(::Type{Master}, A;
+    maxiter::Integer=size(A,1), plot::Bool=false,
+    tol::Real = size(A,1)^3*eps(real(eltype(A))), kwargs...
+    )
+    log = ConvergenceHistory()
+    log[:tol] = tol
+    reserve!(log, :resnorm,maxiter)
+    eigs = eiglancz_method(A; maxiter=maxiter, log=log, kwargs...)
+    shrink!(log)
+    plot && showplot(log)
+    eigs, log
+end
+
+#########################
+# Method Implementation #
+#########################
+
 function lanczos!{T}(K::KrylovSubspace{T})
     m = K.n
     αs = Array(T, m)
@@ -16,21 +60,6 @@ function lanczos!{T}(K::KrylovSubspace{T})
     end
     αs[m]= dot(nextvec(K), lastvec(K))
     SymTridiagonal(αs, βs)
-end
-
-eiglancz(A; kwargs...) = eiglancz_method(A; kwargs...)
-
-function eiglancz(::Type{Master}, A;
-    maxiter::Integer=size(A,1), plot::Bool=false,
-    tol::Real = size(A,1)^3*eps(real(eltype(A))), kwargs...
-    )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log, :resnorm,maxiter)
-    eigs = eiglancz_method(A; maxiter=maxiter, log=log, kwargs...)
-    shrink!(log)
-    plot && showplot(log)
-    eigs, log
 end
 
 function eiglancz_method(A;
