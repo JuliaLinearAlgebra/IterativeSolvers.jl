@@ -26,17 +26,17 @@ but has better numerical properties, especially if A is ill-conditioned.
 * `λ::Number = 0`: lambda.
 
 * `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
-    1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
-    (The final x will usually have fewer correct digits,
-    depending on cond(A) and the size of damp).
+1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+(The final x will usually have fewer correct digits,
+depending on cond(A) and the size of damp).
 
 * `conlim::Number = 1e8`: stopping tolerance.  lsqr terminates if an estimate
-    of cond(A) exceeds conlim.  For compatible systems Ax = b,
-    conlim could be as large as 1.0e+12 (say).  For least-squares
-    problems, conlim should be less than 1.0e+8.
-    Maximum precision can be obtained by setting
-    atol = btol = conlim = zero, but the number of iterations
-    may then be excessive.
+of cond(A) exceeds conlim.  For compatible systems Ax = b,
+conlim could be as large as 1.0e+12 (say).  For least-squares
+problems, conlim should be less than 1.0e+8.
+Maximum precision can be obtained by setting
+atol = btol = conlim = zero, but the number of iterations
+may then be excessive.
 
 * `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
 

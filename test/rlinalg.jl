@@ -9,18 +9,18 @@ facts("Randomized linear algebra") do
     p = 1e-5 #Probability of failure
 
     for j=1:n
-        @fact rnorm(B, 2j, p) --> greater_than_or_equal(nB)
-        @fact rnorms(B, j, p) --> greater_than_or_equal(nB)
+        @fact rnorm(B, 2j, p=p) --> greater_than_or_equal(nB)
+        @fact rnorms(B, j, p=p) --> greater_than_or_equal(nB)
     end
 
     A = B*B'
     k = 1
-    l, u = reigmin(A, k, p)
+    l, u = reigmin(A, k, p=p)
     @fact l <= eigmin(A) <= u --> true
 
-    l, u = reigmax(A, k, p)
+    l, u = reigmax(A, k, p=p)
     @fact l <= eigmax(A) <= u --> true
 
-    l, u = rcond(A, k, p)
+    l, u = rcond(A, k, p=p)
     @fact l <= cond(A) <= u --> true
 end

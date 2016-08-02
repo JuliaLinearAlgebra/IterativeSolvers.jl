@@ -95,51 +95,50 @@ end
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
 bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 
-# Inputs
+# Arguents
 
 * `A` : The matrix or matrix-like object whose singular values are desired.
 
-# Keyword inputs
+## Keywords
 
-* `nsv::Int = 6`: The number of singular values requested.
+* `nsv::Int = 6`: number of singular values requested.
 
-* `v0`: The starting guess vector in the domain of `A`.
-    The length of `q` should be the number of columns in `A`.
-    Default: A random unit vector.
+* `v0 = random unit vector`: starting guess vector in the domain of `A`.
+The length of `q` should be the number of columns in `A`.
 
-* `k::Int = 2nsv`: The maximum number of Lanczos vectors to compute before restarting.
+* `k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting.
 
-* `j::Int = nsv`: The number of vectors to keep at the end of the restart.
-    We don't recommend j < nsv.
+* `j::Int = nsv`: number of vectors to keep at the end of the restart.
+We don't recommend j < nsv.
 
-* `maxiter::Int = minimum(size(A))`: Maximum number of iterations to run.
+* `maxiter::Int = minimum(size(A))`: maximum number of iterations to run.
 
-* `verbose::Bool = false`: Whether to print information at each iteration.
+* `verbose::Bool = false`: print information at each iteration.
 
-* `tol::Real = √eps()`: Maximum absolute error in each desired singular value.
+* `tol::Real = √eps()`: maximum absolute error in each desired singular value.
 
-* `reltol::Real=√eps()`: Maximum error in each desired singular value relative to the
-    estimated norm of the input matrix.  Default: `√eps()`.
+* `reltol::Real=√eps()`: maximum error in each desired singular value relative to the
+estimated norm of the input matrix.
 
-* `method::Symbol=:ritz`: Which restarting algorithm to use. Valid choices are:
+* `method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
     - `:ritz`: Thick restart with Ritz values [Wu2000].
     - `:harmonic`: Restart with harmonic Ritz values [Baglama2005].
 
-* `vecs::Symbol = :none`: Return singular vectors also.
+* `vecs::Symbol = :none`: singular vectors to return.
     - `:both`: Both left and right singular vectors are returned.
     - `:left`: Only the left singular vectors are returned.
     - `:right`: Only the right singular vectors are returned.
-    - `:none`: No singular vectors are returned (Default).
+    - `:none`: No singular vectors are returned.
 
 * `dolock::Bool=false`: If `true`, locks converged Ritz values, removing them
-    from the Krylov subspace being searched in the next macroiteration.
+from the Krylov subspace being searched in the next macroiteration.
 
 # Output
 
-* `Σ`: A list of the desired singular values if `vecs == :none` (the default),
+* `Σ`: list of the desired singular values if `vecs == :none` (the default),
     otherwise returns an `SVD` object with the desired singular vectors filled in.
 
-* `L`: The computed partial factorizations of A
+* `L`: computed partial factorizations of A.
 
 * `ch::ConvergenceHistory`:
     - `:betas` => `betas`: The history of the computed betas.
@@ -310,24 +309,24 @@ function svdl_method(A;
 end
 
 """
-    isconverged(L, F, k, tol, reltol, log, verbose)
+    isconverged(L, F, k, tol, reltol, log, verbose=false)
 
 Determine if any singular values in a partial factorization have converged.
 
-# Inputs
+# Arguments
 
-* `L` : A `PartialFactorization` computed by an iterative method such as `svdl`.
+* `L::PartialFactorization` : a `PartialFactorization` computed by an iterative
+method such as `svdl`.
 
-* `F` : A `SVD` factorization computed for `L.B`.
+* `F::Base.LinAlg.SVD`: a `SVD` factorization computed for `L.B`.
 
-* `k` : Number of singular values to check.
+* `k::Int` : number of singular values to check.
 
-* `tol`: Absolute tolerance for a Ritz value to be considered converged.
+* `tol::Real`: absolute tolerance for a Ritz value to be considered converged.
 
-* `reltol`: Relative tolerance for a Ritz value to be considered converged.
+* `reltol::Real`: relative tolerance for a Ritz value to be considered converged.
 
-* `verbose`: If `true`, prints out all the results of convergence tests.
-             Default: `false`.
+* `verbose::Bool = false`: if `true`, prints out all the results of convergence tests.
 
 # Implementation notes
 
@@ -397,7 +396,6 @@ described in [Wilkinson1965:Ch.3 §54-55 p.173, Yamamoto1980, Ortega1990]
     volume = {56},
     year = {1989}
 }
-
 ```
 """
 function isconverged(L::PartialFactorization,
@@ -487,7 +485,7 @@ end
 """
     thickrestart!(A, L, F, l)
 
-Thick restart (with ordinary Ritz values)
+Thick restart (with ordinary Ritz values).
 
 # Reference
 
@@ -528,7 +526,7 @@ end
 """
     harmonicrestart!(A, L, F, k)
 
-Thick restart with harmonic Ritz values
+Thick restart with harmonic Ritz values.
 
 # Reference
 
@@ -618,19 +616,19 @@ end
     extend!{T,Tr}(A, L, k orthleft, orthright, α)
 
 Extend a PartialFactorization L using GKL bidiagonalization with k extra pairs
-of Lanczos vectors
+of Lanczos vectors.
 
-# Input
+# Arguments
 
 * `A`: matrix or linear map generating the Lanczos vectors
 
-* `L`: `PartialFactorization` object
+* `L::PartialFactorization`: partial factorization.
 
-* `orthleft::Bool`: whether or not to orthogonalize left Lanczos vectors
+* `orthleft::Bool = false`: orthogonalize left Lanczos vectors.
 
-* `orthright::Bool`: whether or not to orthogonalize right Lanczos vectors
+* `orthright::Bool = true`: orthogonalize right Lanczos vectors.
 
-* `α::Real`: criterion for doing a second reorthogonalization. Default: 1/√2
+* `α::Real = 1/√2`: criterion for doing a second reorthogonalization.
 
 # Implementation notes
 
@@ -650,6 +648,7 @@ right vectors, except when the matrix norm exceeds `1/√eps(eltype(A))`, in
 which case it will be necessary to orthogonalize both sets of vectors. See
 [Simon2000].
 
+```bibtex
 @book{Bjorck2015,
     author = {Bj{\"{o}}rck, {\AA}ke},
     doi = {10.1007/978-3-319-05089-8},
@@ -680,6 +679,7 @@ which case it will be necessary to orthogonalize both sets of vectors. See
     volume = {30},
     year = {1976}
 }
+```
 
 """
 function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,

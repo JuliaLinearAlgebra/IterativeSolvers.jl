@@ -66,17 +66,17 @@ pivoted QR process.
 
 ```bibtex
 @article{Cheng2005,
-        author = {Cheng, H and Gimbutas, Z and Martinsson, P G and Rokhlin, V},
-        doi = {10.1137/030602678},
-        issn = {1064-8275},
-        journal = {SIAM Journal on Scientific Computing},
-        month = jan,
-        number = {4},
-        pages = {1389--1404},
-        title = {On the Compression of Low Rank Matrices},
-        volume = {26},
-        year = {2005}
-    }
+    author = {Cheng, H and Gimbutas, Z and Martinsson, P G and Rokhlin, V},
+    doi = {10.1137/030602678},
+    issn = {1064-8275},
+    journal = {SIAM Journal on Scientific Computing},
+    month = jan,
+    number = {4},
+    pages = {1389--1404},
+    title = {On the Compression of Low Rank Matrices},
+    volume = {26},
+    year = {2005}
+}
 ```
 """
 function idfact(A, k::Int, l::Int)

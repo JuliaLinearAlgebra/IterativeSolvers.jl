@@ -8,7 +8,7 @@ end
 
 X ⊗ Y = OuterProduct{promote_type(eltype(X), eltype(Y))}(X, Y)
 
-@doc """
+"""
 Compute the randomized SVD by iterative refinement from randomly selected
 columns/rows.
 
@@ -22,7 +22,7 @@ Arguments:
        Must be 1 ≤ l ≤ k. Default: k
     N: Maximum number of iterations. Default: min(size(A))
     ϵ: Relative threshold for convergence, as measured by growth of the spectral norm.
-       Default: prod(size(A))*eps(real(float(one(eltype(A)))))
+       Default: prod(size(A)) * eps(real(float(one(eltype(A)))))
     method: :eig - Solve eigenproblem (Default)
             :svd - Solve singular problem
     verbose: If true, prints convergence information at each iteration. Default: false
@@ -33,16 +33,19 @@ Returns:
 
 Reference:
 
-    @inproceedings{,
-        author={Friedland, S. and Niknejad, A. and Kaveh, Mostafa and Zare, H.},
-        booktitle={System of Systems Engineering, 2006 IEEE/SMC International Conference on},
-        title={Fast Monte-Carlo low rank approximations for matrices},
-        year={2006},
-        month={April},
-        pages={218--223},
-        doi={10.1109/SYSOSE.2006.1652299}
-    }
-""" ->
+```bibtex
+@inproceedings{,
+    author={Friedland, S. and Niknejad, A. and Kaveh, Mostafa and Zare, H.},
+    booktitle={System of Systems Engineering, 2006 IEEE/SMC International Conference on},
+    title={Fast Monte-Carlo low rank approximations for matrices},
+    year={2006},
+    month={April},
+    pages={218--223},
+    doi={10.1109/SYSOSE.2006.1652299}
+}
+```
+
+"""
 function rsvd_fnkz(A, k::Int;
     l::Int=k, N::Int=minimum(size(A)), verbose::Bool=false,
     method::Symbol=:eig,

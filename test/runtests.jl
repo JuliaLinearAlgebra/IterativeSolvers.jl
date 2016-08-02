@@ -234,7 +234,7 @@ import Base: *, size, eltype
 size(A::MyOp, i) = size(A.buf, i)
 eltype(A::MyOp) = eltype(A.buf)
 
-facts("eigvals_lanczos") do
+facts("eiglancz") do
 for T in (Float32, Float64)
     context("Matrix{$T}") do
     A = convert(Matrix{T}, randn(n,n))
