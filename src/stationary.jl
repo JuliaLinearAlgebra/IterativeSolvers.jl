@@ -6,6 +6,30 @@ export  jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 # API method calls #
 ####################
 
+"""
+    jacobi(A, b)
+
+Solve A*x=b with the Jacobi method.
+
+# Arguments
+
+* `A::AbstractMatrix`: matrix.
+
+* `b`: right hand side.
+
+## Keywords
+
+* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+"""
 jacobi(A::AbstractMatrix, b; kwargs...) =
     jacobi!(zerox(A, b), A, b; kwargs...)
 
@@ -66,6 +90,30 @@ end
 # API method calls #
 ####################
 
+"""
+    gauss_seidel(A, b)
+
+Solve A*x=b with the Gauss Seidel method.
+
+# Arguments
+
+* `A::AbstractMatrix`: matrix.
+
+* `b`: right hand side.
+
+## Keywords
+
+* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+"""
 gauss_seidel(A::AbstractMatrix, b; kwargs...) =
     gauss_seidel!(zerox(A, b), A, b; kwargs...)
 
@@ -129,7 +177,32 @@ end
 # API method calls #
 ####################
 
-#Successive overrelaxation
+"""
+    sor(A, b)
+
+Solve A*x=b with the successive overrelaxation method.
+
+# Arguments
+
+* `A::AbstractMatrix`: matrix.
+
+* `b`: right hand side.
+
+* `ω::Real`: extrapolation factor.
+
+## Keywords
+
+* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+"""
 sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     sor!(zerox(A, b), A, b, ω; kwargs...)
 
@@ -195,8 +268,32 @@ end
 # API method calls #
 ####################
 
-#Symmetric successive overrelaxation
-#A must be symmetric
+"""
+    sor(A, b)
+
+Solve A*x=b with the symmetric successive overrelaxation method.
+
+# Arguments
+
+* `A::AbstractMatrix`: symmetric matrix.
+
+* `b`: right hand side.
+
+* `ω::Real`: extrapolation factor.
+
+## Keywords
+
+* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* approximated solution.
+
+"""
 ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     ssor!(zerox(A, b), A, b, ω; kwargs...)
 

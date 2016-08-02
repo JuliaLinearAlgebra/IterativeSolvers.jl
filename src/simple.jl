@@ -1,11 +1,37 @@
 #Simple methods
-
 export powm, invpowm, rqi
 
 ####################
 # API method calls #
 ####################
 
+"""
+    powm(A)
+
+Find biggest eigenvalue of `A` and its associated eigenvector
+using the power method.
+
+# Arguments
+
+* `A`: linear operator.
+
+## Keywords
+
+* `x = random unit vector`: initial eigenvector guess.
+
+* `tol::Real = eps()*size(A,2)^3`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* eigen value
+
+* eigen vector
+
+"""
 function powm(A; x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
@@ -30,13 +56,13 @@ function powm{T}(::Type{Master}, K::KrylovSubspace{T};
     eigs = powm_method(K; verbose=verbose,log=log,tol=tol,maxiter=maxiter)
     shrink!(log)
     plot && showplot(log)
-    eigs, log
+    eigs..., log
 end
 
 #########################
 # Method Implementation #
 #########################
-#Power method for finding largest eigenvalue and its eigenvector
+
 function powm_method{T}(K::KrylovSubspace{T};
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     verbose::Bool=false, log::MethodLog=DummyHistory()
@@ -54,13 +80,42 @@ function powm_method{T}(K::KrylovSubspace{T};
         appendunit!(K, y)
     end
     setmvps(log, K.mvps)
-    Eigenpair(θ, v)
+    θ, v
 end
 
 ####################
 # API method calls #
 ####################
 
+"""
+    invpowm(A)
+
+Find closest eigenvalue of `A` to `shift` and its associated eigenvector
+using the inverse power iteration method.
+
+# Arguments
+
+* `A`: linear operator.
+
+## Keywords
+
+* `shift::Number=0`: shift to be applied to matrix A.
+
+* `x = random unit vector`: initial eigenvector guess.
+
+* `tol::Real = eps()*size(A,2)^3`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* eigen value
+
+* eigen vector
+
+"""
 function invpowm(A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
@@ -87,14 +142,13 @@ function invpowm{T}(::Type{Master}, K::KrylovSubspace{T};
         )
     shrink!(log)
     plot && showplot(log)
-    eigs, log
+    eigs..., log
 end
 
 #########################
 # Method Implementation #
 #########################
 
-#Inverse iteration/inverse power method
 function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     log::MethodLog=DummyHistory(), verbose::Bool=false
@@ -114,13 +168,43 @@ function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
         appendunit!(K, y)
     end
     setmvps(log, K.mvps)
-    Eigenpair(σ+1/θ, y/θ)
+    σ+1/θ, y/θ
 end
 
 ####################
 # API method calls #
 ####################
 
+"""
+    rqi(A)
+
+Try find closest eigenvalue of `A` to `shift` and its associated eigenvector
+using the rayleigh quotient iteration method. This method converges rapidly
+but is not guaranteed to compute the eigenvalue closes to `shift`.
+
+# Arguments
+
+* `A`: linear operator.
+
+## Keywords
+
+* `shift::Number=0`: shift to be applied to matrix A.
+
+* `x = random unit vector`: initial eigenvector guess.
+
+* `tol::Real = eps()*size(A,2)^3`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+# Output
+
+* eigen value
+
+* eigen vector
+
+"""
 function rqi(A; shift::Number=0, x=nothing, kwargs...)
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
@@ -145,7 +229,7 @@ function rqi{T}(::Type{Master}, K::KrylovSubspace{T};
     eigs = rqi_method(K, shift; verbose=verbose, log=log, tol=tol, maxiter=maxiter)
     shrink!(log)
     plot && showplot(log)
-    eigs, log
+    eigs..., log
 end
 
 
@@ -173,5 +257,5 @@ function rqi_method{T}(K::KrylovSubspace{T}, σ::Number;
         θ >= 1/tol && (setconv(log, resnorm >= 0); break)
     end
     setmvps(log, K.mvps)
-    Eigenpair(ρ, v)
+    ρ, v
 end

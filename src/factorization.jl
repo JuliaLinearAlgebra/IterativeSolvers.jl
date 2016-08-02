@@ -36,7 +36,9 @@ no entry of `P` exceeds magnitude 2, and
 # Arguments
 
 * `A`: Matrix to factorize
+
 * `k::Int`: Number of columns of A to return in B
+
 * `l::Int`: Length of random vectors to project onto
 
 # Output

@@ -12,15 +12,21 @@ Solve A*x=b using the chebyshev method.
 # Arguments
 
 * `A`: linear operator.
+
 * `b`: light hand side.
+
 * `λmin`: minimum eigenvalue lower estimation.
+
 * `λmax`: maximum eigenvalue upper estimation.
 
 ## Keywords
 
 * `Pr = 1`: right preconditioner of the method.
+
 * `tol::Real = sqrt(eps())`: stopping tolerance.
+
 * `maxiter::Integer = size(A,2)^3`: maximum number of iterations.
+
 * `verbose::Bool = false`: verbose flag.
 
 # Output

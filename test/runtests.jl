@@ -198,7 +198,7 @@ for T in (Float32, Float64, Complex64, Complex128)
 
     context("Power iteration") do
     eval_big = maximum(v) > abs(minimum(v)) ? maximum(v) : minimum(v)
-    eval_pow = powm(Master, A; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
+    eval_pow = powm(Master, A; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1]
     @fact norm(eval_big-eval_pow) --> less_than(tol)
     end
 
@@ -208,7 +208,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     # Perturb the eigenvalue by < 1/4 of the distance to the nearest eigenvalue
     eval_diff = min(abs(v[irnd]-eval_rand), abs(v[irnd+2]-eval_rand))
     σ = eval_rand + eval_diff/2*(rand()-.5)
-    eval_ii = invpowm(Master, A; shift=σ, tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
+    eval_ii = invpowm(Master, A; shift=σ, tol=sqrt(eps(real(one(T)))), maxiter=2000)[1]
     @fact norm(eval_rand-eval_ii) --> less_than(tol)
     end
 

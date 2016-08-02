@@ -12,13 +12,17 @@ Solve A*x=b with the conjugate gradients method.
 # Arguments
 
 * `A`: linear operator.
+
 * `b`: right hand side.
 
 ## Keywords
 
 * `Pl = 1`: left preconditioner of the method.
+
 * `tol::Real = size(A,2)*eps()`: stopping tolerance.
+
 * `maxiter::Integer = size(A,2)`: maximum number of iterations.
+
 * `verbose::Bool = false`: verbose flag.
 
 # Output

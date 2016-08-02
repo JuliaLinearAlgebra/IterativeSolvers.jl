@@ -18,8 +18,11 @@ Find the most useful eigenvalues using the lanczos method.
 ## Keywords
 
 * `neigs::Int = size(A,1)`: number of eigen values.
+
 * `tol::Real = size(A,1)^3*eps()`: stopping tolerance.
+
 * `maxiter::Integer=size(A,1)`: maximum number of iterations.
+
 * `verbose::Bool = false`: verbose flag.
 
 # Output

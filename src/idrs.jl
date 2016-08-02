@@ -17,17 +17,24 @@ subspaces of shrinking dimensions.
 # Arguments
 
 * `A`: linear operator.
+
 * `b`: right hand side.
 
 ## Keywords
 
 * `s` : dimension reduction number. Normally, a higher s gives faster convergence,
 but also  makes the method more expensive.
+
 * `Pl = 1`: left preconditioner of the method.
+
 * `Pr = 1`: left preconditioner of the method.
+
 * `tol::Real = sqrt(eps())`: stopping tolerance.
+
 * `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+
 * `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
 * `verbose::Bool = false`: verbose flag.
 
 # Output

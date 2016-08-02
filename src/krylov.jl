@@ -2,11 +2,6 @@ import Base: append!, eye, size
 
 export ConvergenceHistory, KrylovSubspace
 
-type Eigenpair{S,T}
-    val::S
-    vec::Vector{T}
-end
-
 type KrylovSubspace{T, OpT}
     A::OpT     #The linear operator that generates the subspace
     n::Int     #Dimension of problem
