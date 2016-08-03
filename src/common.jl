@@ -3,12 +3,83 @@ import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
 export  A_mul_B, niters, products, tolkeys, datakeys, nrestarts, setindex!,
         getindex, last, Master
 
+"""
+    Master
+
+Dispatch iterative methods to return `(x, ch)`.
+"""
+type Master end
+
+# Improve readability of iterative methods
 \(f::Function, b::VecOrMat) = f(b)
 *(f::Function, b::VecOrMat) = f(b)
 
 #### Reporting
+"""
+    MethodLog
+
+Log an iterative method's general and per-iteration information.
+"""
 abstract MethodLog
+
+"""
+    DummyHistory
+
+Placeholder to put inside an iterative method instead of `ConvergenceHistory`
+for not wasting memory. Doesn't actually store any kind of information.
+
+# Implements
+
+* `Base`: `setindex!`, `push!`
+
+"""
 type DummyHistory <: MethodLog end
+
+"""
+    ConvergenceHistory{T}
+
+Store general and in-depth information about an iterative method.
+
+# Fields
+
+* `mvps::Int`: number of matrix vector products.
+
+* `mtvps::Int`: number of transposed matrix-vector products
+
+* `iters::Int`: iterations taken by the method.
+
+* `restart::T`: restart relevant information.
+    - `T == Int`: iterations per restart.
+    - `T == Void`: methods without restarts.
+
+* `isconverged::Bool`: convergence of the method.
+
+* `tol::Dict{Symbol, Real}`: tolerances of the method.
+
+* `data::Dict{Symbol, VecOrMat}`: iteration information of a method. It usually
+contains residuals, but can have other information, e.g. ritz values in [svdl](@ref).
+
+# Constructors
+
+    ConvergenceHistory()
+    ConvergenceHistory(restart)
+
+Create `ConvergenceHistory` with empty fields.
+
+# Arguments
+
+* `restart`: number of iterations per restart.
+
+# Plots
+
+Supports plots using the `Plots.jl` package via a type recipe. Vectors are
+ploted as series and matrices as scatterplots.
+
+# Implements
+
+* `Base`: `getindex`, `setindex!`, `push!`
+
+"""
 type ConvergenceHistory{T} <: MethodLog
     mvps::Int
     mtvps::Int
@@ -18,9 +89,6 @@ type ConvergenceHistory{T} <: MethodLog
     tol::Dict{Symbol, Real}
     data::Dict{Symbol, VecOrMat}
 end
-typealias PlainHistory ConvergenceHistory{Void}
-typealias RestartedHistory ConvergenceHistory{Int}
-
 ConvergenceHistory() = ConvergenceHistory(0,0,0,nothing,false,
                         Dict{Symbol, Real}(), Dict{Symbol, VecOrMat}()
                         )
@@ -28,7 +96,19 @@ ConvergenceHistory(restart::Int) = ConvergenceHistory(0,0,0,restart,false,
                                     Dict{Symbol, Real}(), Dict{Symbol, VecOrMat}()
                                     )
 
-# Consulting
+"""
+    PlainHistory
+
+`ConvergeHistory` without resets.
+"""
+typealias PlainHistory ConvergenceHistory{Void}
+
+"""
+    RestartedHistory
+
+`ConvergeHistory` with resets.
+"""
+typealias RestartedHistory ConvergenceHistory{Int}
 
 function getindex(ch::ConvergenceHistory, s::Symbol)
     haskey(ch.tol, s) && return ch.tol[s]
@@ -36,40 +116,11 @@ function getindex(ch::ConvergenceHistory, s::Symbol)
 end
 getindex(ch::ConvergenceHistory, s::Symbol, kwargs...) = ch.data[s][kwargs...]
 
-products(ch::ConvergenceHistory) = ch.mvps+ch.mtvps
-
-niters(ch::ConvergenceHistory) = ch.iters
-nrestarts(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
-
-tolkeys(ch::ConvergenceHistory) = keys(ch.tol)
-datakeys(ch::ConvergenceHistory) = keys(ch.data)
-
-# State change
-
-setmvps(ch::DummyHistory, val::Int) = nothing
-setmvps(ch::ConvergenceHistory, val::Int) = ch.mvps=val
-
-setmtvps(ch::DummyHistory, val::Int) = nothing
-setmtvps(ch::ConvergenceHistory, val::Int) = ch.mtvps=val
-
-setconv(ch::DummyHistory, val::Bool) = nothing
-setconv(ch::ConvergenceHistory, val::Bool) = ch.isconverged=val
-
-function reserve!(ch::ConvergenceHistory, s::Symbol, maxiter::Int; T::Type=Float64)
-    ch.data[s] = Vector{T}(maxiter)
-end
-function reserve!(ch::ConvergenceHistory, s::Symbol, maxiter::Int, size::Int; T::Type=Float64)
-    ch.data[s] = Matrix{T}(maxiter,size)
-end
-
 setindex!(ch::DummyHistory, tol::Real, s::Symbol) = nothing
 setindex!(ch::ConvergenceHistory, tol::Real, s::Symbol) = ch.tol[s] = tol
 
 setindex!(ch::DummyHistory, val, s::Symbol, kwargs...) = nothing
 setindex!(ch::ConvergenceHistory, val, s::Symbol, kwargs...) = ch.data[s][kwargs...] = val
-
-nextiter!(::DummyHistory) = nothing
-nextiter!(ch::ConvergenceHistory) = ch.iters+=1
 
 push!(::DummyHistory, ::Symbol, ::Any) = nothing
 function push!(ch::ConvergenceHistory, key::Symbol, vec::Union{Vector,Tuple})
@@ -82,6 +133,40 @@ function push!(ch::ConvergenceHistory, key::Symbol, vec::Union{Vector,Tuple})
 end
 push!(ch::ConvergenceHistory, key::Symbol, val) = ch.data[key][ch.iters] = val
 
+"""
+    reserve!(ch, key, maxiter)
+    reserve!(ch, key, maxiter, size)
+
+Reserve space for per iteration data in `ch`. If size is provided, intead of a
+vector it will reserve matrix of dimensions `(maxiter, size)`.
+
+# Arguments
+
+* `ch::ConvergenceHistory`: convergence history.
+
+* `key::Symbol`: key used to identify the data.
+
+* `maxiter::Int`: number of iterations to save space for.
+
+* `size::Int`: number of elements to store with the `key` identifier.
+
+## Keywords
+
+* `T::Type=Float64`: type of the elements to store.
+
+"""
+function reserve!(ch::ConvergenceHistory, key::Symbol, maxiter::Int; T::Type=Float64)
+    ch.data[key] = Vector{T}(maxiter)
+end
+function reserve!(ch::ConvergenceHistory, key::Symbol, maxiter::Int, size::Int; T::Type=Float64)
+    ch.data[key] = Matrix{T}(maxiter,size)
+end
+
+"""
+    shrink!(ml)
+
+shrinks the reserved space for `MethodLog` `ch` to the space actually used to log.
+"""
 shrink!(::DummyHistory) = nothing
 function shrink!(ch::ConvergenceHistory)
     for key in datakeys(ch)
@@ -94,7 +179,78 @@ function shrink!(ch::ConvergenceHistory)
     end
 end
 
+"""
+    products(ch)
+
+Number of matrix-vector products plus transposed matrix-vector products
+logged in [`ConvergenceHistory`](@ref) `ch`.
+"""
+products(ch::ConvergenceHistory) = ch.mvps+ch.mtvps
+
+"""
+    products(ch)
+
+Number of iterations logged in [`ConvergenceHistory`](@ref) `ch`.
+"""
+niters(ch::ConvergenceHistory) = ch.iters
+
+"""
+    products(ch)
+
+Number of restarts logged in [`ConvergenceHistory`](@ref) `ch`.
+"""
+nrestarts(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
+
+"""
+    products(ch)
+
+Key iterator of the tolerances logged in [`ConvergenceHistory`](@ref) `ch`.
+"""
+tolkeys(ch::ConvergenceHistory) = keys(ch.tol)
+
+"""
+    products(ch)
+
+Key iterator of the per iteration data logged in [`ConvergenceHistory`](@ref) `ch`.
+"""
+datakeys(ch::ConvergenceHistory) = keys(ch.data)
+
+"""
+    setmvps(ml, val)
+
+Set `val` as number of matrix-vector products in [`MethodLog`](@ref) `ch`.
+"""
+setmvps(ch::DummyHistory, val::Int) = nothing
+setmvps(ch::ConvergenceHistory, val::Int) = ch.mvps=val
+
+"""
+    setmtvps(ml, val)
+
+Set `val` as number of transposed matrix-vector products in [`MethodLog`](@ref) `ch`.
+"""
+setmtvps(ch::DummyHistory, val::Int) = nothing
+setmtvps(ch::ConvergenceHistory, val::Int) = ch.mtvps=val
+
+"""
+    setconv(ml, val)
+
+Set `val` as convergence status of the method in [`MethodLog`](@ref) ch.
+"""
+setconv(ch::DummyHistory, val::Bool) = nothing
+setconv(ch::ConvergenceHistory, val::Bool) = ch.isconverged=val
+
+"""
+    nextiter!(ml)
+
+Adds one the the number of iterations in [`MethodLog`](@ref) `ch`. This is
+necessary to avoid overwriting information with `push!(ml)`.
+"""
+nextiter!(::DummyHistory) = nothing
+nextiter!(ch::ConvergenceHistory) = ch.iters+=1
+
+
 #Recipes
+#See Plots.jl tutorial on recipes
 @recipe function chef(ch::ConvergenceHistory)
     candidates = collect(values(ch.data))
     plotables = map(plotable, candidates)
@@ -155,7 +311,25 @@ end
 plotable{T<:Real}(::VecOrMat{T}) = true
 plotable(::Any) = false
 
-#Plotting
+#Internal plotting
+"""
+    showplot(ch)
+
+Print all plotable information inside `ConvergenceHistory` `ch`.
+"""
+function showplot(ch::ConvergenceHistory)
+    candidates = collect(values(ch.data))
+    plotables = map(plotable, candidates)
+    n = length(filter(identity, plotables))
+    n > 0 || return
+    println("\n")
+    for (name, draw) in collect(ch.data)[plotables]
+        restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
+        drawing = _plot(draw, ch.iters, restart; name=string(name))
+        println("$drawing\n\n")
+    end
+end
+
 function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
@@ -190,19 +364,6 @@ function _plot{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
         lineplot!(plot,[left,left],[miny,maxy], color=:white)
     end
     plot
-end
-
-function showplot(ch::ConvergenceHistory; kwargs...)
-    candidates = collect(values(ch.data))
-    plotables = map(plotable, candidates)
-    n = length(filter(identity, plotables))
-    n > 0 || return
-    println("\n")
-    for (name, draw) in collect(ch.data)[plotables]
-        restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
-        drawing = _plot(draw, ch.iters, restart; name=string(name), kwargs...)
-        println("$drawing\n\n")
-    end
 end
 
 #### Type-handling
@@ -242,9 +403,6 @@ function initrand!(v::Vector)
 end
 _randn!(v::Array{Float64}) = randn!(v)
 _randn!(v) = copy!(v, randn(length(v)))
-
-#Master type
-typealias Master Tuple{Any,ConvergenceHistory}
 
 #### Errors
 export PosSemidefException

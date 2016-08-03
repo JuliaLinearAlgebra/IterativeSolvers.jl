@@ -4,8 +4,10 @@ repo_url:           https://github.com/lopezm94/IterativeSolvers.jl
 site_author:        lopezm94
 
 markdown_extensions:
-  - extra
   - codehilite
+  - extra
+  - tables
+  - fenced_code
   #- mdx_math
 
 extra_css:
@@ -22,7 +24,7 @@ extra:
     primary: 'blue'
     accent:  'orange'
 
-docs_dir: ./src #'build'
+docs_dir: 'build'
 
 pages:
     - Home: index.md

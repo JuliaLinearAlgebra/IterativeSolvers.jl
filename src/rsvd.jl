@@ -5,19 +5,6 @@
 # This file provides a rudimentary implementation of the randomized singular
 # value decomposition and spectral (eigen-) decomposition as described in
 # \cite{Halko2011}.
-#
-# Reference:
-# @article{Halko2011,
-#    author = {Halko, N and Martinsson, P G and Tropp, J A},
-#    doi = {10.1137/090771806},
-#    journal = {SIAM Review},
-#    month = jan,
-#    number = {2},
-#    pages = {217--288},
-#    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
-#    volume = {53},
-#    year = {2011}
-# }
 
 import Base.LinAlg: Eigen, SVD
 
@@ -29,7 +16,7 @@ export rsvdfact, reig
 Compute partial singular value decomposition of `A` using a randomized
 algorithm.
 
-# Arguments:
+# Arguments
 
 * `A`: input matrix.
 
@@ -37,11 +24,11 @@ algorithm.
 
 * `p::Int=0`: number of extra vectors to include in computation.
 
-# Output:
+# Output
 
 * `::SVD`: singular value decomposition.
 
-# Warning:
+# Warning
 
 This variant of the randomized singular value decomposition is the most
 commonly found implementation but is not recommended for accurate
@@ -49,7 +36,7 @@ computations, as it often has trouble finding the `n` largest singular pairs,
 but rather finds `n` large singular pairs which may not necessarily be the
 largest.
 
-# Implementation note:
+# Implementation note
 
 This function calls [`rrange`](@ref), which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
@@ -61,6 +48,22 @@ Alternatively, you can mix and match your own randomized algorithm using
 any of the randomized range finding algorithms to find a suitable subspace
 and feeding the result to one of the routines that computes the `SVD`
 restricted to that subspace.
+
+# References
+
+```bibtex
+@article{Halko2011,
+    author = {Halko, N and Martinsson, P G and Tropp, J A},
+    doi = {10.1137/090771806},
+    journal = {SIAM Review},
+    month = jan,
+    number = {2},
+    pages = {217--288},
+    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
+    volume = {53},
+    year = {2011}
+}
+```
 
 """
 function rsvdfact(A, n::Int, p::Int=0)
@@ -74,7 +77,7 @@ end
 Compute partial singular value decomposition of `A` using a randomized
 algorithm.
 
-# Arguments:
+# Arguments
 
 * `A`: input matrix.
 
@@ -82,11 +85,11 @@ algorithm.
 
 * `p::Int=0`: number of extra vectors to include in computation.
 
-# Output:
+# Output
 
 * `::Vector`: estimated singular values of `A`.
 
-# Warning:
+# Warning
 
 This variant of the randomized singular value decomposition is the most
 commonly found implementation but is not recommended for accurate
@@ -94,7 +97,7 @@ computations, as it often has trouble finding the `n` largest singular pairs,
 but rather finds `n` large singular pairs which may not necessarily be the
 largest.
 
-# Implementation note:
+# Implementation note
 
 This function calls [`rrange`](@ref), which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
@@ -106,6 +109,22 @@ Alternatively, you can mix and match your own randomized algorithm using
 any of the randomized range finding algorithms to find a suitable subspace
 and feeding the result to one of the routines that computes the `SVD`
 restricted to that subspace.
+
+# References
+
+```bibtex
+@article{Halko2011,
+    author = {Halko, N and Martinsson, P G and Tropp, J A},
+    doi = {10.1137/090771806},
+    journal = {SIAM Review},
+    month = jan,
+    number = {2},
+    pages = {217--288},
+    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
+    volume = {53},
+    year = {2011}
+}
+```
 
 """
 function rsvdvals(A, n::Int, p::Int=0)
@@ -130,15 +149,11 @@ naive randomized rangefinding.
 * `::Matrix`: matrix of dimension `size(A,1) x r` containing the basis
 vectors of the computed subspace of `A`.
 
-# References
-
-Algorithm 4.1 of \cite{Halko2011}
-
-# Warning:
+# Warning
 
 The Reference explicitly discourages using this algorithm.
 
-# Implementation note:
+# Implementation note
 
 Whereas \cite{Halko2011} recommends classical Gram-Schmidt with double
 reorthogonalization, we instead compute the basis with `qrfact()`, which
@@ -247,15 +262,15 @@ in the computation, which get discarded at the end.
 * `::Matrix`: A dense matrix of dimension `size(A,1) x l` containing the basis
 vectors of the computed subspace of `A`.
 
-# References
-
-Algorithm 4.4 of \cite{Halko2011}
-
 # Implementation note
 
 Whereas the Reference recommends classical Gram-Schmidt with double
 reorthogonalization, we instead compute the basis with `qrfact()`, which
 for dense A computes the QR factorization using Householder reflectors.
+
+# References
+
+Algorithm 4.4 of \cite{Halko2011}
 
 """
 function rrange_si(A, l::Int; At=A', q::Int=0) #XXX
@@ -297,15 +312,15 @@ in the computation, which get discarded at the end.
 * `::Matrix`: matrix of dimension `size(A,1)` x `l` containing the basis
 vectors of the computed subspace of `A`.
 
-# References
-
-Algorithm 4.5 of \cite{Halko2011}
-
-# Implementation note:
+# Implementation note
 
 Whereas the Reference recommends classical Gram-Schmidt with double
 reorthogonalization, we instead compute the basis with `qrfact()`, which
 for dense `A` computes the QR factorization using Householder reflectors.
+
+# References
+
+Algorithm 4.5 of \cite{Halko2011}
 
 """
 function rrange_f(A, l::Int) #XXX
@@ -582,6 +597,22 @@ algorithm.
 
 This is a wrapper around `eigfact_onepass()` which uses the randomized
 samples found using `srft(l)`.
+
+# References
+
+```bibtex
+@article{Halko2011,
+    author = {Halko, N and Martinsson, P G and Tropp, J A},
+    doi = {10.1137/090771806},
+    journal = {SIAM Review},
+    month = jan,
+    number = {2},
+    pages = {217--288},
+    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
+    volume = {53},
+    year = {2011}
+}
+```
 
 """
 reig(A::Hermitian, l::Int) = eigfact_onepass(A, srft(l))

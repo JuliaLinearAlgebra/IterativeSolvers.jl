@@ -6,6 +6,7 @@ export rcond, reigmax, reigmin, rnorm, rnorms
 
 
 """
+    randnn(el, m)
     randnn(el, m, n)
 
 Compute randomized gaussian matrix normalized by column.
@@ -16,8 +17,6 @@ Compute randomized gaussian matrix normalized by column.
 
 * `m::Int`: number of rows.
 
-## Optional
-
 * `n::Int`: number of columns.
 
 ## Keywords
@@ -26,14 +25,14 @@ Compute randomized gaussian matrix normalized by column.
 
 ## Output
 
-- input `n`:
+- randnn(el, m):
+
+    * `Ω`: vector containing Gaussian random numbers of type `el`.
+
+- randnn(el, m, n):
 
     * `Ω`: matrix of dimensions `m` x `n` containing Gaussian random numbers of
     type `el`.
-
-- else:
-
-    * `Ω`: vector containing Gaussian random numbers of type `el`.
 
 """
 function randnn(el::Type, m::Int; normalize::Bool=true)

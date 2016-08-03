@@ -1,19 +1,33 @@
 export cg, cg!
 
+#################
+# Documentation #
+#################
+
+
+
 ####################
 # API method calls #
 ####################
 
 """
     cg(A, b)
+    cg(Master, A, b)
 
 Solve A*x=b with the conjugate gradients method.
+
+if [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
 
 # Arguments
 
 * `A`: linear operator.
 
 * `b`: right hand side.
+
+* `Master::Type{Master}`: dispatch type.
 
 ## Keywords
 
@@ -23,34 +37,99 @@ Solve A*x=b with the conjugate gradients method.
 
 * `maxiter::Integer = size(A,2)`: maximum number of iterations.
 
-* `verbose::Bool = false`: verbose flag.
+* `verbose::Bool = false`: print method information.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
 
 # Output
 
-* approximated solution.
+* Normal version:
+
+    * approximated solution.
+
+* `Master` version:
+
+    * `x`: approximated solution.
+    * `ch`: convergence history.
+
+## ConvergenceHistory keys
+
+* `:tol` => `::Real`: stopping tolerance.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
 
 """
 cg(A, b; kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
+cg(::Type{Master}, A, b; kwargs...) =  cg!(Master, zerox(A,b), A, b; kwargs...)
 
+
+"""
+    cg!(x, A, b)
+    cg!(x, K, b)
+    cg!(Master, x, A, b)
+    cg!(Master, x, K, b)
+
+Solve A*x=b with the conjugate gradients method and overwrite `x`.
+
+if [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+# Arguments
+
+* `x`: initial guess, overwrite final estimation.
+
+* `A`: linear operator.
+
+* `K::KrylovSubspace`: krylov subspace.
+
+* `b`: right hand side.
+
+* `Master::Type{Master}`: dispatch type.
+
+## Keywords
+
+* `Pl = 1`: left preconditioner of the method.
+
+* `tol::Real = size(A,2)*eps()`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+# Output
+
+- Normal version:
+    * approximated solution.
+
+- `Master` version:
+    * `x`: approximated solution.
+    * `ch`: convergence history.
+
+## ConvergenceHistory keys
+
+* `:tol` => `::Real`: stopping tolerance.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+"""
 function cg!(x, A, b; kwargs...)
     K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
     init!(K, x)
     cg!(x,K,b; kwargs...)
 end
-
 function cg!(x, K::KrylovSubspace, b; kwargs...)
     cg_method!(x,K,b; kwargs...)
     x
 end
-
-cg(::Type{Master}, A, b; kwargs...) =  cg!(Master, zerox(A,b), A, b; kwargs...)
-
 function cg!(::Type{Master}, x, A, b; kwargs...)
     K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
     init!(K, x)
     cg!(Master, x,K,b; kwargs...)
 end
-
 function cg!(::Type{Master}, x, K::KrylovSubspace, b;
     tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2),
     verbose::Bool=false, plot=false, Pl=1
