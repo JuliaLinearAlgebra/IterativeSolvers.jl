@@ -1,4 +1,3 @@
-
 export rsvd_fnkz
 
 immutable OuterProduct{T}
@@ -8,30 +7,39 @@ end
 
 X ⊗ Y = OuterProduct{promote_type(eltype(X), eltype(Y))}(X, Y)
 
+#TODO: Currently works only on tall and skinny A.
 """
+    rsvd_fnkz(A, k)
+
 Compute the randomized SVD by iterative refinement from randomly selected
 columns/rows.
 
-TODO: Currently works only on tall and skinny A.
+# Arguments
 
-Arguments:
+* `A`: matrix whose SVD is desired.
 
-    A: Matrix whose SVD is desired
-    k: Desired rank of approximation. Must be k ≤ min(m, n).
-    l: Number of columns/rows to sample at each iteration.
-       Must be 1 ≤ l ≤ k. Default: k
-    N: Maximum number of iterations. Default: min(size(A))
-    ϵ: Relative threshold for convergence, as measured by growth of the spectral norm.
-       Default: prod(size(A)) * eps(real(float(one(eltype(A)))))
-    method: :eig - Solve eigenproblem (Default)
-            :svd - Solve singular problem
-    verbose: If true, prints convergence information at each iteration. Default: false
+* `k::Int`: desired rank of approximation (`k ≤ min(m, n)`).
 
-Returns:
+## Keywords
 
-    S: An SVD object of rank ≤ k.
+* `l::Int = k`: number of columns/rows to sample at each iteration (`1 ≤ l ≤ k`).
 
-Reference:
+* `N::Int = minimum(size(A))`: maximum number of iterations.
+
+* `ϵ::Real = prod(size(A))*eps()`: relative threshold for convergence, as
+measured by growth of the spectral norm.
+
+* `method::Symbol = :eig`: problem to solve.
+    - `:eig`: eigenproblem.
+    - `:svd`: singular problem.
+
+* `verbose::Bool = false`: print convergence information at each iteration.
+
+# Output
+
+* SVD object of `rank ≤ k`.
+
+# References
 
 ```bibtex
 @inproceedings{,
