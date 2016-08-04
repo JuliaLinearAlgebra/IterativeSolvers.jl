@@ -4,57 +4,9 @@ export idrs, idrs!
 # API method calls #
 ####################
 
-"""
-    idrs(A, b)
-
-Solve a*x=b using the induced dimension reduction method.
-
-The Induced Dimension Reduction method is a family of simple and fast Krylov
-subspace algorithms for solving large nonsymmetric linear systems. The idea
-behind the IDR(s) variant is to generate residuals that are in the nested
-subspaces of shrinking dimensions.
-
-# Arguments
-
-* `A`: linear operator.
-
-* `b`: right hand side.
-
-## Keywords
-
-* `s` : dimension reduction number. Normally, a higher s gives faster convergence,
-but also  makes the method more expensive.
-
-* `Pl = 1`: left preconditioner of the method.
-
-* `Pr = 1`: left preconditioner of the method.
-
-* `tol::Real = sqrt(eps())`: stopping tolerance.
-
-* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
-
-* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-# References
-
-[1] IDR(s): a family of simple and fast algorithms for solving large
-    nonsymmetric linear systems. P. Sonneveld and M. B. van Gijzen
-    SIAM J. Sci. Comput. Vol. 31, No. 2, pp. 1035--1062, 2008
-[2] Algorithm 913: An Elegant IDR(s) Variant that Efficiently Exploits
-    Bi-orthogonality Properties. M. B. van Gijzen and P. Sonneveld
-    ACM Trans. Math. Software,, Vol. 38, No. 1, pp. 5:1-5:19, 2011
-[3] This file is a translation of the following MATLAB implementation:
-    http://ta.twi.tudelft.nl/nw/users/gijzen/idrs.m
-[4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
-
-"""
 idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
+idrs(::Type{Master}, A, b; kwargs...) = idrs!(Master, zerox(A,b), A, b; kwargs...)
+
 
 function idrs!(x, A, b;
     s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
@@ -63,9 +15,6 @@ function idrs!(x, A, b;
     idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; verbose=verbose)
     x
 end
-
-idrs(::Type{Master}, A, b; kwargs...) = idrs!(Master, zerox(A,b), A, b; kwargs...)
-
 function idrs!(::Type{Master}, x, A, b;
     s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
     verbose::Bool=false, plot::Bool=false
@@ -98,6 +47,12 @@ end
 
 @inline linsys_op(x, A) = A*x
 
+"""
+The Induced Dimension Reduction method is a family of simple and fast Krylov
+subspace algorithms for solving large nonsymmetric linear systems. The idea
+behind the IDR(s) variant is to generate residuals that are in the nested
+subspaces of shrinking dimensions.
+"""
 function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
     log::MethodLog=MethodLog(), verbose::Bool=false
     )
@@ -194,4 +149,96 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
     end
     setconv(log, 0<=normR<tol)
     setmvps(log, iter)
+end
+
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc_call = """    idrs(A, b)
+    idrs(Master, A, b)
+"""
+doc!_call = """    idrs!(x, A, b)
+    idrs!(Master, x, A, b)
+"""
+
+doc_msg = "Solve A*x=b using the induced dimension reduction method."
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (idrs, doc_call, doc_msg, doc_arg)
+doc!_version = (idrs!, doc!_call, doc!_msg, doc!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+@doc """
+$call
+
+$msg
+
+If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `b`: right hand side.
+
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
+
+* `Pl = 1`: left preconditioner of the method.
+
+* `Pr = 1`: left preconditioner of the method.
+
+* `tol::Real = sqrt(eps())`: stopping tolerance.
+
+* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+**Output**
+
+*Normal version:*
+
+* `x`: approximated solution.
+
+*`Master` version:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:tol` => `::Real`: stopping tolerance.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+**References**
+
+[1] IDR(s): a family of simple and fast algorithms for solving large
+    nonsymmetric linear systems. P. Sonneveld and M. B. van Gijzen
+    SIAM J. Sci. Comput. Vol. 31, No. 2, pp. 1035--1062, 2008
+[2] Algorithm 913: An Elegant IDR(s) Variant that Efficiently Exploits
+    Bi-orthogonality Properties. M. B. van Gijzen and P. Sonneveld
+    ACM Trans. Math. Software,, Vol. 38, No. 1, pp. 5:1-5:19, 2011
+[3] This file is a translation of the following MATLAB implementation:
+    http://ta.twi.tudelft.nl/nw/users/gijzen/idrs.m
+[4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
+
+""" -> func
 end

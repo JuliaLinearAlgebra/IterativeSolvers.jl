@@ -25,14 +25,14 @@ Compute randomized gaussian matrix normalized by column.
 
 ## Output
 
-- randnn(el, m):
+*Without `n`:*
 
-    * `Ω`: vector containing Gaussian random numbers of type `el`.
+* `Ω`: vector containing Gaussian random numbers of type `el`.
 
-- randnn(el, m, n):
+*With `n`:*
 
-    * `Ω`: matrix of dimensions `m` x `n` containing Gaussian random numbers of
-    type `el`.
+* `Ω`: matrix of dimensions `m` x `n` containing Gaussian random numbers of
+type `el`.
 
 """
 function randnn(el::Type, m::Int; normalize::Bool=true)

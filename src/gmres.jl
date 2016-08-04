@@ -4,45 +4,14 @@ export gmres, gmres!
 # API method calls #
 ####################
 
-"""
-    gmres(A, b)
-
-Solve A*x=b using the generalized minimal residual method with restarts.
-
-# Arguments
-
-* `A`: linear operator.
-
-* `b`: right hand side.
-
-## Keywords
-
-* `Pl = 1`: left preconditioner of the method.
-
-* `Pr = 1`: left preconditioner of the method.
-
-* `tol::Real = sqrt(eps())`: stopping tolerance.
-
-* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
-
-* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-"""
 gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
+gmres(::Type{Master}, A, b; kwargs...) = gmres!(Master, zerox(A,b), A, b; kwargs...)
+
 
 function gmres!(x, A, b; kwargs...)
     gmres_method!(x,A,b; kwargs...)
     x
 end
-
-gmres(::Type{Master}, A, b; kwargs...) = gmres!(Master, zerox(A,b), A, b; kwargs...)
-
 function gmres!(::Type{Master}, x, A, b;
     tol=sqrt(eps(typeof(real(b[1])))),
     restart::Int=min(20,length(b)), maxiter::Int=restart,
@@ -160,4 +129,84 @@ function gmres_method!(x, A, b;
     end
     setmvps(log, macroiter)
     verbose && @printf("\n")
+end
+
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc_call = """    gmres(A, b)
+    gmres(Master, A, b)
+"""
+doc!_call = """    gmres!(x, A, b)
+    gmres!(Master, x, A, b)
+"""
+
+doc_msg = "Solve A*x=b using the generalized minimal residual method with restarts."
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (gmres, doc_call, doc_msg, doc_arg)
+doc!_version = (gmres!, doc!_call, doc!_msg, doc!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+@doc """
+$call
+
+$msg
+
+If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `b`: right hand side.
+
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
+
+* `Pl = 1`: left preconditioner of the method.
+
+* `Pr = 1`: left preconditioner of the method.
+
+* `tol::Real = sqrt(eps())`: stopping tolerance.
+
+* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+**Output**
+
+*Normal version:*
+
+* `x`: approximated solution.
+
+*`Master` version:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:tol` => `::Real`: stopping tolerance.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+""" -> func
 end

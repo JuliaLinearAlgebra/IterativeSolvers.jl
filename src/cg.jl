@@ -1,121 +1,13 @@
 export cg, cg!
 
-#################
-# Documentation #
-#################
-
-
-
 ####################
 # API method calls #
 ####################
 
-"""
-    cg(A, b)
-    cg(Master, A, b)
-
-Solve A*x=b with the conjugate gradients method.
-
-if [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
-
-The `plot` attribute can only be used when using the `Master` version.
-
-# Arguments
-
-* `A`: linear operator.
-
-* `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
-
-## Keywords
-
-* `Pl = 1`: left preconditioner of the method.
-
-* `tol::Real = size(A,2)*eps()`: stopping tolerance.
-
-* `maxiter::Integer = size(A,2)`: maximum number of iterations.
-
-* `verbose::Bool = false`: print method information.
-
-* `plot::Bool = false`: plot data. (Only with `Master` version)
-
-# Output
-
-* Normal version:
-
-    * approximated solution.
-
-* `Master` version:
-
-    * `x`: approximated solution.
-    * `ch`: convergence history.
-
-## ConvergenceHistory keys
-
-* `:tol` => `::Real`: stopping tolerance.
-
-* `:resnom` => `::Vector`: residual norm at each iteration.
-
-"""
 cg(A, b; kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
 cg(::Type{Master}, A, b; kwargs...) =  cg!(Master, zerox(A,b), A, b; kwargs...)
 
 
-"""
-    cg!(x, A, b)
-    cg!(x, K, b)
-    cg!(Master, x, A, b)
-    cg!(Master, x, K, b)
-
-Solve A*x=b with the conjugate gradients method and overwrite `x`.
-
-if [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
-
-The `plot` attribute can only be used when using the `Master` version.
-
-# Arguments
-
-* `x`: initial guess, overwrite final estimation.
-
-* `A`: linear operator.
-
-* `K::KrylovSubspace`: krylov subspace.
-
-* `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
-
-## Keywords
-
-* `Pl = 1`: left preconditioner of the method.
-
-* `tol::Real = size(A,2)*eps()`: stopping tolerance.
-
-* `maxiter::Integer = size(A,2)`: maximum number of iterations.
-
-* `verbose::Bool = false`: print method information.
-
-* `plot::Bool = false`: plot data. (Only with `Master` version)
-
-# Output
-
-- Normal version:
-    * approximated solution.
-
-- `Master` version:
-    * `x`: approximated solution.
-    * `ch`: convergence history.
-
-## ConvergenceHistory keys
-
-* `:tol` => `::Real`: stopping tolerance.
-
-* `:resnom` => `::Vector`: residual norm at each iteration.
-
-"""
 function cg!(x, A, b; kwargs...)
     K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
     init!(K, x)
@@ -177,4 +69,84 @@ function cg_method!(x,K,b;
     setmvps(log, K.mvps)
     setconv(log, 0<=norm(r)<tol)
     verbose && @printf("\n")
+end
+
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc_call = """    cg(A, b)
+    cg(Master, A, b)
+"""
+doc!_call = """    cg!(x, A, b)
+    cg!(x, K, b)
+    cg!(Master, x, A, b)
+    cg!(Master, x, K, b)
+"""
+
+doc_msg = "Solve A*x=b with the conjugate gradients method."
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation.
+
+* `K::KrylovSubspace`: krylov subspace."""
+
+doc_version = (cg, doc_call, doc_msg, doc_arg)
+doc!_version = (cg!, doc!_call, doc!_msg, doc!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+@doc """
+$call
+
+$msg
+
+If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `b`: right hand side.
+
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
+
+* `Pl = 1`: left preconditioner of the method.
+
+* `tol::Real = size(A,2)*eps()`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+**Output**
+
+*Normal version:*
+
+* `x`: approximated solution.
+
+*`Master` version:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:tol` => `::Real`: stopping tolerance.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+""" -> func
 end

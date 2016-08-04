@@ -6,41 +6,15 @@ export  jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 # API method calls #
 ####################
 
-"""
-    jacobi(A, b)
-
-Solve A*x=b with the Jacobi method.
-
-# Arguments
-
-* `A::AbstractMatrix`: matrix.
-
-* `b`: right hand side.
-
-## Keywords
-
-* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
-
-* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-"""
 jacobi(A::AbstractMatrix, b; kwargs...) =
     jacobi!(zerox(A, b), A, b; kwargs...)
+jacobi(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
+    jacobi!(Master, zerox(A, b), A, b; kwargs...)
 
 function jacobi!(x, A::AbstractMatrix, b; kwargs...)
     jacobi_method!(x, A, b; kwargs...)
     x
 end
-
-jacobi(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
-    jacobi!(Master, zerox(A, b), A, b; kwargs...)
-
 function jacobi!(::Type{Master}, x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
@@ -90,41 +64,15 @@ end
 # API method calls #
 ####################
 
-"""
-    gauss_seidel(A, b)
-
-Solve A*x=b with the Gauss Seidel method.
-
-# Arguments
-
-* `A::AbstractMatrix`: matrix.
-
-* `b`: right hand side.
-
-## Keywords
-
-* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
-
-* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-"""
 gauss_seidel(A::AbstractMatrix, b; kwargs...) =
     gauss_seidel!(zerox(A, b), A, b; kwargs...)
+gauss_seidel(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
+    gauss_seidel!(Master, zerox(A, b), A, b; kwargs...)
 
 function gauss_seidel!(x, A::AbstractMatrix, b; kwargs...)
     gauss_seidel_method!(x, A, b; kwargs...)
     x
 end
-
-gauss_seidel(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
-    gauss_seidel!(Master, zerox(A, b), A, b; kwargs...)
-
 function gauss_seidel!(::Type{Master}, x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
@@ -177,43 +125,15 @@ end
 # API method calls #
 ####################
 
-"""
-    sor(A, b)
-
-Solve A*x=b with the successive overrelaxation method.
-
-# Arguments
-
-* `A::AbstractMatrix`: matrix.
-
-* `b`: right hand side.
-
-* `ω::Real`: extrapolation factor.
-
-## Keywords
-
-* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
-
-* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-"""
 sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     sor!(zerox(A, b), A, b, ω; kwargs...)
+sor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
+    sor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
 function sor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
     sor_method!(x, A, b, ω; kwargs...)
     x
 end
-
-sor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
-    sor!(Master, zerox(A, b), A, b, ω; kwargs...)
-
 function sor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     plot::Bool=false, verbose::Bool=false
@@ -268,43 +188,15 @@ end
 # API method calls #
 ####################
 
-"""
-    sor(A, b)
-
-Solve A*x=b with the symmetric successive overrelaxation method.
-
-# Arguments
-
-* `A::AbstractMatrix`: symmetric matrix.
-
-* `b`: right hand side.
-
-* `ω::Real`: extrapolation factor.
-
-## Keywords
-
-* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
-
-* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-"""
 ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     ssor!(zerox(A, b), A, b, ω; kwargs...)
+ssor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
+    ssor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
 function ssor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
     ssor_method!(x, A, b, ω; kwargs...)
     x
 end
-
-ssor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
-    ssor!(Master, zerox(A, b), A, b, ω; kwargs...)
-
 function ssor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
     plot::Bool=false, verbose::Bool=false
@@ -366,4 +258,111 @@ function ssor_method!(x, A::AbstractMatrix, b, ω::Real;
 		copy!(xold, x)
 	end
     setmvps(log, iter)
+end
+
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc1_call = """    jacobi(A, b)
+    jacobi(Master, A, b)
+"""
+doc1!_call = """    jacobi!(x, A, b)
+    jacobi!(Master, x, A, b)
+"""
+doc2_call = """    gauss_seidel(A, b)
+    gauss_seidel(Master, A, b)
+"""
+doc2!_call = """    gauss_seidel!(x, A, b)
+    gauss_seidel!(Master, x, A, b)
+"""
+doc3_call = """    sor(A, b, ω)
+    sor(Master, A, b, ω)
+"""
+doc3!_call = """    sor!(x, A, b, ω)
+    sor!(Master, x, A, b, ω)
+"""
+doc4_call = """    ssor(A, b, ω)
+    ssor(Master, A, b, ω)
+"""
+doc4!_call = """    ssor!(x, A, b, ω)
+    ssor!(Master, x, A, b, ω)
+"""
+doc1_msg = "Solve A*x=b with the Jacobi method."
+doc2_msg = "Solve A*x=b with the Gauss-Seidel method."
+doc3_msg = "Solve A*x=b with the successive overrelaxation method."
+doc4_msg = "Solve A*x=b with the symmetric successive overrelaxation method."
+doc1!_msg = "Overwrite `x`.\n\n" * doc1_msg
+doc2!_msg = "Overwrite `x`.\n\n" * doc2_msg
+doc3!_msg = "Overwrite `x`.\n\n" * doc3_msg
+doc4!_msg = "Overwrite `x`.\n\n" * doc4_msg
+doc1_arg = ""
+doc2_arg = ""
+doc3_arg = "* `shift::Number=0`: shift to be applied to matrix A."
+doc4_arg = "* `shift::Number=0`: shift to be applied to matrix A."
+doc1!_arg = "* `x`: initial guess, overwrite final estimation."
+doc2!_arg = "* `x`: initial guess, overwrite final estimation."
+doc3!_arg = "* `x`: initial guess, overwrite final estimation.\n\n$doc3_arg"
+doc4!_arg = "* `x`: initial guess, overwrite final estimation.\n\n$doc4_arg"
+
+doc1_version = (jacobi, doc1_call, doc1_msg, doc1_arg)
+doc2_version = (gauss_seidel, doc2_call, doc2_msg, doc2_arg)
+doc3_version = (sor, doc3_call, doc3_msg, doc3_arg)
+doc4_version = (ssor, doc4_call, doc4_msg, doc4_arg)
+doc1!_version = (jacobi!, doc1!_call, doc1!_msg, doc1!_arg)
+doc2!_version = (gauss_seidel!, doc2!_call, doc2!_msg, doc2!_arg)
+doc3!_version = (sor!, doc3!_call, doc3!_msg, doc3!_arg)
+doc4!_version = (ssor!, doc4!_call, doc4!_msg, doc4!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc1_version, doc2_version, doc3_version, doc4_version,
+                                doc1!_version, doc2!_version, doc3!_version, doc4!_version]
+@doc """
+$call
+
+$msg
+
+If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
+
+* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
+
+* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+**Output**
+
+*Normal version:*
+
+* `x`: approximated solution.
+
+*`Master` version:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:tol` => `::Real`: stopping tolerance.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+""" -> func
 end

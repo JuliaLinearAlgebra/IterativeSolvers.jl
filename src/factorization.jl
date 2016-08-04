@@ -12,7 +12,7 @@ An interpolative decomposition.
 For a matrix `A`, the interpolative decomposition `F` contains the matrices `B`
 and `P` computed by `idfact()`. See the documentation of `idfact()` for details.
 
-# References:
+**References**:
 
 \cite{Cheng2005, Liberty2007}
 
@@ -33,7 +33,7 @@ Where:
 no entry of `P` exceeds magnitude 2, and
 - ||B * P - A|| ≲ σ(A, k+1), the (`k+1`)st singular value of `A`.
 
-# Arguments
+**Arguments**
 
 * `A`: Matrix to factorize
 
@@ -41,11 +41,11 @@ no entry of `P` exceeds magnitude 2, and
 
 * `l::Int`: Length of random vectors to project onto
 
-# Output
+**Output**
 
 * `(::Interpolative)`: interpolative decomposition.
 
-# Implementation note:
+**Implementation note**:
 
 This is a hacky version of the algorithms described in \cite{Liberty2007}
 and \cite{Cheng2005}. The former refers to the factorization (3.1) of the
@@ -60,7 +60,7 @@ The approximation we use here is to compute the column pivots of Y,
 rather then use the true column pivots as would be computed by a column-
 pivoted QR process.
 
-# Reference:
+**References**
 
 \cite[Algorithm I]{Liberty2007}
 

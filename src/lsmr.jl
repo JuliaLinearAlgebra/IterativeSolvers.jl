@@ -6,54 +6,13 @@ using Base.LinAlg
 # API method calls #
 ####################
 
-"""
-    lsmr(A, b)
-
-Minimize ||Ax-b||^2 + λ^2 ||x||^2 for A*x=b.
-
-The method is based on the Golub-Kahan bidiagonalization process. It is
-algebraically equivalent to applying MINRES to the normal equation (ATA+λ2I)x=ATb,
-but has better numerical properties, especially if A is ill-conditioned.
-
-# Arguments
-
-* `A`: linear operator.
-
-* `b`: right hand side.
-
-## Keywords
-
-* `λ::Number = 0`: lambda.
-
-* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
-1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
-(The final x will usually have fewer correct digits,
-depending on cond(A) and the size of damp).
-
-* `conlim::Number = 1e8`: stopping tolerance.  lsqr terminates if an estimate
-of cond(A) exceeds conlim.  For compatible systems Ax = b,
-conlim could be as large as 1.0e+12 (say).  For least-squares
-problems, conlim should be less than 1.0e+8.
-Maximum precision can be obtained by setting
-atol = btol = conlim = zero, but the number of iterations
-may then be excessive.
-
-* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-# References
-
-Adapted from: http://web.stanford.edu/group/SOL/software/lsmr/
-
-"""
 function lsmr(A, b; kwargs...)
     lsmr!(zerox(A, b), A, b; kwargs...)
 end
+function lsmr(::Type{Master}, A, b; kwargs...)
+    lsmr!(Master, zerox(A, b), A, b; kwargs...)
+end
+
 
 function lsmr!(x, A, b; kwargs...)
     T = Adivtype(A, b)
@@ -64,11 +23,6 @@ function lsmr!(x, A, b; kwargs...)
     lsmr_method!(x, A, btmp, v, h, hbar; kwargs...)
     x
 end
-
-function lsmr(::Type{Master}, A, b; kwargs...)
-    lsmr!(Master, zerox(A, b), A, b; kwargs...)
-end
-
 function lsmr!(::Type{Master}, x, A, b;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
     maxiter::Integer = max(size(A,1), size(A,2)), plot::Bool=false, kwargs...
@@ -289,4 +243,109 @@ for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
             BLAS.gemm!($symbol, 'N', convert(eltype(y), α), A, x, convert(eltype(y), β), y)
         end
     end
+end
+
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc_call = """    lsmr(A, b)
+    lsmr(Master, A, b)
+"""
+doc!_call = """    lsmr!(x, A, b)
+    lsmr!(Master, x, A, b)
+"""
+
+doc_msg = "Minimize ||Ax-b||^2 + λ^2 ||x||^2 for A*x=b.\n"
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (lsmr, doc_call, doc_msg, doc_arg)
+doc!_version = (lsmr!, doc!_call, doc!_msg, doc!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+@doc """
+$call
+
+$msg
+
+The method is based on the Golub-Kahan bidiagonalization process. It is
+algebraically equivalent to applying MINRES to the normal equation (ATA+λ2I)x=ATb,
+but has better numerical properties, especially if A is ill-conditioned.
+
+If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `b`: right hand side.
+
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
+
+* `λ::Number = 0`: lambda.
+
+* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+(The final `x` will usually have fewer correct digits,
+depending on `cond(A)` and the size of damp).
+
+* `conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
+of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
+conlim could be as large as 1.0e+12 (say).  For least-squares
+problems, conlim should be less than 1.0e+8.
+Maximum precision can be obtained by setting
+`atol` = `btol` = `conlim` = zero, but the number of iterations
+may then be excessive.
+
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+**Output**
+
+*Normal version:*
+
+* `x`: approximated solution.
+
+*`Master` version:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:atol` => `::Real`: atol stopping tolerance.
+
+* `:btol` => `::Real`: btol stopping tolerance.
+
+* `:ctol` => `::Real`: ctol stopping tolerance.
+
+* `:anorm` => `::Real`: anorm.
+
+* `:rnorm` => `::Real`: rnorm.
+
+* `:cnorm` => `::Real`: cnorm.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+**References**
+
+Adapted from: http://web.stanford.edu/group/SOL/software/lsmr/
+
+""" -> func
 end

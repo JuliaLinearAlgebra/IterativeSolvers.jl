@@ -28,7 +28,7 @@ abstract MethodLog
 Placeholder to put inside an iterative method instead of `ConvergenceHistory`
 for not wasting memory. Doesn't actually store any kind of information.
 
-# Implements
+**Implements**
 
 * `Base`: `setindex!`, `push!`
 
@@ -40,7 +40,7 @@ type DummyHistory <: MethodLog end
 
 Store general and in-depth information about an iterative method.
 
-# Fields
+**Fields**
 
 * `mvps::Int`: number of matrix vector products.
 
@@ -59,23 +59,23 @@ Store general and in-depth information about an iterative method.
 * `data::Dict{Symbol, VecOrMat}`: iteration information of a method. It usually
 contains residuals, but can have other information, e.g. ritz values in [svdl](@ref).
 
-# Constructors
+**Constructors**
 
     ConvergenceHistory()
     ConvergenceHistory(restart)
 
 Create `ConvergenceHistory` with empty fields.
 
-# Arguments
+**Arguments**
 
 * `restart`: number of iterations per restart.
 
-# Plots
+**Plots**
 
 Supports plots using the `Plots.jl` package via a type recipe. Vectors are
 ploted as series and matrices as scatterplots.
 
-# Implements
+**Implements**
 
 * `Base`: `getindex`, `setindex!`, `push!`
 
@@ -140,7 +140,7 @@ push!(ch::ConvergenceHistory, key::Symbol, val) = ch.data[key][ch.iters] = val
 Reserve space for per iteration data in `ch`. If size is provided, intead of a
 vector it will reserve matrix of dimensions `(maxiter, size)`.
 
-# Arguments
+**Arguments**
 
 * `ch::ConvergenceHistory`: convergence history.
 
@@ -150,7 +150,7 @@ vector it will reserve matrix of dimensions `(maxiter, size)`.
 
 * `size::Int`: number of elements to store with the `key` identifier.
 
-## Keywords
+*Keywords*
 
 * `T::Type=Float64`: type of the elements to store.
 

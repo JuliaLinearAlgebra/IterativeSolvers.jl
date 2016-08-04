@@ -6,32 +6,7 @@ export eiglancz
 # API method calls #
 ####################
 
-"""
-    eiglancz(A)
-
-Find the most useful eigenvalues using the lanczos method.
-
-# Arguments
-
-* `A`: linear operator.
-
-## Keywords
-
-* `neigs::Int = size(A,1)`: number of eigen values.
-
-* `tol::Real = size(A,1)^3*eps()`: stopping tolerance.
-
-* `maxiter::Integer=size(A,1)`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* (::Vector): eigen values.
-
-"""
 eiglancz(A; kwargs...) = eiglancz_method(A; kwargs...)
-
 function eiglancz(::Type{Master}, A;
     maxiter::Integer=size(A,1), plot::Bool=false,
     tol::Real = size(A,1)^3*eps(real(eltype(A))), kwargs...
@@ -84,4 +59,63 @@ function eiglancz_method(A;
     setmvps(log, K.mvps)
     verbose && @printf("\n")
     e1
+end
+
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc_call = """    eiglancz(A)
+"""
+
+doc_msg = "Find the most useful eigenvalues using the lanczos method."
+
+doc_arg = ""
+
+doc_version = (eiglancz, doc_call, doc_msg, doc_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version]
+@doc """
+$call
+
+$msg
+
+If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
+
+* `neigs::Int = size(A,1)`: number of eigen values.
+
+* `tol::Real = size(A,1)^3*eps()`: stopping tolerance.
+
+* `maxiter::Integer=size(A,1)`: maximum number of iterations.
+
+* `verbose::Bool = false`: verbose flag.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+**Output**
+
+* `::Vector`: eigen values.
+
+*ConvergenceHistory keys*
+
+* `:tol` => `::Real`: stopping tolerance.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+""" -> func
 end

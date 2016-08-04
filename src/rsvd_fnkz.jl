@@ -14,13 +14,13 @@ X ⊗ Y = OuterProduct{promote_type(eltype(X), eltype(Y))}(X, Y)
 Compute the randomized SVD by iterative refinement from randomly selected
 columns/rows.
 
-# Arguments
+**Arguments**
 
 * `A`: matrix whose SVD is desired.
 
 * `k::Int`: desired rank of approximation (`k ≤ min(m, n)`).
 
-## Keywords
+*Keywords*
 
 * `l::Int = k`: number of columns/rows to sample at each iteration (`1 ≤ l ≤ k`).
 
@@ -35,11 +35,11 @@ measured by growth of the spectral norm.
 
 * `verbose::Bool = false`: print convergence information at each iteration.
 
-# Output
+**Output**
 
 * SVD object of `rank ≤ k`.
 
-# References
+**References**
 
 ```bibtex
 @inproceedings{,

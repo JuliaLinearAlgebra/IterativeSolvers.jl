@@ -14,7 +14,7 @@ Matrix of the form
                    ...  e_k-1
                         d_k
 
-# Implements
+**Implements**
 
 * Base: size, getindex, full, svdfact
 
@@ -90,16 +90,19 @@ end
 ####################
 
 """
+    svdl(A)
     svdl(Master, A)
 
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
 bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 
-# Arguents
+**Arguents**
 
 * `A` : The matrix or matrix-like object whose singular values are desired.
 
-## Keywords
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
 
 * `nsv::Int = 6`: number of singular values requested.
 
@@ -121,10 +124,12 @@ We don't recommend j < nsv.
 estimated norm of the input matrix.
 
 * `method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
+
     - `:ritz`: Thick restart with Ritz values [Wu2000].
     - `:harmonic`: Restart with harmonic Ritz values [Baglama2005].
 
 * `vecs::Symbol = :none`: singular vectors to return.
+
     - `:both`: Both left and right singular vectors are returned.
     - `:left`: Only the left singular vectors are returned.
     - `:right`: Only the right singular vectors are returned.
@@ -133,20 +138,26 @@ estimated norm of the input matrix.
 * `dolock::Bool=false`: If `true`, locks converged Ritz values, removing them
 from the Krylov subspace being searched in the next macroiteration.
 
-# Output
+**Output**
 
 * `Σ`: list of the desired singular values if `vecs == :none` (the default),
     otherwise returns an `SVD` object with the desired singular vectors filled in.
 
 * `L`: computed partial factorizations of A.
 
-* `ch::ConvergenceHistory`:
-    - `:betas` => `betas`: The history of the computed betas.
-    - `:Bs` => `Bs`: The history of the computed projected matrices.
-    - `:ritz` => `ritzvalhist`: Ritz values computed at each iteration.
-    - `:conv` => `convhist`: Convergence data.
+* `ch::ConvergenceHistory`: convergence history.
 
-# Implementation notes
+*ConvergenceHistory keys*
+
+* `:betas` => `betas`: The history of the computed betas.
+
+* `:Bs` => `Bs`: The history of the computed projected matrices.
+
+* `:ritz` => `ritzvalhist`: Ritz values computed at each iteration.
+
+* `:conv` => `convhist`: Convergence data.
+
+**Implementation notes**
 
 The implementation of thick restarting follows closely that of SLEPc as
 described in [Hernandez2008]. Thick restarting can be turned off by setting `k
@@ -157,7 +168,7 @@ product of the Lanczos vectors `L.P`/`L.Q` and the singular vectors of `L.B`.
 Additional accuracy in the singular triples can be obtained using inverse
 iteration.
 
-# References
+**References**
 
 ```bibtex
 @article{Golub1965,
@@ -208,7 +219,6 @@ iteration.
 
 """
 svdl(A; kwargs...) = svdl_method(A; kwargs...)
-
 function svdl(::Type{Master}, A;
     tol::Real=√eps(), plot::Bool=false, nsv::Int=6, k::Int=2nsv,
     maxiter::Int=minimum(size(A)), method::Symbol=:ritz, kwargs...
@@ -313,7 +323,7 @@ end
 
 Determine if any singular values in a partial factorization have converged.
 
-# Arguments
+**Arguments**
 
 * `L::PartialFactorization` : a `PartialFactorization` computed by an iterative
 method such as `svdl`.
@@ -328,7 +338,7 @@ method such as `svdl`.
 
 * `verbose::Bool = false`: if `true`, prints out all the results of convergence tests.
 
-# Implementation notes
+**Implementation note**
 
 This convergence test routine uses a variety of different tests.
 
@@ -463,7 +473,7 @@ end
 """
     build(A, q, k)
 
-# References
+**References**
 
 \cite{Hernandez2008}
 
@@ -487,7 +497,7 @@ end
 
 Thick restart (with ordinary Ritz values).
 
-# Reference
+**References**
 
 [Hernandez2008]
 
@@ -528,7 +538,7 @@ end
 
 Thick restart with harmonic Ritz values.
 
-# Reference
+**References**
 
 [Baglama2005] - note that they have P and Q swapped relative to our notation,
 which follows that of [Hernandez2008]
@@ -618,7 +628,7 @@ end
 Extend a PartialFactorization L using GKL bidiagonalization with k extra pairs
 of Lanczos vectors.
 
-# Arguments
+**Arguments**
 
 * `A`: matrix or linear map generating the Lanczos vectors
 
@@ -630,7 +640,7 @@ of Lanczos vectors.
 
 * `α::Real = 1/√2`: criterion for doing a second reorthogonalization.
 
-# Implementation notes
+**Implementation note**
 
 The implementation mostly follows the description in [Simon2000,Hernandez2008].
 

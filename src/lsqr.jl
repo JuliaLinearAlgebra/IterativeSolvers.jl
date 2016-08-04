@@ -4,71 +4,14 @@ export lsqr, lsqr!
 # API method calls #
 ####################
 
-"""
-    lsqr(A, b)
-
-LSQR solves Ax = b or min ||b - Ax||^2 if damp = 0,
-or   min ||(b) - (  A   )x||   otherwise.
-         ||(0)   (damp*I) ||^2
-
-The method is based on the Golub-Kahan bidiagonalization process.
-It is algebraically equivalent to applying CG to the normal equation (ATA+λ2I)x=ATb,
-but has better numerical properties, especially if A is ill-conditioned.
-
-# Arguments
-
-* `A`: linear operator.
-
-* `b`: right hand side.
-
-## Keywords
-
-* `λ::Number = 0`: lambda.
-
-* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
-1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
-(The final x will usually have fewer correct digits,
-depending on cond(A) and the size of damp).
-
-* `conlim::Number = 1e8`: stopping tolerance.  lsqr terminates if an estimate
-of cond(A) exceeds conlim.  For compatible systems Ax = b,
-conlim could be as large as 1.0e+12 (say).  For least-squares
-problems, conlim should be less than 1.0e+8.
-Maximum precision can be obtained by setting
-atol = btol = conlim = zero, but the number of iterations
-may then be excessive.
-
-* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-
-* `verbose::Bool = false`: verbose flag.
-
-# Output
-
-* approximated solution.
-
-# References
-
-Adapted from: http://web.stanford.edu/group/SOL/software/lsqr/
-
-1. C. C. Paige and M. A. Saunders (1982a).
-    LSQR: An algorithm for sparse linear equations and sparse least squares,
-    ACM TOMS 8(1), 43-71.
-2. C. C. Paige and M. A. Saunders (1982b).
-    Algorithm 583.  LSQR: Sparse linear equations and least squares problems,
-    ACM TOMS 8(2), 195-209.
-3. M. A. Saunders (1995).  Solution of sparse rectangular systems using
-    LSQR and CRAIG, BIT 35, 588-604.
-
-"""
 lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
+lsqr(::Type{Master}, A, b; kwargs...) = lsqr!(Master, zerox(A, b), A, b; kwargs...)
+
 
 function lsqr!(x, A, b; kwargs...)
     lsqr_method!(x, A, b; kwargs...)
     x
 end
-
-lsqr(::Type{Master}, A, b; kwargs...) = lsqr!(Master, zerox(A, b), A, b; kwargs...)
-
 function lsqr!(::Type{Master}, x, A, b;
     atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
     conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
@@ -282,4 +225,121 @@ function lsqr_method!(x, A, b;
     end
     setmvps(log, 2*itn+2)
     setconv(log, istop > 0)
+end
+
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc_call = """    lsqr(A, b)
+    lsqr(Master, A, b)
+"""
+doc!_call = """    lsqr!(x, A, b)
+    lsqr!(Master, x, A, b)
+"""
+
+doc_msg = """LSQR solves Ax = b or min ||b - Ax||^2 if damp = 0,
+or   min ||(b) - (  A   )x||   otherwise.
+         ||(0)   (damp*I) ||^2.
+"""
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (lsqr, doc_call, doc_msg, doc_arg)
+doc!_version = (lsqr!, doc!_call, doc!_msg, doc!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+@doc """
+$call
+
+$msg
+
+The method is based on the Golub-Kahan bidiagonalization process.
+It is algebraically equivalent to applying CG to the normal equation (ATA+λ2I)x=ATb,
+but has better numerical properties, especially if A is ill-conditioned.
+
+If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
+[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when using the `Master` version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `b`: right hand side.
+
+* `Master::Type{Master}`: dispatch type.
+
+*Keywords*
+
+* `λ::Number = 0`: lambda.
+
+* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+(The final `x` will usually have fewer correct digits,
+depending on `cond(A)` and the size of damp).
+
+* `conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
+of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
+conlim could be as large as 1.0e+12 (say).  For least-squares
+problems, conlim should be less than 1.0e+8.
+Maximum precision can be obtained by setting
+`atol` = `btol` = `conlim` = zero, but the number of iterations
+may then be excessive.
+
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `plot::Bool = false`: plot data. (Only with `Master` version)
+
+**Output**
+
+*Normal version:*
+
+* `x`: approximated solution.
+
+*`Master` version:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:atol` => `::Real`: atol stopping tolerance.
+
+* `:btol` => `::Real`: btol stopping tolerance.
+
+* `:ctol` => `::Real`: ctol stopping tolerance.
+
+* `:anorm` => `::Real`: anorm.
+
+* `:rnorm` => `::Real`: rnorm.
+
+* `:cnorm` => `::Real`: cnorm.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+**References**
+
+Adapted from: http://web.stanford.edu/group/SOL/software/lsqr/
+
+1. C. C. Paige and M. A. Saunders (1982a).
+    LSQR: An algorithm for sparse linear equations and sparse least squares,
+    ACM TOMS 8(1), 43-71.
+2. C. C. Paige and M. A. Saunders (1982b).
+    Algorithm 583.  LSQR: Sparse linear equations and least squares problems,
+    ACM TOMS 8(2), 195-209.
+3. M. A. Saunders (1995).  Solution of sparse rectangular systems using
+    LSQR and CRAIG, BIT 35, 588-604.
+
+""" -> func
 end

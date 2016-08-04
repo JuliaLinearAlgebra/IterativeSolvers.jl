@@ -8,7 +8,7 @@ export ConvergenceHistory, KrylovSubspace
 Collection of information on the Krylov subspace generated over the
 course of an iterative Krylov solver.
 
-# Fields
+**Fields**
 
 * `A`: linear operator that generating the subspace.
 
@@ -20,7 +20,7 @@ course of an iterative Krylov solver.
 
 * `mvps::Int`: count of matrix-vector products.
 
-# Constructors
+**Constructors**
 
     KrylovSubspace(A, order)
     KrylovSubspace(A, n, order)
@@ -29,7 +29,7 @@ course of an iterative Krylov solver.
 
 Create new `KrylovSubspace`.
 
-## Arguments
+#**Arguments**
 
 * `T::Type`: type of the elements inside the Krylov vectors (eltype(v)).
 
@@ -40,7 +40,7 @@ Create new `KrylovSubspace`.
 
 Reset given `KrylovSubspace` `A`.
 
-## Arguments
+#**Arguments**
 
 * `K::KrylovSubspace`: Krylov subspace to reset.
 
@@ -98,11 +98,11 @@ end
 
 Get last vector computed in the Krylov subspace `K`.
 
-# Arguments
+**Arguments**
 
 * `K::KrylovSubspace`: Krylov subspace.
 
-# Output
+**Output**
 
 * `::Vector`: last vector.
 
@@ -115,11 +115,11 @@ lastvec(K::KrylovSubspace) = K.v[end]
 
 Compute next vector in the Krylov subspace `K`.
 
-# Arguments
+**Arguments**
 
 * `K::KrylovSubspace`: Krylov subspace.
 
-# Output
+**Output**
 
 * `::Vector`: next vector.
 
@@ -134,7 +134,7 @@ end
 
 Append `normalize(w)` vector to krylob subspace `K`.
 
-# Arguments
+**Arguments**
 
 * `K::KrylovSubspace`: Krylov subspace.
 
@@ -148,7 +148,7 @@ appendunit!{T}(K::KrylovSubspace{T}, w::Vector{T}) = append!(K, w/norm(w))
 
 Initialize the Krylov subspace `K` with a random unit vector.
 
-# Arguments
+**Arguments**
 
 * `K::KrylovSubspace`: Krylov subspace.
 
@@ -162,7 +162,7 @@ end
 
 Initialize the KrylovSubspace K with a specified nonunit vector.
 
-# Arguments
+**Arguments**
 
 * `K::KrylovSubspace`: Krylov subspace.
 
@@ -180,7 +180,7 @@ end
 Orthogonalize a vector `v` against the last `p` basis vectors defined by the
 Krylov subspace `K`.
 
-# Arguments
+**Arguments**
 
 * `v::Vector`: vector to orthogonalize.
 
@@ -188,7 +188,7 @@ Krylov subspace `K`.
 
 * `p::Int=K.order`: last `p` remembered vectors.
 
-## Keywords
+#*Keywords*
 
 * `method::Symbol=:ModifiedGramSchmidt`: orthogonalization method. Choose from:
     - `:GramSchmidt`: Gram Schmidt method.
@@ -197,7 +197,7 @@ Krylov subspace `K`.
 
 * `normalize::Bool=false`: normalize vector.
 
-# Output
+**Output**
 
 * `::Vector`: orthogonalized vector.
 
@@ -235,13 +235,13 @@ end
 
 Compute a linear combination of Krylov vectors.
 
-# Arguments
+**Arguments**
 
 * `a::Vector`: initial vector.
 
 * `K::KrylovSubspace`: Krylov subspace.
 
-# Output
+**Output**
 
 * `::Vector`: vector in the Krylov basis.
 
