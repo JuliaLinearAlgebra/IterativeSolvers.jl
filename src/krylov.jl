@@ -230,22 +230,6 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
     v, cs
 end
 
-"""
-    init!(a, K)
-
-Compute a linear combination of Krylov vectors.
-
-**Arguments**
-
-* `a::Vector`: initial vector.
-
-* `K::KrylovSubspace`: Krylov subspace.
-
-**Output**
-
-* `::Vector`: vector in the Krylov basis.
-
-"""
 function *(a::AbstractVector, K::KrylovSubspace)
     N = length(a)
     N==length(K.v) && throw(DimensionMismatch("Tried to compute linear combination of $N Krylov vectors but only $(length(K.v)) are present."))

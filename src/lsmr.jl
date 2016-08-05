@@ -343,9 +343,5 @@ may then be excessive.
 
 * `:resnom` => `::Vector`: residual norm at each iteration.
 
-**References**
-
-Adapted from: http://web.stanford.edu/group/SOL/software/lsmr/
-
 """ -> func
 end
