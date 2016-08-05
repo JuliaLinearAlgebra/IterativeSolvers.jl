@@ -188,7 +188,7 @@ Krylov subspace `K`.
 
 * `p::Int=K.order`: last `p` remembered vectors.
 
-#*Keywords*
+*Keywords*
 
 * `method::Symbol=:ModifiedGramSchmidt`: orthogonalization method. Choose from:
     - `:GramSchmidt`: Gram Schmidt method.
