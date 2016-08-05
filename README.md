@@ -12,6 +12,7 @@
 ## Resources
 
 - [Manual](https://lopezm94.github.io/IterativeSolvers.jl)
+- [Benchmarks](https://lopezm94.github.io/IterativeSolvers.jl/benchmarks)
 - [Contributing](https://lopezm94.github.io/IterativeSolvers.jl/about/contributing)
 
 ## Installing
