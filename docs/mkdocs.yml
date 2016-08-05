@@ -29,6 +29,7 @@ docs_dir: 'build'
 pages:
     - Home: index.md
     - Manual: user_manual.md
+    - Benchmarks: benchmarks.md
     - Library:
         - Public: library/public.md
         - Internal: library/internal.md

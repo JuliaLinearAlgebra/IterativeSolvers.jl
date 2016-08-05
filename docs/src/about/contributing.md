@@ -24,5 +24,4 @@ Pkg.dir("IterativeSolvers")
 
 Once there you will notice you are on the master branch, whenever a package is
 imported Julia will use the code in the current branch, this means checking out
-other git branches will let you use/test whatever there is. The rest can be done
-with your git skills.
+other git branches will let you use/test whatever there is.
