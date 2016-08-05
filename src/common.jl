@@ -1,6 +1,6 @@
 import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
         ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
-export  A_mul_B, niters, products, tolkeys, datakeys, nrestarts, setindex!,
+export  A_mul_B, niters, nprods, tolkeys, datakeys, nrests, setindex!,
         getindex, last, Master
 
 """
@@ -180,36 +180,36 @@ function shrink!(ch::ConvergenceHistory)
 end
 
 """
-    products(ch)
+    nprods(ch)
 
 Number of matrix-vector products plus transposed matrix-vector products
 logged in [`ConvergenceHistory`](@ref) `ch`.
 """
-products(ch::ConvergenceHistory) = ch.mvps+ch.mtvps
+nprods(ch::ConvergenceHistory) = ch.mvps+ch.mtvps
 
 """
-    products(ch)
+    niters(ch)
 
 Number of iterations logged in [`ConvergenceHistory`](@ref) `ch`.
 """
 niters(ch::ConvergenceHistory) = ch.iters
 
 """
-    products(ch)
+    nrests(ch)
 
 Number of restarts logged in [`ConvergenceHistory`](@ref) `ch`.
 """
-nrestarts(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
+nrests(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
 
 """
-    products(ch)
+    tolkeys(ch)
 
 Key iterator of the tolerances logged in [`ConvergenceHistory`](@ref) `ch`.
 """
 tolkeys(ch::ConvergenceHistory) = keys(ch.tol)
 
 """
-    products(ch)
+    datakeys(ch)
 
 Key iterator of the per iteration data logged in [`ConvergenceHistory`](@ref) `ch`.
 """
@@ -251,7 +251,7 @@ nextiter!(ch::ConvergenceHistory) = ch.iters+=1
 
 #Recipes
 #See Plots.jl tutorial on recipes
-@recipe function chef(ch::ConvergenceHistory)
+@recipe function chef(ch::ConvergenceHistory; sep = :white)
     candidates = collect(values(ch.data))
     plotables = map(plotable, candidates)
     n = length(filter(identity, plotables))
@@ -267,12 +267,12 @@ nextiter!(ch::ConvergenceHistory) = ch.iters+=1
         end
         if isa(ch, RestartedHistory)
             label := ""
-            linecolor := :white
+            linecolor := sep
 
             left=1
             maxy = round(maximum(draw),2)
             miny = round(minimum(draw),2)
-            for restart in 2:nrestarts(ch)
+            for restart in 2:nrests(ch)
                 @series begin
                     left+=ch.restart
                     subplot := frame
@@ -284,7 +284,7 @@ nextiter!(ch::ConvergenceHistory) = ch.iters+=1
     end
 end
 
-@recipe function chef(ch::ConvergenceHistory, name::Symbol)
+@recipe function chef(ch::ConvergenceHistory, name::Symbol; sep = :white)
     draw = ch[name]
     plotable(draw) || error("Not plotable")
     isa(draw, Vector) && (seriestype-->:line; label-->"$name")
@@ -294,12 +294,12 @@ end
     end
     if isa(ch, RestartedHistory)
         label := ""
-        linecolor := :white
+        linecolor := sep
 
         left=1
         maxy = round(maximum(draw),2)
         miny = round(minimum(draw),2)
-        for restart in 2:nrestarts(ch)
+        for restart in 2:nrests(ch)
             @series begin
                 left+=ch.restart
                 [left,left],[miny,maxy]

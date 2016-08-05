@@ -29,7 +29,7 @@ course of an iterative Krylov solver.
 
 Create new `KrylovSubspace`.
 
-#**Arguments**
+**Arguments**
 
 * `T::Type`: type of the elements inside the Krylov vectors (eltype(v)).
 
@@ -40,11 +40,11 @@ Create new `KrylovSubspace`.
 
 Reset given `KrylovSubspace` `A`.
 
-#**Arguments**
+**Arguments**
 
 * `K::KrylovSubspace`: Krylov subspace to reset.
 
-# Implements
+**Implements**
 
 * `Base`: `append!`, `eye`, `size`.
 

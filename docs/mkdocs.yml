@@ -28,8 +28,7 @@ docs_dir: 'build'
 
 pages:
     - Home: index.md
-    - Manual:
-        - A: user_manual/c.md
+    - Manual: user_manual.md
     - Library:
         - Public: library/public.md
         - Internal: library/internal.md

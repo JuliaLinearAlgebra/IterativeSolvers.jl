@@ -16,7 +16,7 @@ Matrix of the form
 
 **Implements**
 
-* Base: size, getindex, full, svdfact
+* `Base`: `size`, `getindex`, `full`, `svdfact`
 
 """
 type BrokenArrowBidiagonal{T} <: AbstractMatrix{T}
