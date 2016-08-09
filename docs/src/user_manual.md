@@ -76,22 +76,24 @@ etc.
 
 * `Pr`: right preconditioner. (When applicable)
 
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
 * `plot`: plot information relevant to the method. (Only for `Master` version)
 
-### Master version
+### `log` keyword
 
-All solvers supply a master version. This is to be used when obtaining
-more information is required, to use it place the [`Master`](@ref)
-type as first argument in a solver call.
+All solvers contain the `log` keyword. This is to be used when obtaining
+more information is required, to use it place the set `log` to `true`.
 
 ```julia
-x, ch = cg(Master, rand(10, 10), rand(10))
-svd, L, ch = svdl(Master, rand(100, 100), plot=true)
+x, ch = cg(Master, rand(10, 10), rand(10) log=true)
+svd, L, ch = svdl(Master, rand(100, 100), plot=true, log=true)
 ```
 
 The function will now return one more parameter of type [`ConvergenceHistory`](@ref).
 
-*`Note:`*  Keyword argument `plot` is only available on the `Master` version.
+*`Note:`*  Keyword argument `plot` is only available when `log` is set.
 
 ## ConvergenceHistory
 
@@ -153,7 +155,7 @@ plot(ch)
 The other one to plot data binded to a key.
 
 ```julia
-_, ch = gmres(Master, rand(10,10), rand(10), maxiter = 100)
+_, ch = gmres(rand(10,10), rand(10), maxiter = 100, log=true)
 plot(ch, :resnorm, sep = :blue)
 ```
 
@@ -164,14 +166,29 @@ plot(ch, :resnorm, sep = :blue)
 ## KrylovSubspace
 
 When [`KrylovSubspace`](@ref) is supported by the method, `A` can be replaced
-by an instance `K` of it.
+by an instance `K` of it. To check if a certain function supports it use  
+`methods` or `?` to find out, if there is a `K` in the argument list then it does.
 
 ```julia
-cg(K, b)
-cg!(x, K, b)
+julia> ?cg!
 
-powm(K)
-powm(Master, K)
+    cg!(x, A, b)
+    cg!(x, K, b)
+
+    ...
+```
+
+`KrylovSubspace` is only allowed on functions that accept `x` as an argument,
+that's why `cg` doesn't allow it. This is also true when `x` is a keyword as
+is the case of `powm`.
+
+```julia
+julia> ?cg!
+
+    powm(A)
+    powm(K)
+
+    ...
 ```
 
 The `KrylovSubspace` type collects information on the Krylov subspace generated
