@@ -9,41 +9,37 @@ using Base.LinAlg
 function lsmr(A, b; kwargs...)
     lsmr!(zerox(A, b), A, b; kwargs...)
 end
-function lsmr(::Type{Master}, A, b; kwargs...)
-    lsmr!(Master, zerox(A, b), A, b; kwargs...)
-end
 
-
-function lsmr!(x, A, b; kwargs...)
-    T = Adivtype(A, b)
-    m, n = size(A, 1), size(A, 2)
-    btmp = similar(b, T)
-    copy!(btmp, b)
-    v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
-    lsmr_method!(x, A, btmp, v, h, hbar; kwargs...)
-    x
-end
-function lsmr!(::Type{Master}, x, A, b;
+function lsmr!(x, A, b;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
-    maxiter::Integer = max(size(A,1), size(A,2)), plot::Bool=false, kwargs...
+    maxiter::Integer = max(size(A,1), size(A,2)), plot::Bool=false, log::Bool=false,
+    kwargs...
     )
-    log = ConvergenceHistory()
-    log[:atol] = atol
-    log[:btol] = btol
-    reserve!(log,:anorm,maxiter)
-    reserve!(log,:rnorm,maxiter)
-    reserve!(log,:cnorm,maxiter)
+    if log
+        history = ConvergenceHistory()
+        history[:atol] = atol
+        history[:btol] = btol
+        reserve!(history,:anorm,maxiter)
+        reserve!(history,:rnorm,maxiter)
+        reserve!(history,:cnorm,maxiter)
+    else
+        history = DummyHistory()
+    end
     T = Adivtype(A, b)
     m, n = size(A, 1), size(A, 2)
     btmp = similar(b, T)
     copy!(btmp, b)
     v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
     lsmr_method!(x, A, btmp, v, h, hbar;
-        atol=atol,btol=btol,conlim=conlim,maxiter=maxiter,log=log,kwargs...
+        atol=atol,btol=btol,conlim=conlim,maxiter=maxiter,log=history,kwargs...
         )
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -251,10 +247,8 @@ end
 
 #Initialize parameters
 doc_call = """    lsmr(A, b)
-    lsmr(Master, A, b)
 """
 doc!_call = """    lsmr!(x, A, b)
-    lsmr!(Master, x, A, b)
 """
 
 doc_msg = "Minimize ||Ax-b||^2 + λ^2 ||x||^2 for A*x=b.\n"
@@ -277,10 +271,10 @@ The method is based on the Golub-Kahan bidiagonalization process. It is
 algebraically equivalent to applying MINRES to the normal equation (ATA+λ2I)x=ATb,
 but has better numerical properties, especially if A is ill-conditioned.
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
@@ -289,8 +283,6 @@ $arg
 * `A`: linear operator.
 
 * `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -313,15 +305,18 @@ may then be excessive.
 
 * `verbose::Bool = false`: print method information.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-*Normal version:*
+*`log` is `false`:*
 
 * `x`: approximated solution.
 
-*`Master` version:*
+*`log` is `true`:*
 
 * `x`: approximated solution.
 

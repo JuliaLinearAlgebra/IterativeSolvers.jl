@@ -1,14 +1,7 @@
 import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
         ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
 export  A_mul_B, niters, nprods, tolkeys, datakeys, nrests, setindex!,
-        getindex, last, Master
-
-"""
-    Master
-
-Dispatch iterative methods to return `(x, ch)`.
-"""
-type Master end
+        getindex, last
 
 # Improve readability of iterative methods
 \(f::Function, b::VecOrMat) = f(b)

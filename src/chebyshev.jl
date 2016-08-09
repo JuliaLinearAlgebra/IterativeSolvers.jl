@@ -6,35 +6,31 @@ export chebyshev, chebyshev!
 
 chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
     chebyshev!(zerox(A, b), A, b, λmin, λmax; kwargs...)
-chebyshev(::Type{Master}, A, b, λmin::Real, λmax::Real; kwargs...) =
-    chebyshev!(Master, zerox(A, b), A, b, λmin, λmax; kwargs...)
-
 
 function chebyshev!(x, A, b, λmin::Real, λmax::Real; n::Int=size(A,2), kwargs...)
 	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
 	init!(K, x)
 	chebyshev!(x, K, b, λmin, λmax; kwargs...)
 end
-function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real; kwargs...)
-    chebyshev_method!(x, K, b, λmin, λmax; kwargs...)
-    x
-end
-function chebyshev!(::Type{Master}, x, A, b, λmin::Real, λmax::Real; n::Int=size(A,2), kwargs...)
-	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
-	init!(K, x)
-	chebyshev!(Master, x, K, b, λmin, λmax; n=n, kwargs...)
-end
-function chebyshev!(::Type{Master}, x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
-    n::Int=size(A,2), tol::Real = sqrt(eps(typeof(real(b[1])))),
-    maxiter::Int = n^3, plot::Bool=false, kwargs...
+function chebyshev!(x, K::KrylovSubspace, b, λmin::Real, λmax::Real;
+    n::Int=size(K,2), tol::Real = sqrt(eps(typeof(real(b[1])))),
+    maxiter::Int = n^3, plot::Bool=false, log::Bool=false, kwargs...
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    chebyshev_method!(x,K,b,λmin,λmax; tol=tol,maxiter=maxiter,log=log,kwargs...)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm,maxiter)
+    else
+        history = DummyHistory()
+    end
+    chebyshev_method!(x,K,b,λmin,λmax; tol=tol,maxiter=maxiter,log=history,kwargs...)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -82,12 +78,9 @@ end
 
 #Initialize parameters
 doc_call = """    chebyshev!(A, b, λmin, λmax)
-    chebyshev!(Master, A, b, λmin, λmax)
 """
 doc!_call = """    chebyshev!(x, A, b, λmin, λmax)
     chebyshev!(x, K, b, λmin, λmax)
-    chebyshev!(Master, x, A, b, λmin, λmax)
-    chebyshev!(Master, x, K, b, λmin, λmax)
 """
 
 doc_msg = "Solve A*x=b using the chebyshev method."
@@ -108,10 +101,10 @@ $call
 
 $msg
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
@@ -120,8 +113,6 @@ $arg
 * `A`: linear operator.
 
 * `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -133,15 +124,18 @@ $arg
 
 * `verbose::Bool = false`: print method information.
 
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
 * `plot::Bool = false`: plot data. (Only with `Master` version)
 
 **Output**
 
-*Normal version:*
+*`log` is `false`:*
 
 * `x`: approximated solution.
 
-*`Master` version:*
+*`log` is `true`:*
 
 * `x`: approximated solution.
 

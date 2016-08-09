@@ -25,10 +25,9 @@ for (dirname, filename) in [("ACUSIM", "Pres_Poisson.mat")]
     for solver in solvers
         println("$dl_filename: Iterative solve using $solver")
         tic()
-        xs, ch = solver(A, b)
+        xs, ch = solver(A, b, log=true)
         toc()
 	r=norm(x-xs)
         println("Residual: $r matvecs: $(ch.mvps) iters: $(length(ch.residuals))")
     end
 end
-

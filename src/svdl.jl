@@ -91,16 +91,18 @@ end
 
 """
     svdl(A)
-    svdl(Master, A)
 
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
 bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 
+If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `X, L`.
+
+The `plot` attribute can only be used when `log` is set version.
+
 **Arguents**
 
 * `A` : The matrix or matrix-like object whose singular values are desired.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -138,7 +140,21 @@ estimated norm of the input matrix.
 * `dolock::Bool=false`: If `true`, locks converged Ritz values, removing them
 from the Krylov subspace being searched in the next macroiteration.
 
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
+
 **Output**
+
+*`log` is `false`:*
+
+* `Σ`: list of the desired singular values if `vecs == :none` (the default),
+    otherwise returns an `SVD` object with the desired singular vectors filled in.
+
+* `L`: computed partial factorizations of A.
+
+*`log` is `true`:*
 
 * `Σ`: list of the desired singular values if `vecs == :none` (the default),
     otherwise returns an `SVD` object with the desired singular vectors filled in.
@@ -159,23 +175,29 @@ from the Krylov subspace being searched in the next macroiteration.
 
 """
 svdl(A; kwargs...) = svdl_method(A; kwargs...)
-function svdl(::Type{Master}, A;
+function svdl(A;
     tol::Real=√eps(), plot::Bool=false, nsv::Int=6, k::Int=2nsv,
-    maxiter::Int=minimum(size(A)), method::Symbol=:ritz, kwargs...
+    maxiter::Int=minimum(size(A)), method::Symbol=:ritz, log::Bool=false, kwargs...
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:conv, maxiter, T=BitArray)
-    reserve!(log,:ritz, maxiter, k)
-    reserve!(log,:resnorm, maxiter, k)
-    Bs_type = (method == :ritz) ? BrokenArrowBidiagonal : UpperTriangular
-    reserve!(log,:Bs, maxiter, T=Bs_type)
-    reserve!(log,:betas, maxiter)
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:conv, maxiter, T=BitArray)
+        reserve!(history,:ritz, maxiter, k)
+        reserve!(history,:resnorm, maxiter, k)
+        Bs_type = (method == :ritz) ? BrokenArrowBidiagonal : UpperTriangular
+        reserve!(history,:Bs, maxiter, T=Bs_type)
+        reserve!(history,:betas, maxiter)
+    else
+        history = DummyHistory()
+    end
     X, L = svdl_method(A;
-        tol=tol, log=log, k=k, nsv=nsv, maxiter=maxiter, method=method, kwargs...)
-    shrink!(log)
-    plot && showplot(log)
-    X, L, log
+        tol=tol, log=history, k=k, nsv=nsv, maxiter=maxiter, method=method, kwargs...)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        X, L, history
+    end
 end
 
 #########################

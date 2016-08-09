@@ -10,23 +10,25 @@ function powm(A; x=nothing, kwargs...)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
     powm(K; kwargs...)
 end
-powm(K::KrylovSubspace; kwargs...) = powm_method(K; kwargs...)
-function powm(::Type{Master}, A; x=nothing, kwargs...)
-    K = KrylovSubspace(A, 1)
-    x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    powm(Master, K; kwargs...)
-end
-function powm{T}(::Type{Master}, K::KrylovSubspace{T};
+function powm{T}(K::KrylovSubspace{T};
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
-    plot::Bool=false, verbose::Bool=false
+    plot::Bool=false, verbose::Bool=false, log::Bool=false
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    eigs = powm_method(K; verbose=verbose,log=log,tol=tol,maxiter=maxiter)
-    shrink!(log)
-    plot && showplot(log)
-    eigs..., log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    eig, v = powm_method(K; verbose=verbose,log=history,tol=tol,maxiter=maxiter)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        eig, v, history
+    else
+        eig, v
+    end
 end
 
 #########################
@@ -62,25 +64,27 @@ function invpowm(A; shift::Number=0, x=nothing, kwargs...)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
     invpowm(K; shift=shift, kwargs...)
 end
-invpowm(K::KrylovSubspace; shift::Number=0, kwargs...) = invpowm_method(K, shift; kwargs...)
-function invpowm(::Type{Master}, A; shift::Number=0, x=nothing, kwargs...)
-    K = KrylovSubspace(A, 1)
-    x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    invpowm(Master, K; shift=shift, kwargs...)
-end
-function invpowm{T}(::Type{Master}, K::KrylovSubspace{T};
+function invpowm{T}(K::KrylovSubspace{T};
     shift::Number=0, tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
-    plot::Bool=false, verbose::Bool=false
+    plot::Bool=false, verbose::Bool=false, log::Bool=false
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    eigs = invpowm_method(K, shift;
-        verbose=verbose, log=log, tol=tol, maxiter=maxiter
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    eig, v = invpowm_method(K, shift;
+        verbose=verbose, log=history, tol=tol, maxiter=maxiter
         )
-    shrink!(log)
-    plot && showplot(log)
-    eigs..., log
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        eig, v, history
+    else
+        eig, v
+    end
 end
 
 #########################
@@ -118,23 +122,25 @@ function rqi(A; shift::Number=0, x=nothing, kwargs...)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
     rqi(K; shift=shift, kwargs...)
 end
-rqi(K::KrylovSubspace; shift::Number=0, kwargs...) = rqi_method(K, shift; kwargs...)
-function rqi(::Type{Master}, A; shift::Number=0, x=nothing, kwargs...)
-    K = KrylovSubspace(A, 1)
-    x==nothing ? initrand!(K) : init!(K, x/norm(x))
-    rqi(Master, K; shift=shift, kwargs...)
-end
-function rqi{T}(::Type{Master}, K::KrylovSubspace{T};
+function rqi{T}(K::KrylovSubspace{T};
     shift::Number=0, tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
-    plot::Bool=false, verbose::Bool=false
+    plot::Bool=false, verbose::Bool=false, log::Bool=false
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    eigs = rqi_method(K, shift; verbose=verbose, log=log, tol=tol, maxiter=maxiter)
-    shrink!(log)
-    plot && showplot(log)
-    eigs..., log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    eig, v = rqi_method(K, shift; verbose=verbose, log=history, tol=tol, maxiter=maxiter)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        eig, v, history
+    else
+        eig, v
+    end
 end
 
 #########################
@@ -171,18 +177,12 @@ end
 #Initialize parameters
 doc1_call = """    powm(A)
     powm(K)
-    powm(Master, A)
-    powm(Master, K)
 """
 doc2_call = """    invpowm(A)
     invpowm(K)
-    invpowm(Master, A)
-    invpowm(Master, K)
 """
 doc3_call = """    rqi(A)
     rqi(K)
-    rqi(Master, A)
-    rqi(Master, K)
 """
 doc1_msg = """Find biggest eigenvalue of `A` and its associated eigenvector
 using the power method.
@@ -209,18 +209,16 @@ $call
 
 $msg
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `eig, v, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `eig, v`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
 * `K::KrylovSubspace`: krylov subspace.
 
 * `A`: linear operator.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -234,13 +232,26 @@ $karg
 
 * `verbose::Bool = false`: verbose flag.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-* `::Real`: eigen value
+*`log` is `false`:*
 
-* `::Vector`: eigen vector
+* `eig::Real`: eigen value
+
+* `v::Vector`: eigen vector
+
+*`log` is `true`:*
+
+* `eig::Real`: eigen value
+
+* `v::Vector`: eigen vector
+
+* `ch`: convergence history.
 
 *ConvergenceHistory keys*
 

@@ -5,27 +5,26 @@ export idrs, idrs!
 ####################
 
 idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
-idrs(::Type{Master}, A, b; kwargs...) = idrs!(Master, zerox(A,b), A, b; kwargs...)
-
 
 function idrs!(x, A, b;
     s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
-    verbose::Bool=false
+    verbose::Bool=false, plot::Bool=false, log::Bool=false
     )
-    idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; verbose=verbose)
-    x
-end
-function idrs!(::Type{Master}, x, A, b;
-    s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
-    verbose::Bool=false, plot::Bool=false
-    )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; log=log, verbose=verbose)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    idrs_method!(x, linsys_op, (A,), b, s, tol, maxiter; log=history, verbose=verbose)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -157,10 +156,8 @@ end
 
 #Initialize parameters
 doc_call = """    idrs(A, b)
-    idrs(Master, A, b)
 """
 doc!_call = """    idrs!(x, A, b)
-    idrs!(Master, x, A, b)
 """
 
 doc_msg = "Solve A*x=b using the induced dimension reduction method."
@@ -179,10 +176,10 @@ $call
 
 $msg
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
@@ -191,8 +188,6 @@ $arg
 * `A`: linear operator.
 
 * `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -208,15 +203,18 @@ $arg
 
 * `verbose::Bool = false`: print method information.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-*Normal version:*
+*`log` is `false`:*
 
 * `x`: approximated solution.
 
-*`Master` version:*
+*`log` is `true`:*
 
 * `x`: approximated solution.
 

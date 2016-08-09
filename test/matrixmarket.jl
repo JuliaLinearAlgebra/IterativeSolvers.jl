@@ -23,10 +23,9 @@ for (setname, matname) in [("cylshell", "s3dkq4m2")]
     for solver in solvers
         println("$dl_filename: Iterative solve using $solver")
         tic()
-        xs, ch = solver(A, b)
+        xs, ch = solver(A, b, log=true)
         toc()
 	r=norm(x-xs)
         println("Residual: $r matvecs: $(ch.mvps) iters: $(length(ch.residuals))")
     end
 end
-

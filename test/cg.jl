@@ -11,18 +11,18 @@ context("Small full system") do
     A = A'*A
     rhs = randn(N)
     tol = 1e-12
-    x,ch = cg(Master, A,rhs;tol=tol, maxiter=2*N)
+    x,ch = cg(A,rhs;tol=tol, maxiter=2*N, log=true)
 
     @fact norm(A*x - rhs) --> less_than(cond(A)*√tol)
     @fact ch.isconverged --> true
 
     # If you start from the exact solution, you should converge immediately
-    x2,ch2 = cg!(Master, A\rhs, A, rhs; tol=tol*10)
+    x2,ch2 = cg!(A\rhs, A, rhs; tol=tol*10, log=true)
     @fact niters(ch2) --> less_than_or_equal(1)
 
     # Test with cholfact should converge immediately
     F = cholfact(A)
-    x2,ch2 = cg(Master, A, rhs; Pl=F)
+    x2,ch2 = cg(A, rhs; Pl=F, log=true)
     @fact niters(ch2) --> less_than_or_equal(2)
 end
 
@@ -39,9 +39,9 @@ context("Sparse Laplacian") do
     tol = 1e-5
 
     context("matrix") do
-        xCG, = cg(Master, A,rhs;tol=tol,maxiter=100)
-        xJAC, = cg(Master, A,rhs;Pl=JAC,tol=tol,maxiter=100)
-        xSGS, = cg(Master, A,rhs;Pl=SGS,tol=tol,maxiter=100)
+        xCG, = cg(A,rhs;tol=tol,maxiter=100, log=true)
+        xJAC, = cg(A,rhs;Pl=JAC,tol=tol,maxiter=100, log=true)
+        xSGS, = cg(A,rhs;Pl=SGS,tol=tol,maxiter=100, log=true)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
@@ -49,9 +49,9 @@ context("Sparse Laplacian") do
 
     Af = MatrixFcn(A)
     context("function") do
-        xCG, = cg(Master, Af,rhs;tol=tol,maxiter=100)
-        xJAC, = cg(Master, Af,rhs;Pl=JAC,tol=tol,maxiter=100)
-        xSGS, = cg(Master, Af,rhs;Pl=SGS,tol=tol,maxiter=100)
+        xCG, = cg(Af,rhs;tol=tol,maxiter=100, log=true)
+        xJAC, = cg(Af,rhs;Pl=JAC,tol=tol,maxiter=100, log=true)
+        xSGS, = cg(Af,rhs;Pl=SGS,tol=tol,maxiter=100, log=true)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
@@ -60,9 +60,9 @@ context("Sparse Laplacian") do
     context("function with specified starting guess") do
         tol = 1e-4
         x0 = randn(size(rhs))
-        xCG, hCG = cg!(Master, copy(x0),Af,rhs;Pl=identity,tol=tol,maxiter=100)
-        xJAC, hJAC = cg!(Master, copy(x0),Af,rhs;Pl=JAC,tol=tol,maxiter=100)
-        xSGS, hSGS = cg!(Master, copy(x0),Af,rhs;Pl=SGS,tol=tol,maxiter=100)
+        xCG, hCG = cg!(copy(x0),Af,rhs;Pl=identity,tol=tol,maxiter=100, log=true)
+        xJAC, hJAC = cg!(copy(x0),Af,rhs;Pl=JAC,tol=tol,maxiter=100, log=true)
+        xSGS, hSGS = cg!(copy(x0),Af,rhs;Pl=SGS,tol=tol,maxiter=100, log=true)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)

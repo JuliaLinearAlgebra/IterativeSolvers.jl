@@ -8,24 +8,26 @@ export  jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 
 jacobi(A::AbstractMatrix, b; kwargs...) =
     jacobi!(zerox(A, b), A, b; kwargs...)
-jacobi(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
-    jacobi!(Master, zerox(A, b), A, b; kwargs...)
 
-function jacobi!(x, A::AbstractMatrix, b; kwargs...)
-    jacobi_method!(x, A, b; kwargs...)
-    x
-end
-function jacobi!(::Type{Master}, x, A::AbstractMatrix, b;
+function jacobi!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    plot::Bool=false, verbose::Bool=false
+    plot::Bool=false, verbose::Bool=false, log::Bool=false
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    jacobi_method!(x, A, b; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    jacobi_method!(x, A, b; tol=tol, log=history, maxiter=maxiter, verbose=verbose)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -66,24 +68,26 @@ end
 
 gauss_seidel(A::AbstractMatrix, b; kwargs...) =
     gauss_seidel!(zerox(A, b), A, b; kwargs...)
-gauss_seidel(::Type{Master}, A::AbstractMatrix, b; kwargs...) =
-    gauss_seidel!(Master, zerox(A, b), A, b; kwargs...)
 
-function gauss_seidel!(x, A::AbstractMatrix, b; kwargs...)
-    gauss_seidel_method!(x, A, b; kwargs...)
-    x
-end
-function gauss_seidel!(::Type{Master}, x, A::AbstractMatrix, b;
+function gauss_seidel!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    plot::Bool=false, verbose::Bool=false
+    plot::Bool=false, verbose::Bool=false, log::Bool=false
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    gauss_seidel_method!(x, A, b; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    gauss_seidel_method!(x, A, b; tol=tol, log=history, maxiter=maxiter, verbose=verbose)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -127,24 +131,26 @@ end
 
 sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     sor!(zerox(A, b), A, b, ω; kwargs...)
-sor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
-    sor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
-function sor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
-    sor_method!(x, A, b, ω; kwargs...)
-    x
-end
-function sor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
+function sor!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    plot::Bool=false, verbose::Bool=false
+    plot::Bool=false, verbose::Bool=false, log::Bool=false,
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    sor_method!(x, A, b, ω; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    sor_method!(x, A, b, ω; tol=tol, log=history, maxiter=maxiter, verbose=verbose)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -190,24 +196,26 @@ end
 
 ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     ssor!(zerox(A, b), A, b, ω; kwargs...)
-ssor(::Type{Master}, A::AbstractMatrix, b, ω::Real; kwargs...) =
-    ssor!(Master, zerox(A, b), A, b, ω; kwargs...)
 
-function ssor!(x, A::AbstractMatrix, b, ω::Real; kwargs...)
-    ssor_method!(x, A, b, ω; kwargs...)
-    x
-end
-function ssor!(::Type{Master}, x, A::AbstractMatrix, b, ω::Real;
+function ssor!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
-    plot::Bool=false, verbose::Bool=false
+    plot::Bool=false, verbose::Bool=false, log::Bool=false
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    ssor_method!(x, A, b, ω; tol=tol, log=log, maxiter=maxiter, verbose=verbose)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    ssor_method!(x, A, b, ω; tol=tol, log=history, maxiter=maxiter, verbose=verbose)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -266,28 +274,20 @@ end
 
 #Initialize parameters
 doc1_call = """    jacobi(A, b)
-    jacobi(Master, A, b)
 """
 doc1!_call = """    jacobi!(x, A, b)
-    jacobi!(Master, x, A, b)
 """
 doc2_call = """    gauss_seidel(A, b)
-    gauss_seidel(Master, A, b)
 """
 doc2!_call = """    gauss_seidel!(x, A, b)
-    gauss_seidel!(Master, x, A, b)
 """
 doc3_call = """    sor(A, b, ω)
-    sor(Master, A, b, ω)
 """
 doc3!_call = """    sor!(x, A, b, ω)
-    sor!(Master, x, A, b, ω)
 """
 doc4_call = """    ssor(A, b, ω)
-    ssor(Master, A, b, ω)
 """
 doc4!_call = """    ssor!(x, A, b, ω)
-    ssor!(Master, x, A, b, ω)
 """
 doc1_msg = "Solve A*x=b with the Jacobi method."
 doc2_msg = "Solve A*x=b with the Gauss-Seidel method."
@@ -323,18 +323,16 @@ $call
 
 $msg
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
 $arg
 
 * `A`: linear operator.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -344,15 +342,18 @@ $arg
 
 * `verbose::Bool = false`: verbose flag.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-*Normal version:*
+*`log` is `false`:*
 
 * `x`: approximated solution.
 
-*`Master` version:*
+*`log` is `true`:*
 
 * `x`: approximated solution.
 

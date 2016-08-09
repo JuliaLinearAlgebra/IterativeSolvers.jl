@@ -74,12 +74,9 @@ end
 
 #Initialize parameters
 doc_call = """    cg(A, b)
-    cg(Master, A, b)
 """
 doc!_call = """    cg!(x, A, b)
     cg!(x, K, b)
-    cg!(Master, x, A, b)
-    cg!(Master, x, K, b)
 """
 
 doc_msg = "Solve A*x=b with the conjugate gradients method."
@@ -100,10 +97,10 @@ $call
 
 $msg
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
@@ -112,8 +109,6 @@ $arg
 * `A`: linear operator.
 
 * `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -125,15 +120,18 @@ $arg
 
 * `verbose::Bool = false`: print method information.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-*Normal version:*
+*`log` is `false`:*
 
 * `x`: approximated solution.
 
-*`Master` version:*
+*`log` is `true`:*
 
 * `x`: approximated solution.
 

@@ -5,25 +5,27 @@ export gmres, gmres!
 ####################
 
 gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
-gmres(::Type{Master}, A, b; kwargs...) = gmres!(Master, zerox(A,b), A, b; kwargs...)
 
-
-function gmres!(x, A, b; kwargs...)
-    gmres_method!(x,A,b; kwargs...)
-    x
-end
-function gmres!(::Type{Master}, x, A, b;
+function gmres!(x, A, b;
     tol=sqrt(eps(typeof(real(b[1])))),
     restart::Int=min(20,length(b)), maxiter::Int=restart,
-    plot::Bool=false, kwargs...
+    plot::Bool=false, log::Bool=false, kwargs...
     )
-    log = ConvergenceHistory(restart)
-    log[:tol] = tol
-    reserve!(log,:resnorm,maxiter)
-    gmres_method!(x,A,b; restart=restart,tol=tol,maxiter=maxiter,log=log, kwargs...)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory(restart)
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    gmres_method!(x,A,b; restart=restart,tol=tol,maxiter=maxiter,log=history, kwargs...)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -137,10 +139,8 @@ end
 
 #Initialize parameters
 doc_call = """    gmres(A, b)
-    gmres(Master, A, b)
 """
 doc!_call = """    gmres!(x, A, b)
-    gmres!(Master, x, A, b)
 """
 
 doc_msg = "Solve A*x=b using the generalized minimal residual method with restarts."
@@ -159,10 +159,10 @@ $call
 
 $msg
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
@@ -171,8 +171,6 @@ $arg
 * `A`: linear operator.
 
 * `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -188,15 +186,18 @@ $arg
 
 * `verbose::Bool = false`: print method information.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-*Normal version:*
+*`log` is `false`:*
 
 * `x`: approximated solution.
 
-*`Master` version:*
+*`log` is `true`:*
 
 * `x`: approximated solution.
 

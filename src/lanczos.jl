@@ -6,18 +6,25 @@ export eiglancz
 # API method calls #
 ####################
 
-eiglancz(A; kwargs...) = eiglancz_method(A; kwargs...)
-function eiglancz(::Type{Master}, A;
+function eiglancz(A;
     maxiter::Integer=size(A,1), plot::Bool=false,
-    tol::Real = size(A,1)^3*eps(real(eltype(A))), kwargs...
+    tol::Real = size(A,1)^3*eps(real(eltype(A))), log::Bool=false, kwargs...
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log, :resnorm,maxiter)
-    eigs = eiglancz_method(A; maxiter=maxiter, log=log, kwargs...)
-    shrink!(log)
-    plot && showplot(log)
-    eigs, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    eigs = eiglancz_method(A; maxiter=maxiter, log=history, kwargs...)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        eigs, history
+    else
+        eigs
+    end
 end
 
 #########################
@@ -82,18 +89,16 @@ $call
 
 $msg
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `eigs, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `eigs`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
 $arg
 
 * `A`: linear operator.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -105,11 +110,22 @@ $arg
 
 * `verbose::Bool = false`: verbose flag.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-* `::Vector`: eigen values.
+*`log` is `false`:*
+
+* `eigs::Vector`: eigen values.
+
+*`log` is `true`:*
+
+* `eigs::Vector`: eigen values.
+
+* `ch`: convergence history.
 
 *ConvergenceHistory keys*
 

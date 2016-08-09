@@ -5,34 +5,37 @@ export lsqr, lsqr!
 ####################
 
 lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
-lsqr(::Type{Master}, A, b; kwargs...) = lsqr!(Master, zerox(A, b), A, b; kwargs...)
 
-
-function lsqr!(x, A, b; kwargs...)
-    lsqr_method!(x, A, b; kwargs...)
-    x
-end
-function lsqr!(::Type{Master}, x, A, b;
+function lsqr!(x, A, b;
     atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
     conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
-    plot::Bool=false, maxiter::Int=max(size(A,1), size(A,2)), kwargs...
+    plot::Bool=false, maxiter::Int=max(size(A,1), size(A,2)), log::Bool=false,
+    kwargs...
     )
-    log = ConvergenceHistory()
-    log[:atol] = atol
-    log[:btol] = btol
-    reserve!(log,:resnorm,maxiter)
-    reserve!(log,:anorm,maxiter)
-    reserve!(log,:rnorm,maxiter)
-    reserve!(log,:cnorm,maxiter)
+    if log
+        history = ConvergenceHistory()
+        history[:atol] = atol
+        history[:btol] = btol
+        reserve!(history,:resnorm,maxiter)
+        reserve!(history,:anorm,maxiter)
+        reserve!(history,:rnorm,maxiter)
+        reserve!(history,:cnorm,maxiter)
+    else
+        history = DummyHistory()
+    end
     T = Adivtype(A, b)
     Tr = real(T)
     ctol = conlim > 0 ? convert(Tr, 1/conlim) : zero(Tr)
     lsqr_method!(x, A, b;
-        atol=atol, btol=btol, conlim=conlim, maxiter=maxiter, log=log, kwargs...
+        atol=atol, btol=btol, conlim=conlim, maxiter=maxiter, log=history, kwargs...
         )
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -233,10 +236,8 @@ end
 
 #Initialize parameters
 doc_call = """    lsqr(A, b)
-    lsqr(Master, A, b)
 """
 doc!_call = """    lsqr!(x, A, b)
-    lsqr!(Master, x, A, b)
 """
 
 doc_msg = """LSQR solves Ax = b or min ||b - Ax||^2 if damp = 0,
@@ -262,10 +263,10 @@ The method is based on the Golub-Kahan bidiagonalization process.
 It is algebraically equivalent to applying CG to the normal equation (ATA+λ2I)x=ATb,
 but has better numerical properties, especially if A is ill-conditioned.
 
-If [`Master`](@ref) is given, method will output a tuple `x, ch`. Where `ch` is
-[`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when using the `Master` version.
+The `plot` attribute can only be used when `log` is set version.
 
 **Arguments**
 
@@ -274,8 +275,6 @@ $arg
 * `A`: linear operator.
 
 * `b`: right hand side.
-
-* `Master::Type{Master}`: dispatch type.
 
 *Keywords*
 
@@ -298,15 +297,18 @@ may then be excessive.
 
 * `verbose::Bool = false`: print method information.
 
-* `plot::Bool = false`: plot data. (Only with `Master` version)
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
 
 **Output**
 
-*Normal version:*
+*`log` is `false`:*
 
 * `x`: approximated solution.
 
-*`Master` version:*
+*`log` is `true`:*
 
 * `x`: approximated solution.
 
