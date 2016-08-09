@@ -5,34 +5,31 @@ export cg, cg!
 ####################
 
 cg(A, b; kwargs...) =  cg!(zerox(A,b), A, b; kwargs...)
-cg(::Type{Master}, A, b; kwargs...) =  cg!(Master, zerox(A,b), A, b; kwargs...)
-
 
 function cg!(x, A, b; kwargs...)
     K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
     init!(K, x)
     cg!(x,K,b; kwargs...)
 end
-function cg!(x, K::KrylovSubspace, b; kwargs...)
-    cg_method!(x,K,b; kwargs...)
-    x
-end
-function cg!(::Type{Master}, x, A, b; kwargs...)
-    K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
-    init!(K, x)
-    cg!(Master, x,K,b; kwargs...)
-end
-function cg!(::Type{Master}, x, K::KrylovSubspace, b;
+function cg!(x, K::KrylovSubspace, b;
     tol::Real=size(K.A,2)*eps(), maxiter::Integer=size(K.A,2),
-    verbose::Bool=false, plot=false, Pl=1
+    verbose::Bool=false, plot=false, Pl=1, log::Bool=false
     )
-    log = ConvergenceHistory()
-    log[:tol] = tol
-    reserve!(log,:resnorm, maxiter)
-    cg_method!(x,K,b; Pl=Pl,tol=tol,maxiter=maxiter,log=log,verbose=verbose)
-    shrink!(log)
-    plot && showplot(log)
-    x, log
+    if log
+        history = ConvergenceHistory()
+        history[:tol] = tol
+        reserve!(history,:resnorm, maxiter)
+    else
+        history = DummyHistory()
+    end
+    cg_method!(x,K,b; Pl=Pl,tol=tol,maxiter=maxiter,log=history,verbose=verbose)
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
 end
 
 #########################
@@ -41,7 +38,7 @@ end
 
 function cg_method!(x,K,b;
     Pl=1,tol::Real=size(K.A,2)*eps(),maxiter::Integer=size(K.A,2),
-    log::MethodLog=DummyHistory(),verbose::Bool=false
+    log::MethodLog=DummyHistory(), verbose::Bool=false
     )
     verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","relres")
     tol = tol * norm(b)
