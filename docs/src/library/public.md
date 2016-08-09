@@ -27,6 +27,13 @@ ConvergenceHistory
 KrylovSubspace
 ```
 
+### `MatrixFcn` and `MatrixCFcn`
+
+```@docs
+MatrixFcn
+MatrixCFcn
+```
+
 ## Linear Solvers
 
 ### `Jacobi`

@@ -1,5 +1,7 @@
 using Documenter, IterativeSolvers
 
+#include("buildmarkdown.jl")
+
 makedocs(modules = [IterativeSolvers])
 
 deploydocs(

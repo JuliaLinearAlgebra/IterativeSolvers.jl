@@ -261,3 +261,30 @@ orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, [p::Int]; [method::Symbol],
 
 * `method`: Orthogonalization method. Currently supported methods are:
 `:GramSchmidt`, `:ModifiedGramSchmidt` (default) and `:Householder`.
+
+## Define function as linear operator
+
+Suppose you have a function implementing multiplication of `b` by `A`.
+This function can have any syntax, but for the purposes of illustration let's
+suppose it's defined as:
+
+```julia
+mulbyA!(output, b, Adata)
+```
+
+Where `Adata` might be some parameters that your function needs.
+
+You can represent it as a linear operator using:
+
+```julia
+A = MatrixFcn{T}(m, n, (output, b) -> mulbyA!(output, b, Adata))
+```
+
+where `T` is the "element type" of `Adata`.
+Note that there are a couple of requirements:
+
+  - `mulbyA!` stores the result in the pre-allocated output.
+  - `mulbyA!` should also return output as its sole return value.
+
+If the algorithm also needs multiplication by A', use MatrixCFcn
+instead and initialize it with both functions.

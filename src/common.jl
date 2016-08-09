@@ -405,33 +405,46 @@ type PosSemidefException <: Exception
     PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
 end
 
-#### Support for linear-operators-defined-as-functions
-#
-# Suppose you have a function implementing multiplication of b by A.
-# This function can have any syntax, but for the purposes of
-# illustration let's suppose it's defined as
-#   mulbyA!(output, b, Adata)
-# Where Adata might be some parameters that your function needs.
-# You can represent it as a linear operator using
-#   A = MatrixFcn{T}(m, n, (output, b) -> mulbyA!(output, b, Adata))
-# where T is the "element type" of Adata.
-# Note that there are a couple of requirements:
-#   - mulbyA! stores the result in the pre-allocated output
-#   - mulbyA! should also return output as its sole return value
-
-# If the algorithm also needs multiplication by A', use MatrixCFcn
-# instead and initialize it with both functions.
-
 export MatrixFcn, MatrixCFcn
 
+"""
+    AbstractMatrixFcn{T}
+
+Define fuction as linear operator.
+
+*subtypes*
+
+* [`MatrixFcn`](@ref)
+
+* [`MatrixCFcn`](@ref)
+"""
 abstract AbstractMatrixFcn{T}
 
+"""
+    MatrixFcn
+
+Define a function implementing the multiplication of `b` by `A` as a linear operator.
+
+**Implements**
+
+* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B`, `A_mul_B!`, `*`
+"""
 type MatrixFcn{T} <: AbstractMatrixFcn{T}
     m::Int
     n::Int
     mul::Function
 end
 
+"""
+    MatrixCFcn
+
+Define two functions implementing the multiplication of `b` by `A` and `b` by `A'`
+as a linear operator.
+
+**Implements**
+
+* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B`, `A_mul_B!`, `Ac_mul_B`, `Ac_mul_B!`, `*`
+"""
 type MatrixCFcn{T} <: AbstractMatrixFcn{T}
     m::Int
     n::Int
