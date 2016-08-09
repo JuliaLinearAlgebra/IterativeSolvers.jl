@@ -76,13 +76,6 @@ Depth = 2
 
 ## [Index](@id main-index)
 
-### Modules
-
-```@index
-Pages = ["library/public.md", "library/internals.md"]
-Order = [:module]
-```
-
 ### Functions
 
 ```@index

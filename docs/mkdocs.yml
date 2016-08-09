@@ -35,5 +35,5 @@ pages:
         - Internal: library/internal.md
     - About:
         - Release Notes: about/release_notes.md
-        - Contributing: about/contributing.md
+        - Contributing: about/CONTRIBUTING.md
         - License: about/license.md
