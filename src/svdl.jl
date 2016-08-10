@@ -262,13 +262,13 @@ function svdl_method(A;
     m, n = size(A)
 
     leftvecs = if vecs == :left || vecs == :both
-        L.P*sub(F[:U], :, 1:nsv)
+        L.P*viewsub(F[:U], :, 1:nsv)
     else
         zeros(eltype(v0), m, 0)
     end
 
     rightvecs = if vecs == :right || vecs == :both
-        (sub(L.Q, :, 1:size(L.Q,2)-1)*sub(F[:V], :, 1:nsv))'
+        (viewsub(L.Q, :, 1:size(L.Q,2)-1)*viewsub(F[:V], :, 1:nsv))'
     else
         zeros(eltype(v0), 0, n)
     end
@@ -472,15 +472,15 @@ function thickrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     #@assert size(L.P) == (m, k)
     #@assert size(L.Q) == (n, k+1)
 
-    Q = sub(L.Q, :,1:k)*sub(F[:V], :,1:l)
-    L.Q = [Q sub(L.Q, :, k+1)]
+    Q = viewsub(L.Q, :,1:k)*viewsub(F[:V], :,1:l)
+    L.Q = [Q viewsub(L.Q, :, k+1)]
     #Be pedantic about ensuring normalization
     #L.Q = qr(L.Q)[1]
     #@assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
 
-    f = A*sub(L.Q, :, l+1)
+    f = A*viewsub(L.Q, :, l+1)
     ρ = L.β * reshape(F[:U][end, 1:l], l)
-    L.P = sub(L.P, :, 1:k)*sub(F[:U], :, 1:l)
+    L.P = viewsub(L.P, :, 1:k)*viewsub(F[:U], :, 1:l)
 
     #@assert ρ[i] ≈ f⋅L.P[:, i]
     f -= L.P*ρ
@@ -526,7 +526,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
 
     #Take k largest triplets
     Σ = (F2[:S]::Vector{Tr})[1:k]
-    U = F0[:U]*sub(F2[:U],:,1:k)
+    U = F0[:U]*viewsub(F2[:U],:,1:k)
     M = eye(T, m+1)
     M[1:m, 1:m] = F0[:V]::Matrix{T}
     M = M * F2[:V]
@@ -546,8 +546,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
         else rethrow(exc) end
     end::Vector{Tr}
     scale!(r, L.β)
-    M::Matrix{T} = sub(M,1:m, :) + r*sub(M,m+1,:)
-
+    M::Matrix{T} = viewsub(M,1:m, :) + r*viewsub(M,m+1:m+1,:)
     M2 = zeros(T, m+1, k+1)
     M2[1:m, 1:k] = M[:,1:k]
     M2[1:m, k+1] = -r
@@ -555,15 +554,15 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     Q, R = qr(M2)
 
     Q = L.Q*Q
-    P = L.P*sub(U,:,1:k)
+    P = L.P*viewsub(U,:,1:k)
 
     if VERSION < v"0.5.0-"
-        R = sub(R,1:k+1,1:k) + sub(R,:,k+1)*Mend
+        R = viewsub(R,1:k+1,1:k) + viewsub(R,:,k+1)*Mend
     else
-        R = sub(R,1:k+1,1:k) + sub(R,:,k+1)*Mend'
+        R = viewsub(R,1:k+1,1:k) + viewsub(R,:,k+1)*Mend'
     end
 
-    f = A*sub(Q,:,k+1)
+    f = A*viewsub(Q,:,k+1)
     f -= P*(P'f)
     α = convert(Tr, norm(f))
     scale!(f, inv(α))
@@ -571,7 +570,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     B = UpperTriangular{Tr,Matrix{Tr}}([(Diagonal(Σ)*triu(R')); zeros(Tr,1,k) α])
     #@assert size(P, 2) == size(B, 1) == size(Q, 2)
     g = A'f
-    q = sub(Q,:,k+1)
+    q = viewsub(Q,:,k+1)
     #g-= (g⋅q)*q
     axpy!(-(g⋅q), q, g)
     β = convert(Tr, norm(g))
@@ -692,7 +691,7 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
 
         #p = A*q - β*p
         A_mul_B!(p, A, q)
-        Base.LinAlg.axpy!(-β, sub(L.P, :, j), p)
+        Base.LinAlg.axpy!(-β, viewsub(L.P, :, j), p)
 
         if orthleft #Orthogonalize left Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization

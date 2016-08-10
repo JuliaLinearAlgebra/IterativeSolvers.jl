@@ -46,7 +46,6 @@ context("Linear operator defined as a function") do
 
     output = similar(b)
     @fact A_mul_B!(output, A, b) --> Atimesb
-    @fact A'*b --> Atimesb
 
     A = MatrixCFcn{Int}(5, 5, shiftback!, shiftfwd!)
     @fact eltype(A) --> Int
@@ -58,7 +57,7 @@ context("Linear operator defined as a function") do
 
     output = similar(b)
     @fact A_mul_B!(output, A, b) --> Atimesb
-    @fact A'*b --> Aptimesb
+    @fact Ac_mul_B(A, b) --> Aptimesb
     @fact Ac_mul_B!(output, A, b) --> Aptimesb
 end
 

@@ -3,6 +3,12 @@ import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
 export  A_mul_B, niters, nprods, tolkeys, datakeys, nrests, setindex!,
         getindex, last
 
+#Compatibility
+function viewsub(a,b,c)
+    VERSION < v"0.5.0-" && return sub(a,b,c)
+    view(a,(typeof(b) <: Number ? (b:b) : b),c)
+end
+
 # Improve readability of iterative methods
 \(f::Function, b::VecOrMat) = f(b)
 *(f::Function, b::VecOrMat) = f(b)
@@ -427,7 +433,7 @@ Define a function implementing the multiplication of `b` by `A` as a linear oper
 
 **Implements**
 
-* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B`, `A_mul_B!`, `*`
+* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B!`, `*`
 """
 type MatrixFcn{T} <: AbstractMatrixFcn{T}
     m::Int
@@ -443,7 +449,7 @@ as a linear operator.
 
 **Implements**
 
-* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B`, `A_mul_B!`, `Ac_mul_B`, `Ac_mul_B!`, `*`
+* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B!`, `Ac_mul_B`, `Ac_mul_B!`, `*`
 """
 type MatrixCFcn{T} <: AbstractMatrixFcn{T}
     m::Int

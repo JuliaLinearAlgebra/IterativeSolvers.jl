@@ -74,12 +74,6 @@ function Base.scale!(a::DampenedVector, α::Number)
     return a
 end
 
-function Base.scale!(a::DampenedVector, α::Number)
-    scale!(a.y, α)
-    scale!(a.x, α)
-    return a
-end
-
 function Base.similar(a::DampenedVector, T)
     return DampenedVector(similar(a.y, T), similar(a.x, T))
 end

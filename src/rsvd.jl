@@ -216,7 +216,7 @@ function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
         Tol = maximum([norm(Y[:,i]) for i=j:(j+r-1)])
         Tol > tol || break
 
-        y = sub(Y,:,j)
+        y = viewsub(Y,:,j)
         y = Y[:,j] = y - Q*(Q'y)
         q = y/norm(y)
         Q = [Q q]
@@ -225,7 +225,7 @@ function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
         y = A*ω
         y = y - Q*(Q'y)
         Y = [Y y]
-        Yb = sub(Y, :, (j+1):(j+r-1))
+        Yb = viewsub(Y, :, (j+1):(j+r-1))
         Yb = Y[:, (j+1):(j+r-1)] = Yb - q * q'Yb
 
         j==maxiter && warn("Maximum number of iterations reached with norm $Tol > $tol")
