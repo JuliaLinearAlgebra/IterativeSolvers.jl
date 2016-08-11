@@ -427,8 +427,6 @@ export FuncMat
 
 * `n::Int` = number of rows.
 
-* `ctrans::Bool` = is cojugate-transposed.
-
 * `mul::Function` = `A*b` implementation.
 
 * `cmul::Function` = `A'*b` implementation.
@@ -451,8 +449,6 @@ export FuncMat
 
 * `typ::Type = Float64` = `eltype(::FuncMat)`.
 
-* `ctrans::Bool = false` = is conjugate-transposed.
-
 * `mul::Function = identity` = `A*b` implementation.
 
 * `cmul::Function = identity` = `A'*b` implementation.
@@ -461,15 +457,14 @@ export FuncMat
 type FuncMat{T}
     m::Int
     n::Int
-    ctrans::Bool
     mul::Function
     cmul::Function
 end
 function FuncMat(
-        m::Int, n::Int; typ::Type=Float64, ctrans::Bool=false,
+        m::Int, n::Int; typ::Type=Float64,
         mul::Function=identity, cmul=mul
         )
-    FuncMat{typ}(m, n, ctrans, mul, cmul)
+    FuncMat{typ}(m, n, mul, cmul)
 end
 FuncMat(A::AbstractMatrix) = FuncMat(
     size(A, 1),
@@ -488,11 +483,9 @@ size(op::FuncMat, dim::Integer) = (dim == 1) ? op.m : (dim == 2) ? op.n : 1
 
 length(op::FuncMat) = op.m*op.n
 
-ctranspose(op::FuncMat) = op.ctrans = !op.ctrans
+ctranspose{T}(op::FuncMat{T}) = FuncMat{T}(op.n, op.m, op.cmul, op.mul)
 
-*(op::FuncMat, b, ::Type{Val{true}}) = Ac_mul_B(op, b)
-*(op::FuncMat, b, ::Type{Val{false}}) = A_mul_B(op, b)
-*(op::FuncMat, b) = *(op, b, Val{op.ctrans})
+*(op::FuncMat, b) = A_mul_B(op, b)
 
 function A_mul_B{R,S}(op::FuncMat{R}, b::AbstractVector{S})
     A_mul_B!(Array(promote_type(R,S), op.m), op, b)
