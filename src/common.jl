@@ -418,6 +418,46 @@ end
 
 export FuncMat
 
+"""
+    FuncMat{T}
+
+**Fields**
+
+* `m::Int` = number of columns.
+
+* `n::Int` = number of rows.
+
+* `ctrans::Bool` = is cojugate-transposed.
+
+* `mul::Function` = `A*b` implementation.
+
+* `cmul::Function` = `A'*b` implementation.
+
+**Constructors**
+
+    FuncMat(A)
+    FuncMat(
+        m::Int, n::Int; typ::Type=Float64, ctrans::Bool=false,
+        mul::Function=identity, cmul=identity
+    )
+
+**Arguments**
+
+* `A::AbstractMatrix` = matrix.
+
+* `m::Int` = number of columns.
+
+* `n::Int` = number of rows.
+
+* `typ::Type = Float64` = `eltype(::FuncMat)`.
+
+* `ctrans::Bool = false` = is conjugate-transposed.
+
+* `mul::Function = identity` = `A*b` implementation.
+
+* `cmul::Function = identity` = `A'*b` implementation.
+
+"""
 type FuncMat{T}
     m::Int
     n::Int
