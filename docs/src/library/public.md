@@ -27,11 +27,10 @@ ConvergenceHistory
 KrylovSubspace
 ```
 
-### `MatrixFcn` and `MatrixCFcn`
+### `FuncMat`
 
 ```@docs
-MatrixFcn
-MatrixCFcn
+FuncMat
 ```
 
 ## Linear Solvers

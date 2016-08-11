@@ -1,9 +1,14 @@
 import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
-        ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
+        ndims, push!, real, size, ctranspose, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
 export  A_mul_B, niters, nprods, tolkeys, datakeys, nrests, setindex!,
         getindex, last
 
-#Compatibility
+# view is not on 0.4 and sub is not fully supported on 0.5
+"""
+    viewsub(a,b,c)
+
+Compatibility for `view` and `sub`.
+"""
 function viewsub(a,b,c)
     VERSION < v"0.5.0-" && return sub(a,b,c)
     view(a,(typeof(b) <: Number ? (b:b) : b),c)
@@ -411,72 +416,74 @@ type PosSemidefException <: Exception
     PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
 end
 
-export MatrixFcn, MatrixCFcn
+export FuncMat
 
-"""
-    AbstractMatrixFcn{T}
-
-Define fuction as linear operator.
-
-*subtypes*
-
-* [`MatrixFcn`](@ref)
-
-* [`MatrixCFcn`](@ref)
-"""
-abstract AbstractMatrixFcn{T}
-
-"""
-    MatrixFcn
-
-Define a function implementing the multiplication of `b` by `A` as a linear operator.
-
-**Implements**
-
-* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B!`, `*`
-"""
-type MatrixFcn{T} <: AbstractMatrixFcn{T}
+type FuncMat{T}
     m::Int
     n::Int
+    ctrans::Bool
     mul::Function
+    cmul::Function
+end
+function FuncMat(
+        m::Int, n::Int; typ::Type=Float64, ctrans::Bool=false,
+        mul::Function=identity, cmul=mul
+        )
+    FuncMat{typ}(m, n, ctrans, mul, cmul)
+end
+FuncMat(A::AbstractMatrix) = FuncMat(
+    size(A, 1),
+    size(A, 2),
+    typ = eltype(A),
+    mul = (output, x)->A_mul_B!(output, A, x),
+    cmul = (output, b) -> Ac_mul_B(output, A, b)
+    )
+
+eltype{T}(::FuncMat{T}) = T
+
+ndims(::FuncMat) = 2
+
+size(op::FuncMat) = (op.m, op.n)
+size(op::FuncMat, dim::Integer) = (dim == 1) ? op.m : (dim == 2) ? op.n : 1
+
+length(op::FuncMat) = op.m*op.n
+
+ctranspose(op::FuncMat) = op.ctrans = !op.ctrans
+
+*(op::FuncMat, b, ::Type{Val{true}}) = Ac_mul_B(op, b)
+*(op::FuncMat, b, ::Type{Val{false}}) = A_mul_B(op, b)
+*(op::FuncMat, b) = *(op, b, Val{op.ctrans})
+
+function A_mul_B{R,S}(op::FuncMat{R}, b::AbstractVector{S})
+    A_mul_B!(Array(promote_type(R,S), op.m), op, b)
+end
+function A_mul_B{R,S}(op::FuncMat{R}, b::AbstractMatrix{S})
+    A_mul_B!(Array(promote_type(R,S), op.m, size(b,2)), op, b)
 end
 
-"""
-    MatrixCFcn
-
-Define two functions implementing the multiplication of `b` by `A` and `b` by `A'`
-as a linear operator.
-
-**Implements**
-
-* `Base`: `eltype`, `ndims`, `size`, `length`, `A_mul_B!`, `Ac_mul_B`, `Ac_mul_B!`, `*`
-"""
-type MatrixCFcn{T} <: AbstractMatrixFcn{T}
-    m::Int
-    n::Int
-    mul::Function
-    mulc::Function
+function A_mul_B!(output, op::FuncMat, b::AbstractVector)
+    op.mul == identity && error("A*b not defined")
+    op.mul(output, b)
+end
+function A_mul_B!(output, op::FuncMat, b::AbstractMatrix)
+    op.mul == identity && error("A*b not defined")
+    columns = [op.mul(output, b[:,i]) for i in 1:size(b,2)]
+    hcat(columns...)
 end
 
-MatrixFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)-> A_mul_B!(output, A, x))
-MatrixCFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)->A_mul_B!(output, A, x), (output, b) -> Ac_mul_B(output, A, b))
+function Ac_mul_B{R,S}(op::FuncMat{R}, b::AbstractVector{S})
+    Ac_mul_B!(Array(promote_type(R,S), op.n), op, b)
+end
+function Ac_mul_B{R,S}(op::FuncMat{R}, b::AbstractMatrix{S})
+    Ac_mul_B!(Array(promote_type(R,S), op.n, size(b,2)), op, b)
+end
 
-eltype{T}(op::AbstractMatrixFcn{T}) = T
-
-ndims(op::AbstractMatrixFcn) = 2
-
-size(op::AbstractMatrixFcn, dim::Integer) = (dim == 1) ? op.m :
-                                            (dim == 2) ? op.n : 1
-size(op::AbstractMatrixFcn) = (op.m, op.n)
-
-length(op::AbstractMatrixFcn) = op.m*op.n
-
-*(op::AbstractMatrixFcn, b) = A_mul_B(op, b)
-
-A_mul_B{R,S}(op::AbstractMatrixFcn{R}, b::AbstractVector{S}) = A_mul_B!(Array(promote_type(R,S), op.m), op, b)
-
-A_mul_B!(output, op::AbstractMatrixFcn, b) = op.mul(output, b)
-
-Ac_mul_B{R,S}(op::MatrixCFcn{R}, b::AbstractVector{S}) = Ac_mul_B!(Array(promote_type(R,S), op.n), op, b)
-
-Ac_mul_B!(output, op::AbstractMatrixFcn, b) = op.mulc(output, b)
+function Ac_mul_B!(output, op::FuncMat, b::AbstractVector)
+    op.cmul == identity && error("A'*b not defined")
+    op.cmul(output, b)
+end
+function Ac_mul_B!(output, op::FuncMat, b::AbstractMatrix)
+    op.mul == identity && error("A'*b not defined")
+    columns = [op.cmul(output, b[:,i]) for i in 1:size(b,2)]
+    hcat(columns...)
+end

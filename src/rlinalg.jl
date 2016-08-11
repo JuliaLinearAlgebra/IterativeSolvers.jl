@@ -343,7 +343,7 @@ immutable srft{T<:Integer}
     l :: T
 end
 
-(*)(A::AbstractMatrixFcn, B::srft) = error("method only defined to avoid ambiguity."
+(*)(::FuncMat, ::srft) = error("method only defined to avoid ambiguity."
     * " If you need this method please open a pull request")
 
 """

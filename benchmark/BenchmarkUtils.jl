@@ -25,7 +25,7 @@ end
 function buildSol(dim)
   fmul  = (out, b) -> Aprodxxx!(out,b,1,dim,dim)
   fcmul = (out, b) -> Aprodxxx!(out,b,2,dim,dim)
-  MatrixCFcn{Int}(dim, dim, fmul, fcmul)
+  FuncMat(dim, dim, typ=Int, mul=fmul, cmul=fcmul)
 end
 
 function Aprodxxx!(y, x, mode, m, n )
