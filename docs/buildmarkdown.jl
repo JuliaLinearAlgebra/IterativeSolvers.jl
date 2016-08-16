@@ -60,6 +60,7 @@ println(file,
 
 println(file, """```@contents
 Pages = ["benchmarks.md"]
+Depth = 5
 ```""")
 println(file)
 

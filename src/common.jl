@@ -255,6 +255,7 @@ nextiter!(ch::ConvergenceHistory) = ch.iters+=1
 
 #Recipes
 #See Plots.jl tutorial on recipes
+#Plot entire ConvergenceHistory
 @recipe function chef(ch::ConvergenceHistory; sep = :white)
     candidates = collect(values(ch.data))
     plotables = map(plotable, candidates)
@@ -288,6 +289,7 @@ nextiter!(ch::ConvergenceHistory) = ch.iters+=1
     end
 end
 
+#Plot collection `ch[name]`.
 @recipe function chef(ch::ConvergenceHistory, name::Symbol; sep = :white)
     draw = ch[name]
     plotable(draw) || error("Not plotable")
@@ -312,14 +314,21 @@ end
     end
 end
 
+"""
+    plotable(x)
+
+Determine whether a collection `x` is plotable. Only vectors and matrices are
+such objects.
+"""
 plotable{T<:Real}(::VecOrMat{T}) = true
 plotable(::Any) = false
 
-#Internal plotting
 """
     showplot(ch)
 
 Print all plotable information inside `ConvergenceHistory` `ch`.
+
+*Note:* This is what is called when the `plot` keyword is set.
 """
 function showplot(ch::ConvergenceHistory)
     candidates = collect(values(ch.data))
@@ -329,12 +338,20 @@ function showplot(ch::ConvergenceHistory)
     println("\n")
     for (name, draw) in collect(ch.data)[plotables]
         restart = isa(ch, PlainHistory) ? ch.iters : ch.restart
-        drawing = _plot(draw, ch.iters, restart; name=string(name))
+        drawing = plot_collection(draw, ch.iters, restart; name=string(name))
         println("$drawing\n\n")
     end
 end
 
-function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
+"""
+    plot_collection(x)
+
+Build a `UnicodePlot.Plot` object from the plotable collection `x`.
+
+If `x` is a vector, a series will be made. In case of being a matrix an scatterplot
+will be returned.
+"""
+function plot_collection{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
     )
@@ -351,8 +368,7 @@ function _plot{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     end
     plot
 end
-
-function _plot{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
+function plot_collection{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
     restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
     )
@@ -371,25 +387,56 @@ function _plot{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
 end
 
 #### Type-handling
+"""
+    Adivtype(A, b)
+
+Determine type of the division of an element of `b` against an element of `A`:
+
+`typeof(one(eltype(b))/one(eltype(A)))`
+"""
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
+
+"""
+    Amultype(A, x)
+
+Determine type of the multiplication of an element of `b` with an element of `A`:
+
+`typeof(one(eltype(A))*one(eltype(x)))`
+"""
 Amultype(A, x) = typeof(one(eltype(A))*one(eltype(x)))
 if VERSION < v"0.4.0-dev+6068"
     real{T<:Real}(::Type{Complex{T}}) = T
     real{T<:Real}(::Type{T}) = T
 end
+
 eps{T<:Real}(::Type{Complex{T}}) = eps(T)
 
+"""
+    randx(A, b)
+
+Build a random unitary vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
+"""
 function randx(A, b)
     T = Adivtype(A, b)
     x = initrand!(Array(T, size(A, 2)))
 end
 
+"""
+    zerox(A, b)
+
+Build a zeros vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
+"""
 function zerox(A, b)
     T = Adivtype(A, b)
     x = zeros(T, size(A, 2))
 end
 
 #### Numerics
+"""
+    update!(x, α::Number, p::AbstractVector)
+
+Overwrite `x` with the result of `x += α*p`.
+"""
 function update!(x, α::Number, p::AbstractVector)
     for i = 1:length(x)
         x[i] += α*p[i]
@@ -397,6 +444,11 @@ function update!(x, α::Number, p::AbstractVector)
     x
 end
 
+"""
+    initrand!(v)
+
+Overwrite `v` with a random unitary vector of the same length.
+"""
 function initrand!(v::Vector)
     _randn!(v)
     nv = norm(v)

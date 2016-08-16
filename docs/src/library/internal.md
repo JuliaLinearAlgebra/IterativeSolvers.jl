@@ -42,17 +42,25 @@ IterativeSolvers.showplot
 IterativeSolvers.lastvec
 IterativeSolvers.nextvec
 IterativeSolvers.init!
-IterativeSolvers.initrand!
+IterativeSolvers.initrand!(::KrylovSubspace)
 IterativeSolvers.appendunit!
 IterativeSolvers.orthogonalize
 ```
 
-## Functions
+## Other Functions
+
 
 ```@docs
 IterativeSolvers.idfact
 IterativeSolvers.isconverged
 IterativeSolvers.thickrestart!
 IterativeSolvers.harmonicrestart!
-IterativeSolvers.extend!
+IterativeSolvers.plot_collection
+IterativeSolvers.plotable
+IterativeSolvers.Adivtype
+IterativeSolvers.Amultype
+IterativeSolvers.randx
+IterativeSolvers.zerox
+IterativeSolvers.update!
+IterativeSolvers.initrand!(::Vector)
 ```

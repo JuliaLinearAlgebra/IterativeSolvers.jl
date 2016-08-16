@@ -1,6 +1,6 @@
 import Base: append!, eye, size
 
-export ConvergenceHistory, KrylovSubspace
+export KrylovSubspace
 
 """
     KrylovSubspace
