@@ -51,6 +51,7 @@ function lsmr_method!(x, A, b, v, h, hbar;
     maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0,
     log::MethodLog=DummyHistory(), verbose::Bool=false
     )
+    verbose && @printf("=== lsmr ===\n%4s\t%7s\t\t%7s\t\t%7s\n","iter","anorm","cnorm","rnorm")
 
     # Sanity-checking
     m = size(A, 1)
@@ -211,6 +212,7 @@ function lsmr_method!(x, A, b, v, h, hbar;
             push!(log, :cnorm, test3)
             push!(log, :anorm, test2)
             push!(log, :rnorm, test1)
+            verbose && @printf("%3d\t%1.2e\t%1.2e\t%1.2e\n",iter,test2,test3,test1)
 
             t1 = test1 / (one(Tr) + normA * normx / normb)
             rtol = btol + atol * normA * normx / normb
@@ -231,6 +233,7 @@ function lsmr_method!(x, A, b, v, h, hbar;
     end
     setmvps(log, 2*iter)
     setconv(log, istop ∉ (3, 6, 7))
+    verbose && @printf("\n")
 end
 
 for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))

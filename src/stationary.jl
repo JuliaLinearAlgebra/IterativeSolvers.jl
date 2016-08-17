@@ -38,6 +38,7 @@ function jacobi_method!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))),maxiter=size(A,2)^2,
     verbose::Bool=false, log::MethodLog=DummyHistory()
     )
+    verbose && @printf("=== jacobi ===\n%4s\t%7s\n","iter","relres")
     iter = 0
 	n = size(A,2)
     xold = copy(x)
@@ -56,10 +57,12 @@ function jacobi_method!(x, A::AbstractMatrix, b;
 		resnorm = norm(A*x-b)
         nextiter!(log)
         push!(log,:resnorm,resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
 		resnorm < tol && (setconv(log, resnorm>=0); break)
 		copy!(xold, x)
 	end
     setmvps(log, iter)
+    verbose && @printf("\n")
 end
 
 ####################
@@ -98,6 +101,7 @@ function gauss_seidel_method!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     verbose::Bool=false, log::MethodLog=DummyHistory()
     )
+    verbose && @printf("=== gauss_seidel ===\n%4s\t%7s\n","iter","relres")
     iter = 0
 	n = size(A,2)
     xold = copy(x)
@@ -119,10 +123,12 @@ function gauss_seidel_method!(x, A::AbstractMatrix, b;
         resnorm = norm(A*x-b)
         nextiter!(log)
         push!(log,:resnorm,resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
 		resnorm < tol && (setconv(log, resnorm>=0); break)
 		copy!(xold, x)
 	end
     setmvps(log, iter)
+    verbose && @printf("\n")
 end
 
 ####################
@@ -161,6 +167,7 @@ function sor_method!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
     verbose::Bool=false, log::MethodLog=DummyHistory()
     )
+    verbose && @printf("=== sor ===\n%4s\t%7s\n","iter","relres")
 	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
     iter = 0
 	n = size(A,2)
@@ -184,10 +191,12 @@ function sor_method!(x, A::AbstractMatrix, b, ω::Real;
         resnorm = norm(A*x-b)
         nextiter!(log)
         push!(log,:resnorm,resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
 		resnorm < tol && (setconv(log, resnorm>=0); break)
 		copy!(xold, x)
 	end
     setmvps(log, iter)
+    verbose && @printf("\n")
 end
 
 ####################
@@ -226,6 +235,7 @@ function ssor_method!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
     verbose::Bool=false, log::MethodLog=DummyHistory()
     )
+    verbose && @printf("=== ssor ===\n%4s\t%7s\n","iter","relres")
 	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
     iter = 0
 	n = size(A,2)
@@ -262,10 +272,12 @@ function ssor_method!(x, A::AbstractMatrix, b, ω::Real;
         resnorm = norm(A*x-b)
         nextiter!(log)
         push!(log,:resnorm,resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
 		resnorm < tol && (setconv(log, resnorm>=0); break)
 		copy!(xold, x)
 	end
     setmvps(log, iter)
+    verbose && @printf("\n")
 end
 
 #################

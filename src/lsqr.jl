@@ -55,6 +55,7 @@ function lsqr_method!(x, A, b;
     maxiter::Int=max(size(A,1), size(A,2)), verbose::Bool=false,
     log::MethodLog=DummyHistory()
     )
+    verbose && @printf("=== lsqr ===\n%4s\t%7s\t\t%7s\t\t%7s\n","iter","anorm","cnorm","rnorm")
     # Sanity-checking
     m = size(A,1)
     n = size(A,2)
@@ -210,6 +211,7 @@ function lsqr_method!(x, A, b;
         push!(log, :cnorm, test3)
         push!(log, :anorm, test2)
         push!(log, :rnorm, test1)
+        verbose && @printf("%3d\t%1.2e\t%1.2e\t%1.2e\n",itn,test2,test3,test1)
 
         # The following tests guard against extremely small values of
         # atol, btol  or  ctol.  (The user may have set any or all of
@@ -228,6 +230,7 @@ function lsqr_method!(x, A, b;
     end
     setmvps(log, 2*itn+2)
     setconv(log, istop > 0)
+    verbose && @printf("\n")
 end
 
 #################

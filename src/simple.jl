@@ -39,6 +39,7 @@ function powm_method{T}(K::KrylovSubspace{T};
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     verbose::Bool=false, log::MethodLog=DummyHistory()
     )
+    verbose && @printf("=== powm ===\n%4s\t%7s\n","iter","relres")
     θ = zero(T)
     v = Array(T, K.n)
     for iter=1:maxiter
@@ -48,9 +49,11 @@ function powm_method{T}(K::KrylovSubspace{T};
         resnorm = real(norm(y - θ*v))
         nextiter!(log)
         push!(log, :resnorm, resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm <= tol*abs(θ) && (setconv(log, resnorm >= 0); break)
         appendunit!(K, y)
     end
+    verbose && @printf("\n")
     setmvps(log, K.mvps)
     θ, v
 end
@@ -95,6 +98,7 @@ function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
     tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     log::MethodLog=DummyHistory(), verbose::Bool=false
     )
+    verbose && @printf("=== invpowm ===\n%4s\t%7s\n","iter","relres")
     θ = zero(T)
     v = Array(T, K.n)
     y = Array(T, K.n)
@@ -106,9 +110,11 @@ function invpowm_method{T}(K::KrylovSubspace{T}, σ::Number;
         resnorm = norm(y - θ*v)
         nextiter!(log)
         push!(log, :resnorm, resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm <= tol*abs(θ) && (setconv(log, resnorm >= 0); break)
         appendunit!(K, y)
     end
+    verbose && @printf("\n")
     setmvps(log, K.mvps)
     σ+1/θ, y/θ
 end
@@ -153,6 +159,7 @@ function rqi_method{T}(K::KrylovSubspace{T}, σ::Number;
     x=nothing, tol::Real=eps(T)*K.n^3, maxiter::Int=K.n,
     log::MethodLog=DummyHistory(), verbose::Bool=false
     )
+    verbose && @printf("=== rqi ===\n%4s\t%7s\n","iter","relres")
     v = lastvec(K)
     ρ = dot(v, nextvec(K))
     resnorms=zeros(eltype(real(one(T))), maxiter)
@@ -164,8 +171,10 @@ function rqi_method{T}(K::KrylovSubspace{T}, σ::Number;
         resnorm=1/θ
         nextiter!(log)
         push!(log,:resnorm,resnorm)
+        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         θ >= 1/tol && (setconv(log, resnorm >= 0); break)
     end
+    verbose && @printf("\n")
     setmvps(log, K.mvps)
     ρ, v
 end

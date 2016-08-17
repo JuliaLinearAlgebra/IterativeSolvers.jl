@@ -55,6 +55,7 @@ subspaces of shrinking dimensions.
 function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
     log::MethodLog=MethodLog(), verbose::Bool=false
     )
+    verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","relres")
     R = C - op(X, args...)::T
     normR = vecnorm(R)
 	iter = 0
@@ -125,6 +126,7 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
             iter += 1
             nextiter!(log)
             push!(log, :resnorm, normR)
+            verbose && @printf("%3d\t%1.2e\n",iter,normR)
             ((normR < tol) | (iter > maxiter)) && (setconv(log, 0<=normR<tol); return)
             if k < s
                 f[k+1:s] = f[k+1:s] - beta*M[k+1:s,k]
@@ -145,9 +147,11 @@ function idrs_method!{T}(X, op, args, C::T, s, tol, maxiter;
         iter += 1
         nextiter!(log)
         push!(log, :resnorm, normR)
+        verbose && @printf("%3d\t%1.2e\n",iter,normR)
     end
     setconv(log, 0<=normR<tol)
     setmvps(log, iter)
+    verbose && @printf("\n")
 end
 
 #################
