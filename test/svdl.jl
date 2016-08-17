@@ -7,16 +7,16 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
   for elty in (Float32, Float64)
     context("Diagonal Matrix{$elty}") do
         n = 30
-        ns= 5
+        nsv= 5
         tol=1e-5
 
         A = full(Diagonal(elty[1.0:n;]))
         q = convert(Vector{elty}, ones(n)/√n)
-        σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none)
+        σ, L = svdl(A; nsv=nsv, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none, log=true)
         @fact norm(σ - [n:-1.0:n-4;]) --> less_than(5^2*1e-5)
 
         #Check the singular vectors also
-        Σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:both)
+        Σ, L = svdl(A; nsv=nsv, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:both, log=true)
 
         #The vectors should have the structure
         # [ 0  0 ...  0 ]
@@ -35,11 +35,11 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
             Σ[:Vt][i, end+1-i] -= sign(Σ[:Vt][i, end+1-i])
         end
         @fact vecnorm(Σ[:U]) --> less_than(σ[1]*√tol)
-        @fact norm(σ - Σ[:S]) --> less_than(2max(tol*ns*σ[1], tol))
+        @fact norm(σ - Σ[:S]) --> less_than(2max(tol*nsv*σ[1], tol))
 
         #Issue #55
         let
-            σ1, _ = svdl(A, 1, tol=tol, reltol=tol)
+            σ1, _ = svdl(A; nsv=1, tol=tol, reltol=tol, log=true)
             @fact abs(σ[1] - σ1[1]) --> less_than(2max(tol*σ[1], tol))
         end
     end
@@ -53,8 +53,9 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         A = convert(Matrix{elty}, randn(m,n))
         q = convert(Vector{elty}, randn(n))|>x->x/norm(x)
-        σ, L = svdl(A, k, k=l, v0=q, tol=1e-5, maxiter=30, method=method)
+        σ, L = svdl(A; nsv=k, k=l, v0=q, tol=1e-5, maxiter=30, method=method, log=true)
         @fact norm(σ - svdvals(A)[1:k]) --> less_than(k^2*1e-5)
+        println("4")
     end
   end
 end end
@@ -68,4 +69,3 @@ facts("BrokenArrowBidiagonal") do
     @fact B[3,2] --> 0
     @fact B[1,3] --> 1
 end
-

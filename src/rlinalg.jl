@@ -5,21 +5,37 @@
 export rcond, reigmax, reigmin, rnorm, rnorms
 
 
+"""
+    randnn(el, m)
+    randnn(el, m, n)
 
-@doc doc"""
-Randomized Gaussian matrices normalized by column
+Compute randomized gaussian matrix normalized by column.
 
-Input:
-    `el`: element type
-    `m`: number of rows
-    `n`: number of columns or nothing
-    `normalize`: whether or not to normalize (default: `true`)
+# Arguments
 
-Output:
-    `Ω`: a matrix of dimensions `m` x `n` containing Gaussian random numbers of
-    type `el`.
-""" ->
-function randnn(el, m::Int, normalize::Bool=true)
+* `el::Type`: element type.
+
+* `m::Int`: number of rows.
+
+* `n::Int`: number of columns.
+
+## Keywords
+
+* `normalize::Bool = true`: normalize output.
+
+## Output
+
+*Without `n`:*
+
+* `Ω`: vector containing Gaussian random numbers of type `el`.
+
+*With `n`:*
+
+* `Ω`: matrix of dimensions `m` x `n` containing Gaussian random numbers of
+type `el`.
+
+"""
+function randnn(el::Type, m::Int; normalize::Bool=true)
     if el <: Real
         Ω = randn(m)
     elseif el <: Complex
@@ -29,7 +45,7 @@ function randnn(el, m::Int, normalize::Bool=true)
     end
     normalize ? Ω/norm(Ω) : Ω
 end
-function randnn(el, m::Int, n::Int, normalize::Bool=true)
+function randnn(el::Type, m::Int, n::Int; normalize::Bool=true)
     if el <: Real
         Ω = randn(m, n)
     elseif el <: Complex
@@ -39,101 +55,119 @@ function randnn(el, m::Int, n::Int, normalize::Bool=true)
     end
     normalize || return Ω
     for i=1:n
-        Ω[:, i] /= norm(sub(Ω, :, i))
+        Ω[:, i] /= norm(viewsub(Ω, :, i))
     end
     Ω
 end
 
 
 
-@doc doc"""
-Randomized matrix norm estimator
+"""
+    rnorm(A, mvps)
 
-Computes a probabilistic upper bound on the norm of a matrix `A`.
+Compute a probabilistic upper bound on the norm of a matrix `A`.
+`‖A‖ ≤ α √(2/π) maxᵢ ‖Aωᵢ‖` with probability `p=α^(-mvps)`.
 
-\cite[Lemma 4.1]{Halko2011} states (with slight notational change) that
+# Arguments
 
-‖A‖ ≤ α √(2/π) maxᵢ ‖Aωᵢ‖
+* `A`: matrix whose norm to estimate.
 
-with probability $$p=α^{-r}$$.
+* `mvps::Int`: number of matrix-vector products to compute.
 
-Inputs:
-    `A`: Matrix whose norm to estimate
-    `r`: Number of matrix-vector products to compute
-    `p`: Probability of upper bound failing (default: 0.05)
+# Keywords
 
-Output:
-    Estimate of ‖A‖.
+* `p::Real=0.05`: probability of upper bound failing.
 
-See also:
-    `rnorms()` for a different estimator that uses
-    premultiplying by both `A` and `A'`
-""" ->
-function rnorm(A, r::Int, p::Real=0.05)
+# Output
+
+* estimate of ‖A‖.
+
+# See also
+
+see [`rnorms`](@ref) for a different estimator that uses premultiplying by both
+`A` and `A'`.
+
+# References
+
+\cite[Lemma 4.1]{Halko2011}
+
+"""
+function rnorm(A, mvps::Int; p::Real=0.05)
     @assert 0<p≤1
-    α = p^(-1.0/r)
+    α = p^(-1.0/mvps)
     m, n = size(A)
-    Ω = randnn(eltype(A), n, r, false)
+    Ω = randnn(eltype(A), n, mvps, normalize=false)
     AΩ = A*Ω
-    mx = maximum([norm(sub(AΩ, :, j)) for j=1:r])
+    mx = maximum([norm(viewsub(AΩ, :, j)) for j=1:mvps])
     α * √(2/π) * mx
 end
 
 
 
-@doc doc"""
-Randomized matrix norm estimator using `A'A`
+"""
+    rnorms(A, iters=1)
 
-Computes a probabilistic upper bound on the norm of a matrix `A`.
+Estimate matrix norm randomly using `A'A`.
 
-\cite[Appendix]{Liberty2007} states (with minor change in notation) that
+Compute a probabilistic upper bound on the norm of a matrix `A`.
 
-ρ = √(‖(A'A)ʲω‖/‖(A'A)ʲ⁻¹ω‖)
+`ρ = √(‖(A'A)ʲω‖/‖(A'A)ʲ⁻¹ω‖)`
 
-which is an estimate of the spectral norm of A produced by j
-steps of the power method starting with normalized ω, is a lower
+which is an estimate of the spectral norm of `A` produced by `iters`
+steps of the power method starting with normalized `ω`, is a lower
 bound on the true norm by a factor
 
-ρ ≤ α ‖A‖
+`ρ ≤ α ‖A‖`
 
-with probability greater than $$1 - p$$, where
-$$p = 4\sqrt{n/(j-1)} α^{-2j}$$.
+with probability greater than `1 - p`, where `p = 4\sqrt(n/(iters-1)) α^(-2iters)`.
 
-Inputs:
-    `A`: Matrix whose norm to estimate
-    `j`: Number of power iterations to perform. (Default: 1)
-    `p`: Probability of upper bound failing. (Default: 0.05)
-    `At` (optional keyword): Transpose of `A`. (Default: `A'`)
+# Arguments
 
-Output:
-    Estimate of ‖A‖.
+* `A`: matrix whose norm to estimate.
 
-Reference:
-    Appendix of \cite{Liberty2007}.
+* `iters::Int = 1`: mumber of power iterations to perform.
 
-    @article{Liberty2007,
-        authors = {Edo Liberty and Franco Woolfe and Per-Gunnar Martinsson
-	    and Vladimir Rokhlin and Mark Tygert},
-        title = {Randomized algorithms for the low-rank approximation of matrices},
-        journal = {Proceedings of the National Academy of Sciences},
-	volume = {104},
-	issue = {51},
-	year = {2007},
-	pages = {20167--20172},
-        doi  = {10.1073/pnas.0709640104}
-    }
+# Keywords
 
-Comment:
-    see `rnorm()` for a different estimator that does not require
-    premultiplying by `A'`
-""" ->
-function rnorms(A, j::Int=1, p::Real=0.05; At = A')
+* `p::Real = 0.05`: probability of upper bound failing.
+
+* `At = A'`: Transpose of `A`.
+
+# Output
+
+* Estimate of ‖A‖.
+
+# See also
+
+see [`rnorm`](@ref) for a different estimator that does not require
+premultiplying by `A'`
+
+# References
+
+Appendix of \cite{Liberty2007}.
+
+```bibtex
+@article{Liberty2007,
+    authors = {Edo Liberty and Franco Woolfe and Per-Gunnar Martinsson
+    and Vladimir Rokhlin and Mark Tygert},
+    title = {Randomized algorithms for the low-rank approximation of matrices},
+    journal = {Proceedings of the National Academy of Sciences},
+    volume = {104},
+    issue = {51},
+    year = {2007},
+    pages = {20167--20172},
+    doi  = {10.1073/pnas.0709640104}
+}
+```
+
+"""
+function rnorms(A, iters::Int=1; p::Real=0.05, At = A')
     @assert 0<p≤1
      m, n = size(A)
-    α = ((j-1)/n*(p/4)^2)^(-1/(4j))
+    α = ((iters-1)/n*(p/4)^2)^(-1/(4iters))
 
     Ωold = Ω = randnn(eltype(A), n)
-    for i=1:j #Power iterations
+    for i=1:iters #Power iterations
         Ω, Ωold = At*(A*Ω), Ω
     end
     ρ = √(norm(Ω)/norm(Ωold))
@@ -142,127 +176,147 @@ end
 
 
 
-@doc doc"""
-Randomized condition number estimator
+"""
+    rcond(A, iters=1)
 
-Inputs:
-    `A`: Matrix whose condition number to estimate.
-         Must be square and support premultiply (`A*⋅`) and solve (`A\⋅`)
-    `k`: Number of power iterations to run. (Default: 1, recommended: `k ≤ 3`)
-    `p`: Probability that estimate fails to hold as an upper bound
-       (Default: 0.05)
+Estimate matrix condition number randomly.
 
-Output:
+# Arguments
 
-    The interval `(x, y)` which contains `κ(A)` with probability $$1 - p$$.
+* `A`: matrix whose condition number to estimate. Must be square and
+support premultiply (`A*⋅`) and solve (`A\⋅`).
 
-Implementation note:
+* `iters::Int = 1`: number of power iterations to run.
 
-    \cite{Dixon1983} originally describes this as a computation that
-    can be done by computing the necessary number of power iterations given p
-    and the desired accuracy parameter θ=y/x. However, these bounds were only
-    derived under the assumptions of exact arithmetic. Empirically, k≥4 has
-    been seen to result in incorrect results in that the computed interval does
-    not contain the true condition number. This implemention therefore makes `k`
-    an explicitly user-controllable parameter from which to infer the accuracy
-    parameter and hence the interval containing κ(A).
+# Keywords
 
-Reference:
-    \cite[Theorem 2]{Dixon1983}
+* `p::Real = 0.05`: probability that estimate fails to hold as an upper bound.
 
-    @article{Dixon1983,
-        author = {Dixon, John D},
-        doi = {10.1137/0720053},
-        journal = {SIAM Journal on Numerical Analysis},
-        number = {4},
-        pages = {812--814},
-	title = {Estimating Extremal Eigenvalues and Condition Numbers of
-		Matrices},
-	volume = {20},
-        year = {1983}
-    }
-""" ->
-function rcond(A, k::Int=1, p::Real=0.05)
+# Output
+
+* interval `(x, y)` which contains `κ(A)` with probability `1 - p`.
+
+# Implementation note
+
+\cite{Dixon1983} originally describes this as a computation that
+can be done by computing the necessary number of power iterations given p
+and the desired accuracy parameter `θ=y/x`. However, these bounds were only
+derived under the assumptions of exact arithmetic. Empirically, `iters≥4` has
+been seen to result in incorrect results in that the computed interval does
+not contain the true condition number. This implemention therefore makes `iters`
+an explicitly user-controllable parameter from which to infer the accuracy
+parameter and hence the interval containing `κ(A)`.
+
+# References
+
+\cite[Theorem 2]{Dixon1983}
+
+```bibtex
+@article{Dixon1983,
+    author = {Dixon, John D},
+    doi = {10.1137/0720053},
+    journal = {SIAM Journal on Numerical Analysis},
+    number = {4},
+    pages = {812--814},
+    title = {Estimating Extremal Eigenvalues and Condition Numbers of
+	Matrices},
+    volume = {20},
+    year = {1983}
+}
+```
+
+"""
+function rcond(A, iters::Int=1; p::Real=0.05)
     @assert 0<p≤1
     m, n = size(A)
     @assert m==n
-    θ = (8n/(π*p^2))^(1/k)
+    θ = (8n/(π*p^2))^(1/iters)
     x = randnn(eltype(A), n)
-    for i=1:k
+    for i=1:iters
         x = A*x
     end
     y = randnn(eltype(A), n)
-    for i=1:k
+    for i=1:iters
         y = A\y
     end
-    φ = ((x⋅x)*(y⋅y))^(1/(2k))
+    φ = ((x⋅x)*(y⋅y))^(1/(2iters))
     (φ, θ*φ)
 end
 
 
 
-@doc doc"""
-Randomized maximal eigenvalue estimator
+"""
+    reigmax(A, iters=1)
 
-Inputs:
+Estimate maximal eigenvalue randomly.
 
-    `A`: Matrix whose maximal eigenvalue to estimate.
-         Must be square and support premultiply (`A*⋅`)
-    `k`: Number of power iterations to run. (Default: 1, recommended: k ≤ 3)
-    `p`: Probability that estimate fails to hold as an upper bound
-       (Default: 0.05)
+# Arguments
 
-Output:
+* `A`: Matrix whose maximal eigenvalue to estimate.
+Must be square and support premultiply (`A*⋅`).
 
-    The interval `(x, y)` which contains the maximal eigenvalue of `A` with
-    probability $$1 - p$$.
+* `iters::Int=1`: Number of power iterations to run. (Recommended: `iters` ≤ 3)
 
-Reference:
+# Keywords
 
-    \cite[Corollary of Theorem 1]{Dixon1983}.
-""" ->
-function reigmax(A, k::Int=1, p::Real=0.05)
+* `p::Real=0.05`: Probability that estimate fails to hold as an upper bound.
+
+# Output
+
+* interval `(x, y)` which contains the maximal eigenvalue of `A` with
+probability `1 - p`.
+
+# References
+
+\cite[Corollary of Theorem 1]{Dixon1983}.
+
+"""
+function reigmax(A, iters::Int=1; p::Real=0.05)
     @assert 0<p≤1
     m, n = size(A)
     @assert m==n
-    θ = (2n/(π*p^2))^(1/k)
+    θ = (2n/(π*p^2))^(1/iters)
     y = x = randnn(eltype(A), n)
-    for i=1:k
+    for i=1:iters
         x = A*x
     end
     φ = y⋅x
     (φ, θ*φ)
 end
 
+"""
+    reigmin(A, iters=1)
 
+Estimate minimal eigenvalue randomly.
 
-@doc doc"""
-Randomized minimal eigenvalue estimator
+# Arguments
 
-Inputs:
+* `A`: Matrix whose maximal eigenvalue to estimate.
+Must be square and support premultiply (`A*⋅`).
 
-    `A`: Matrix whose minimal eigenvalue to estimate.
-         Must be square and support backslash (`A\⋅`)
-    `k`: Number of power iterations to run. (Default: 1, recommended: k ≤ 3)
-    `p`: Probability that estimate fails to hold as an upper bound
-         (Default: 0.05)
+* `iters::Int=1`: Number of power iterations to run. (Recommended: `iters` ≤ 3)
 
-Output:
+# Keywords
 
-    The interval `(x, y)` which contains the minimal eigenvalue of `A` with
-    probability $$1 - p$$.
+* `p::Real=0.05`: Probability that estimate fails to hold as an upper bound.
 
-Reference:
+# Output
 
-    \cite[Corollary of Theorem 1]{Dixon1983}.
-""" ->
-function reigmin(A, k::Int=1, p::Real=0.05)
+* interval `(x, y)` which contains the maximal eigenvalue of `A` with
+probability `1 - p`.
+
+# References
+
+\cite[Corollary of Theorem 1]{Dixon1983}.
+
+"""
+function reigmin(A, iters::Int=1; p::Real=0.05)
     @assert 0<p≤1
     m, n = size(A)
     @assert m==n
-    θ = (2n/(π*p^2))^(1/k)
+    θ = (2n/(π*p^2))^(1/iters)
     y = x = randnn(eltype(A), n)
-    for i=1:k
+    for i=1:iters
         x = A\x
     end
     φ = y⋅x
@@ -271,38 +325,50 @@ end
 
 
 
-@doc doc"""
-A subsampled random Fourier transform
+"""
+    srft
 
-Parameter:
+A subsampled random Fourier transform.
 
-    l :: Number of vectors to return
-""" ->
+# Fields
+
+* `l<:Integer`: number of vectors to return.
+
+# Implements
+
+* Base: `*`
+
+"""
 immutable srft{T<:Integer}
     l :: T
 end
 
-(*)(A::AbstractMatrixFcn, B::srft) = error("method only defined to avoid ambiguity. If you need this method please open a pull request")
+(*)(::FuncMat, ::srft) = error("method only defined to avoid ambiguity."
+    * " If you need this method please open a pull request")
 
-@doc doc"""
-Applies a subsampled random Fourier transform to the columns of `A`
+"""
+    *
 
-Inputs:
+Apply a subsampled random Fourier transform to the columns of `A`.
 
-    `A`: A matrix to transform
-    `Ω`: A `srft` type
+# Arguments
 
-Output:
-    `B`: A matrix of dimensions size(A,1) x Ω.l
+* `A`: matrix to transform.
 
-Reference:
+* `Ω::srft`: subsampled random Fourier transform.
 
-    \[Equation 4.6]{Halko2011}
-""" ->
+# Output
+
+* `B`: A matrix of dimensions size(A,1) x Ω.l
+
+# References
+
+\[Equation 4.6]{Halko2011}
+
+"""
 function *(A, Ω::srft)
     m, n = size(A)
     B = A*Diagonal(exp(2π*im*rand(n))/√Ω.l)
     B = vcat([fft(A[i,:]) for i=1:m]...) #Factor of √n cancels out
     B[:, randperm(n)[1:Ω.l]]
 end
-

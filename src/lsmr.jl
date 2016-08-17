@@ -1,47 +1,57 @@
 export lsmr, lsmr!
 
-using Base.LinAlg 
+using Base.LinAlg
 
-##############################################################################
-## LSMR
-##
-## Minimize ||Ax-b||^2 + λ^2 ||x||^2
-##
-## Adapted from the BSD-licensed Matlab implementation at
-## http://web.stanford.edu/group/SOL/software/lsmr/
-##
-## A is a StridedVecOrMat or anything that implements 
-## A_mul_B!(α, A, b, β, c) updates c -> α Ab + βc
-## Ac_mul_B!(α, A, b, β, c) updates c -> α A'b + βc
-## eltype(A)
-## size(A)
-## (this includes SparseMatrixCSC)
-## x, v, h, hbar are AbstractVectors or anything that implements
-## norm(x)
-## copy!(x1, x2)
-## scale!(x, α)
-## axpy!(α, x1, x2)
-## similar(x, T)
-## length(x)
-## b is an AbstractVector or anything that implements
-## eltype(b)
-## norm(b)
-## copy!(x1, x2)
-## fill!(b, α)
-## scale!(b, α)
-## similar(b, T)
-## length(b)
+####################
+# API method calls #
+####################
 
-##############################################################################
+function lsmr(A, b; kwargs...)
+    lsmr!(zerox(A, b), A, b; kwargs...)
+end
 
+function lsmr!(x, A, b;
+    atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
+    maxiter::Integer = max(size(A,1), size(A,2)), plot::Bool=false, log::Bool=false,
+    kwargs...
+    )
+    if log
+        history = ConvergenceHistory()
+        history[:atol] = atol
+        history[:btol] = btol
+        reserve!(history,:anorm,maxiter)
+        reserve!(history,:rnorm,maxiter)
+        reserve!(history,:cnorm,maxiter)
+    else
+        history = DummyHistory()
+    end
+    T = Adivtype(A, b)
+    m, n = size(A, 1), size(A, 2)
+    btmp = similar(b, T)
+    copy!(btmp, b)
+    v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
+    lsmr_method!(x, A, btmp, v, h, hbar;
+        atol=atol,btol=btol,conlim=conlim,maxiter=maxiter,log=history,kwargs...
+        )
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
+end
 
-## Arguments:
-## x is initial x0. Transformed in place to the solution.
-## b equals initial b. Transformed in place
-## v, h, hbar are storage arrays of length size(A, 2)
-function lsmr!(x, A, b, v, h, hbar; 
-    atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8, 
-    maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0)
+#########################
+# Method Implementation #
+#########################
+
+function lsmr_method!(x, A, b, v, h, hbar;
+    atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
+    maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0,
+    log::MethodLog=DummyHistory(), verbose::Bool=false
+    )
+    verbose && @printf("=== lsmr ===\n%4s\t%7s\t\t%7s\t\t%7s\n","iter","anorm","cnorm","rnorm")
 
     # Sanity-checking
     m = size(A, 1)
@@ -57,6 +67,7 @@ function lsmr!(x, A, b, v, h, hbar;
     normrs = Tr[]
     normArs = Tr[]
     conlim > 0 ? ctol = convert(Tr, inv(conlim)) : ctol = zero(Tr)
+    log[:ctol] = ctol
     # form the first vectors u and v (satisfy  β*u = b,  α*v = A'u)
     u = A_mul_B!(-1, A, x, 1, b)
     β = norm(u)
@@ -93,13 +104,13 @@ function lsmr!(x, A, b, v, h, hbar;
 
     # Items for use in stopping rules.
     normb = β
-    istop = 0 
+    istop = 0
     normr = β
     normAr = α * β
     tests = Tuple{Tr, Tr, Tr}[]
     iter = 0
     # Exit if b = 0 or A'b = 0.
-    if normAr != 0 
+    if normAr != 0
         while iter < maxiter
             iter += 1
             A_mul_B!(1, A, v, -α, u)
@@ -110,12 +121,12 @@ function lsmr!(x, A, b, v, h, hbar;
                 α = norm(v)
                 α > 0 && scale!(v, inv(α))
             end
-        
+
             # Construct rotation Qhat_{k,2k+1}.
             αhat = hypot(αbar, λ)
             chat = αbar / αhat
             shat = λ / αhat
-        
+
             # Use a plane rotation (Q_i) to turn B_i to R_i.
             ρold = ρ
             ρ = hypot(αhat, β)
@@ -123,7 +134,7 @@ function lsmr!(x, A, b, v, h, hbar;
             s = β / ρ
             θnew = s * α
             αbar = c * α
-        
+
             # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar.
             ρbarold = ρbar
             ζold = ζ
@@ -134,28 +145,28 @@ function lsmr!(x, A, b, v, h, hbar;
             sbar = θnew / ρbar
             ζ = cbar * ζbar
             ζbar = - sbar * ζbar
-        
+
             # Update h, h_hat, x.
             scale!(hbar, - θbar * ρ / (ρold * ρbarold))
             axpy!(1, h, hbar)
             axpy!(ζ / (ρ * ρbar), hbar, x)
             scale!(h, - θnew / ρ)
             axpy!(1, v, h)
-        
+
             ##############################################################################
             ##
             ## Estimate of ||r||
             ##
             ##############################################################################
-        
+
             # Apply rotation Qhat_{k,2k+1}.
             βacute = chat * βdd
             βcheck = - shat * βdd
-        
+
             # Apply rotation Q_{k,k+1}.
             βhat = c * βacute
             βdd = - s * βacute
-        
+
             # Apply rotation Qtilde_{k-1}.
             θtildeold = θtilde
             ρtildeold = hypot(ρdold, θbar)
@@ -164,43 +175,47 @@ function lsmr!(x, A, b, v, h, hbar;
             θtilde = stildeold * ρbar
             ρdold = ctildeold * ρbar
             βd = - stildeold * βd + ctildeold * βhat
-        
+
             τtildeold = (ζold - θtildeold * τtildeold) / ρtildeold
             τd = (ζ - θtilde * τtildeold) / ρdold
             d += abs2(βcheck)
             normr = sqrt(d + abs2(βd - τd) + abs2(βdd))
-        
+
             # Estimate ||A||.
             normA2 += abs2(β)
             normA  = sqrt(normA2)
             normA2 += abs2(α)
-        
+
             # Estimate cond(A).
             maxrbar = max(maxrbar, ρbarold)
-            if iter > 1 
+            if iter > 1
                 minrbar = min(minrbar, ρbarold)
             end
             condA = max(maxrbar, ρtemp) / min(minrbar, ρtemp)
-        
+
             ##############################################################################
             ##
             ## Test for convergence
             ##
             ##############################################################################
-        
+
             # Compute norms for convergence testing.
             normAr  = abs(ζbar)
             normx = norm(x)
-        
+
             # Now use these norms to estimate certain other quantities,
             # some of which will be small near a solution.
             test1 = normr / normb
             test2 = normAr / (normA * normr)
             test3 = inv(condA)
-            push!(tests, (test1, test2, test3))
+            nextiter!(log)
+            push!(log, :cnorm, test3)
+            push!(log, :anorm, test2)
+            push!(log, :rnorm, test1)
+            verbose && @printf("%3d\t%1.2e\t%1.2e\t%1.2e\n",iter,test2,test3,test1)
 
             t1 = test1 / (one(Tr) + normA * normx / normb)
-            rtol = btol + atol * normA * normx / normb      
+            rtol = btol + atol * normA * normx / normb
             # The following tests guard against extremely small values of
             # atol, btol or ctol.  (The user may have set any or all of
             # the parameters atol, btol, conlim  to 0.)
@@ -216,25 +231,9 @@ function lsmr!(x, A, b, v, h, hbar;
             if test1 <= rtol  istop = 1; break end
         end
     end
-    converged = istop ∉ (3, 6, 7)
-    tol = (atol, btol, ctol)
-    ch = ConvergenceHistory(converged, tol, 2 * iter, tests)
-    return x, ch
-end
-
-## Arguments:
-## x is initial x0. Transformed in place to the solution.
-function lsmr!(x, A, b; kwargs...)
-    T = Adivtype(A, b)
-    m, n = size(A, 1), size(A, 2)
-    btmp = similar(b, T)
-    copy!(btmp, b)
-    v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
-    lsmr!(x, A, btmp, v, h, hbar; kwargs...)
-end
-
-function lsmr(A, b; kwargs...)
-    lsmr!(zerox(A, b), A, b; kwargs...)
+    setmvps(log, 2*iter)
+    setconv(log, istop ∉ (3, 6, 7))
+    verbose && @printf("\n")
 end
 
 for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
@@ -245,3 +244,102 @@ for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
     end
 end
 
+#################
+# Documentation #
+#################
+
+#Initialize parameters
+doc_call = """    lsmr(A, b)
+"""
+doc!_call = """    lsmr!(x, A, b)
+"""
+
+doc_msg = "Minimize ||Ax-b||^2 + λ^2 ||x||^2 for A*x=b.\n"
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (lsmr, doc_call, doc_msg, doc_arg)
+doc!_version = (lsmr!, doc!_call, doc!_msg, doc!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+@doc """
+$call
+
+$msg
+
+The method is based on the Golub-Kahan bidiagonalization process. It is
+algebraically equivalent to applying MINRES to the normal equation (ATA+λ2I)x=ATb,
+but has better numerical properties, especially if A is ill-conditioned.
+
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when `log` is set version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `b`: right hand side.
+
+*Keywords*
+
+* `λ::Number = 0`: lambda.
+
+* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+(The final `x` will usually have fewer correct digits,
+depending on `cond(A)` and the size of damp).
+
+* `conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
+of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
+conlim could be as large as 1.0e+12 (say).  For least-squares
+problems, conlim should be less than 1.0e+8.
+Maximum precision can be obtained by setting
+`atol` = `btol` = `conlim` = zero, but the number of iterations
+may then be excessive.
+
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
+
+**Output**
+
+*`log` is `false`:*
+
+* `x`: approximated solution.
+
+*`log` is `true`:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:atol` => `::Real`: atol stopping tolerance.
+
+* `:btol` => `::Real`: btol stopping tolerance.
+
+* `:ctol` => `::Real`: ctol stopping tolerance.
+
+* `:anorm` => `::Real`: anorm.
+
+* `:rnorm` => `::Real`: rnorm.
+
+* `:cnorm` => `::Real`: cnorm.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+""" -> func
+end

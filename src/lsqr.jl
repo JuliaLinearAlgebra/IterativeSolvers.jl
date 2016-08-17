@@ -1,48 +1,61 @@
 export lsqr, lsqr!
 
-using Base.LinAlg # can be removed when 0.3 is no longer supported
+####################
+# API method calls #
+####################
 
-# Adapted from the BSD-licensed Matlab implementation at
-#    http://www.stanford.edu/group/SOL/software/lsqr.html
-#
-# LSQR solves Ax = b or min ||b - Ax||_2 if damp = 0,
-# or   min ||(b) - (  A   )x||   otherwise.
-#          ||(0)   (damp*I) ||_2
+lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
 
-#-----------------------------------------------------------------------
-# LSQR uses an iterative (conjugate-gradient-like) method.
-# For further information, see
-# 1. C. C. Paige and M. A. Saunders (1982a).
-#    LSQR: An algorithm for sparse linear equations and sparse least squares,
-#    ACM TOMS 8(1), 43-71.
-# 2. C. C. Paige and M. A. Saunders (1982b).
-#    Algorithm 583.  LSQR: Sparse linear equations and least squares problems,
-#    ACM TOMS 8(2), 195-209.
-# 3. M. A. Saunders (1995).  Solution of sparse rectangular systems using
-#    LSQR and CRAIG, BIT 35, 588-604.
-#
-# Input parameters:
-# atol, btol  are stopping tolerances.  If both are 1.0e-9 (say),
-#             the final residual norm should be accurate to about 9 digits.
-#             (The final x will usually have fewer correct digits,
-#             depending on cond(A) and the size of damp.)
-# conlim      is also a stopping tolerance.  lsqr terminates if an estimate
-#             of cond(A) exceeds conlim.  For compatible systems Ax = b,
-#             conlim could be as large as 1.0e+12 (say).  For least-squares
-#             problems, conlim should be less than 1.0e+8.
-#             Maximum precision can be obtained by setting
-#             atol = btol = conlim = zero, but the number of iterations
-#             may then be excessive.
-# maxiter      is an explicit limit on iterations (for safety).
-#
-#              Michael Saunders, Systems Optimization Laboratory,
-#              Dept of MS&E, Stanford University.
+function lsqr!(x, A, b;
+    atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
+    conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
+    plot::Bool=false, maxiter::Int=max(size(A,1), size(A,2)), log::Bool=false,
+    kwargs...
+    )
+    if log
+        history = ConvergenceHistory()
+        history[:atol] = atol
+        history[:btol] = btol
+        reserve!(history,:resnorm,maxiter)
+        reserve!(history,:anorm,maxiter)
+        reserve!(history,:rnorm,maxiter)
+        reserve!(history,:cnorm,maxiter)
+    else
+        history = DummyHistory()
+    end
+    T = Adivtype(A, b)
+    Tr = real(T)
+    ctol = conlim > 0 ? convert(Tr, 1/conlim) : zero(Tr)
+    lsqr_method!(x, A, b;
+        atol=atol, btol=btol, conlim=conlim, maxiter=maxiter, log=history, kwargs...
+        )
+    if log
+        shrink!(history)
+        plot && showplot(history)
+        x, history
+    else
+        x
+    end
+end
+
+#########################
+# Method Implementation #
+#########################
+
+# Michael Saunders, Systems Optimization Laboratory,
+# Dept of MS&E, Stanford University.
 #
 # Adapted for Julia by Timothy E. Holy with the following changes:
 #    - Allow an initial guess for x
 #    - Eliminate printing
-#-----------------------------------------------------------------------
-function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))), conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))), maxiter::Int=max(size(A,1), size(A,2)))
+#----------------------------------------------------------------------
+function lsqr_method!(x, A, b;
+    damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
+    conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
+    maxiter::Int=max(size(A,1), size(A,2)), verbose::Bool=false,
+    log::MethodLog=DummyHistory()
+    )
+    verbose && @printf("=== lsqr ===\n%4s\t%7s\t\t%7s\t\t%7s\n","iter","anorm","cnorm","rnorm")
     # Sanity-checking
     m = size(A,1)
     n = size(A,2)
@@ -53,12 +66,11 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     end
 
     # Initialize
-    empty!(ch)
-    ch.threshold = (atol, btol, conlim)
     T = Adivtype(A, b)
     Tr = real(T)
     itn = istop = 0
     ctol = conlim > 0 ? convert(Tr, 1/conlim) : zero(Tr)
+    log[:ctol] = ctol
     Anorm = Acond = ddnorm = res2 = xnorm = xxnorm = z = sn2 = zero(Tr)
     cs2 = -one(Tr)
     dampsq = abs2(damp)
@@ -81,7 +93,6 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     end
     w = copy(v)
     wrho = similar(w)
-    ch.mvps += 2
 
     Arnorm = alpha*beta
     if Arnorm == 0
@@ -121,7 +132,6 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
                 scale!(v, inv(alpha))
             end
         end
-        ch.mvps += 2
 
         # Use a plane rotation to eliminate the damping parameter.
         # This alters the diagonal (rhobar) of the lower-bidiagonal matrix.
@@ -176,6 +186,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         rnorm   =   sqrt(res1 + res2)
         Arnorm  =   alpha*abs(tau)
 
+        nextiter!(log)
         # 07 Aug 2002:
         # Distinguish between
         #    r1norm = ||b - Ax|| and
@@ -187,7 +198,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         r1sq    =   abs2(rnorm) - dampsq*xxnorm
         r1norm  =   sqrt(abs(r1sq));   if r1sq < 0 r1norm = - r1norm; end
         r2norm  =   rnorm
-        push!(ch, r1norm)
+        push!(log, :resnorm, r1norm)
 
         # Now use these norms to estimate certain other quantities,
         # some of which will be small near a solution.
@@ -196,6 +207,11 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         test3   =   inv(Acond)
         t1      =   test1/(1 + Anorm*xnorm/bnorm)
         rtol    =   btol + atol*Anorm*xnorm/bnorm
+
+        push!(log, :cnorm, test3)
+        push!(log, :anorm, test2)
+        push!(log, :rnorm, test1)
+        verbose && @printf("%3d\t%1.2e\t%1.2e\t%1.2e\n",itn,test2,test3,test1)
 
         # The following tests guard against extremely small values of
         # atol, btol  or  ctol.  (The user may have set any or all of
@@ -211,21 +227,111 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         if  test3 <= ctol  istop = 3; end
         if  test2 <= atol  istop = 2; end
         if  test1 <= rtol  istop = 1; end
-
-        if istop > 0
-            ch.isconverged = true
-            break
-        end
     end
-    x
+    setmvps(log, 2*itn+2)
+    setconv(log, istop > 0)
+    verbose && @printf("\n")
 end
 
-function lsqr!(x, A, b; kwargs...)
-    T = Adivtype(A, b)
-    z = zero(T)
-    ch = ConvergenceHistory(false, (z,z,z), 0, T[])
-    lsqr!(x, ch, A, b; kwargs...)
-    x, ch
-end
+#################
+# Documentation #
+#################
 
-lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
+#Initialize parameters
+doc_call = """    lsqr(A, b)
+"""
+doc!_call = """    lsqr!(x, A, b)
+"""
+
+doc_msg = """LSQR solves Ax = b or min ||b - Ax||^2 if damp = 0,
+or   min ||(b) - (  A   )x||   otherwise.
+         ||(0)   (damp*I) ||^2.
+"""
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (lsqr, doc_call, doc_msg, doc_arg)
+doc!_version = (lsqr!, doc!_call, doc!_msg, doc!_arg)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+@doc """
+$call
+
+$msg
+
+The method is based on the Golub-Kahan bidiagonalization process.
+It is algebraically equivalent to applying CG to the normal equation (ATA+λ2I)x=ATb,
+but has better numerical properties, especially if A is ill-conditioned.
+
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when `log` is set version.
+
+**Arguments**
+
+$arg
+
+* `A`: linear operator.
+
+* `b`: right hand side.
+
+*Keywords*
+
+* `λ::Number = 0`: lambda.
+
+* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+(The final `x` will usually have fewer correct digits,
+depending on `cond(A)` and the size of damp).
+
+* `conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
+of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
+conlim could be as large as 1.0e+12 (say).  For least-squares
+problems, conlim should be less than 1.0e+8.
+Maximum precision can be obtained by setting
+`atol` = `btol` = `conlim` = zero, but the number of iterations
+may then be excessive.
+
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+* `verbose::Bool = false`: print method information.
+
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+
+* `plot::Bool = false`: plot data. (Only when `log` is set)
+
+**Output**
+
+*`log` is `false`:*
+
+* `x`: approximated solution.
+
+*`log` is `true`:*
+
+* `x`: approximated solution.
+
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:atol` => `::Real`: atol stopping tolerance.
+
+* `:btol` => `::Real`: btol stopping tolerance.
+
+* `:ctol` => `::Real`: ctol stopping tolerance.
+
+* `:anorm` => `::Real`: anorm.
+
+* `:rnorm` => `::Real`: rnorm.
+
+* `:cnorm` => `::Real`: cnorm.
+
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+""" -> func
+end

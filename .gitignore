@@ -1,3 +1,4 @@
-# mkdocs site
-/site
-
+# Documenter.jl build
+docs/site
+docs/build
+docs/src/benchmarks.md

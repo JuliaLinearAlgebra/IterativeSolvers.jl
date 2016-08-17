@@ -1,6 +1,13 @@
+__precompile__(true)
+
+"""
+Main module for `IterativeSolvers.jl` -- a Julia package for solving linear systems,
+eigensystems, and singular value problems.
+"""
 module IterativeSolvers
 
-isdefined(:__precompile__) && __precompile__(true)
+using RecipesBase
+using UnicodePlots
 
 include("common.jl")
 include("krylov.jl")

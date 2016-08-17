@@ -124,14 +124,14 @@ function runbenchmark(filename, benchmarkfilename)
 
     info("GKL with thick restart using Ritz values")
     b_tr = try
-        @benchmark svdl(A, nv, v0=q, tol=tol, reltol=tol)
+        @benchmark svdl(A, nsv=nv, v0=q, tol=tol, reltol=tol)
     catch exc
         println("Exception: $exc")
     end
 
     info("GKL with thick restart using harmonic Ritz values")
         b_trh = try
-            @benchmark svdl(A, nv, v0=q, tol=tol, reltol=tol, method=:harmonic)
+            @benchmark svdl(A, nsv=nv, v0=q, tol=tol, reltol=tol, method=:harmonic)
         catch exc
             println("Exception: $exc")
         end

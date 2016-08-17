@@ -22,7 +22,7 @@ function Base.A_mul_B!(α, A::Wrapper, x, β, y)
         y[i] = y[i] + i * α * x[i] + (i-1) * α * x[i-1]
     end
     for i = n+1:m
-        y[i] = y[i] 
+        y[i] = y[i]
     end
     return y
 end
@@ -36,7 +36,7 @@ function Base.Ac_mul_B!(α, A::Wrapper, x, β, y)
     end
     y[mn] = y[mn] + α * mn * x[mn]
     for i = m+1:n
-        y[i] = y[i] 
+        y[i] = y[i]
     end
     return y
 end
@@ -47,7 +47,7 @@ end
 # solve (A'A + diag(v).^2 ) x = b
 # using LSMR in the augmented space A' = [A ; diag(v)] b' = [b; zeros(size(A, 2)]
 type DampenedVector{Ty, Tx}
-    y::Ty 
+    y::Ty
     x::Tx
 end
 Base.eltype(a::DampenedVector) =  promote_type(eltype(a.y), eltype(a.x))
@@ -74,12 +74,6 @@ function Base.scale!(a::DampenedVector, α::Number)
     return a
 end
 
-function Base.scale!(a::DampenedVector, α::Number)
-    scale!(a.y, α)
-    scale!(a.x, α)
-    return a
-end
-
 function Base.similar(a::DampenedVector, T)
     return DampenedVector(similar(a.y, T), similar(a.x, T))
 end
@@ -91,7 +85,7 @@ end
 
 type DampenedMatrix{TA, Tx}
     A::TA
-    diagonal::Tx 
+    diagonal::Tx
 end
 
 Base.eltype(A::DampenedMatrix) = promote_type(eltype(A.A), eltype(A.diagonal))
@@ -99,11 +93,11 @@ Base.eltype(A::DampenedMatrix) = promote_type(eltype(A.A), eltype(A.diagonal))
 function Base.size(A::DampenedMatrix, dim::Integer)
     m, n = size(A.A)
     l = length(A.diagonal)
-    dim == 1 ? (m + l) : 
+    dim == 1 ? (m + l) :
     dim == 2 ? n : 1
 end
 
-function Base.A_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::Tx, 
+function Base.A_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::Tx,
                 β::Number, b::DampenedVector{Ty, Tx})
     if β != 1.
         if β == 0.
@@ -117,7 +111,7 @@ function Base.A_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::Tx
     return b
 end
 
-function Base.Ac_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::DampenedVector{Ty, Tx}, 
+function Base.Ac_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::DampenedVector{Ty, Tx},
                 β::Number, b::Tx)
     if β != 1.
         if β == 0.
@@ -127,7 +121,7 @@ function Base.Ac_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::D
         end
     end
     Ac_mul_B!(α, mw.A, a.y, 1.0, b)
-    map!((z, x, y)-> z + α * x * y, b, b, a.x, mw.diagonal)  
+    map!((z, x, y)-> z + α * x * y, b, b, a.x, mw.diagonal)
     return b
 end
 
@@ -139,7 +133,7 @@ facts(string("lsmr")) do
     context("Small dense matrix") do
         A = rand(10, 5)
         b = rand(10)
-        x, = lsmr(A, b)
+        x, = lsmr(A, b, log=true)
         @fact norm(x - A\b) --> less_than(√eps())
     end
 
@@ -169,7 +163,7 @@ facts(string("lsmr")) do
             xtrue = n:-1:1
             b = Array(Float64, m)
             b = float(A_mul_B!(1.0, A, xtrue, 0.0, b))
-            x, = lsmr(A, b, atol = 1e-7, btol = 1e-7, conlim = 1e10, maxiter = 10n)
+            x, = lsmr(A, b, atol = 1e-7, btol = 1e-7, conlim = 1e10, maxiter = 10n, log=true)
             r = A_mul_B!(-1, A, x, 1, b)
             @fact norm(r) --> less_than_or_equal(1e-4)
         end
@@ -189,11 +183,10 @@ facts(string("lsmr")) do
             v = rand(n)
             Adampened = DampenedMatrix(A, v)
             bdampened = DampenedVector(b, zeros(n))
-            x, ch = lsmr(Adampened, bdampened)
+            x, ch = lsmr(Adampened, bdampened, log=true)
             @fact norm((A'A + diagm(v).^2)x - A'b) --> less_than(1e-3)
         end
         DampenedTest(10, 10)
         DampenedTest(20, 10)
     end
 end
-

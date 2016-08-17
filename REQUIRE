@@ -1,3 +1,5 @@
-Compat
 julia 0.4
 
+Compat
+RecipesBase
+UnicodePlots
