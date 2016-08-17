@@ -13,6 +13,20 @@ Depth = 4
 Pages = ["internal.md"]
 ```
 
+## Types
+
+### `MethodLog`
+
+```@docs
+IterativeSolvers.MethodLog
+```
+
+### `DummyHistory`
+
+```@docs
+IterativeSolvers.DummyHistory
+```
+
 ## ConvergenceHistory Internals
 
 **`Typealiases`**
