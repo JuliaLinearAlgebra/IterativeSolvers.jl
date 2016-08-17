@@ -61,7 +61,7 @@ reserve!(log,:conv, maxiter, T=BitArray) # Vector of length maxiter
 reserve!(log,:ritz, maxiter, k) # Matrix of size (maxiter, k)
 ```
 
-To store information at each iteration use [`push!`](@ref).
+To store information at each iteration use `push!`.
 
 ```julia
 push!(log, :conv, conv)
@@ -69,7 +69,7 @@ push!(log, :ritz, F[:S][1:k])
 push!(log, :betas, L.β)
 ```
 
-To advance the log index to the next iteration use [`nextiter!`](@ref).
+To advance the log index to the next iteration use `nextiter!`.
 
 ```julia
 nextiter!(log)

@@ -3,8 +3,6 @@ import Base: append!, eye, size
 export KrylovSubspace
 
 """
-    KrylovSubspace
-
 Collection of information on the Krylov subspace generated over the
 course of an iterative Krylov solver.
 

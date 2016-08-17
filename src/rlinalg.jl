@@ -55,7 +55,7 @@ function randnn(el::Type, m::Int, n::Int; normalize::Bool=true)
     end
     normalize || return Ω
     for i=1:n
-        Ω[:, i] /= norm(viewsub(Ω, :, i))
+        Ω[:, i] /= norm(view(Ω, :, i))
     end
     Ω
 end
@@ -98,7 +98,7 @@ function rnorm(A, mvps::Int; p::Real=0.05)
     m, n = size(A)
     Ω = randnn(eltype(A), n, mvps, normalize=false)
     AΩ = A*Ω
-    mx = maximum([norm(viewsub(AΩ, :, j)) for j=1:mvps])
+    mx = maximum([norm(view(AΩ, :, j)) for j=1:mvps])
     α * √(2/π) * mx
 end
 

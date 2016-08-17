@@ -5,8 +5,6 @@
 export idfact
 
 """
-    Interpolative
-
 An interpolative decomposition.
 
 For a matrix `A`, the interpolative decomposition `F` contains the matrices `B`

@@ -327,16 +327,20 @@ doc2!_version = (gauss_seidel!, doc2!_call, doc2!_msg, doc2!_arg)
 doc3!_version = (sor!, doc3!_call, doc3!_msg, doc3!_arg)
 doc4!_version = (ssor!, doc4!_call, doc4!_msg, doc4!_arg)
 
+i=0
+docstring = Vector(8)
+
 #Build docs
 for (func, call, msg, arg) in [doc1_version, doc2_version, doc3_version, doc4_version,
                                 doc1!_version, doc2!_version, doc3!_version, doc4!_version]
-@doc """
+i+=1
+docstring[i] = """
 $call
 
 $msg
 
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
 
 The `plot` attribute can only be used when `log` is set version.
 
@@ -377,5 +381,14 @@ containing extra information of the method execution.
 
 * `:resnom` => `::Vector`: residual norm at each iteration.
 
-""" -> func
+"""
 end
+
+@doc docstring[1] -> jacobi
+@doc docstring[5] -> jacobi!
+@doc docstring[2] -> gauss_seidel
+@doc docstring[6] -> gauss_seidel!
+@doc docstring[3] -> sor
+@doc docstring[7] -> sor!
+@doc docstring[4] -> ssor
+@doc docstring[8] -> ssor!

@@ -2,7 +2,7 @@ language: julia
 os:
     - linux
 julia:
-    - 0.4
+    - 0.5
     - nightly
 notifications:
     email: false

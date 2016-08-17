@@ -91,7 +91,7 @@ x, ch = cg(Master, rand(10, 10), rand(10) log=true)
 svd, L, ch = svdl(Master, rand(100, 100), plot=true, log=true)
 ```
 
-The function will now return one more parameter of type [`ConvergenceHistory`](@ref).
+The function will now return one more parameter of type `ConvergenceHistory`.
 
 *`Note:`*  Keyword argument `plot` is only available when `log` is set.
 

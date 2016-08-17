@@ -3,32 +3,17 @@ import  Base: last, keys, setindex!, getindex, \, eltype, empty!, eps, length,
 export  A_mul_B, niters, nprods, tolkeys, datakeys, nrests, setindex!,
         getindex, last
 
-# view is not on 0.4 and sub is not fully supported on 0.5
-"""
-    viewsub(a,b,c)
-
-Compatibility for `view` and `sub`.
-"""
-function viewsub(a,b,c)
-    VERSION < v"0.5.0-" && return sub(a,b,c)
-    view(a,(typeof(b) <: Number ? (b:b) : b),c)
-end
-
 # Improve readability of iterative methods
 \(f::Function, b::VecOrMat) = f(b)
 *(f::Function, b::VecOrMat) = f(b)
 
 #### Reporting
 """
-    MethodLog
-
 Log an iterative method's general and per-iteration information.
 """
 abstract MethodLog
 
 """
-    DummyHistory
-
 Placeholder to put inside an iterative method instead of `ConvergenceHistory`
 for not wasting memory. Doesn't actually store any kind of information.
 
@@ -40,8 +25,6 @@ for not wasting memory. Doesn't actually store any kind of information.
 type DummyHistory <: MethodLog end
 
 """
-    ConvergenceHistory{T}
-
 Store general and in-depth information about an iterative method.
 
 **Fields**
@@ -101,15 +84,11 @@ ConvergenceHistory(restart::Int) = ConvergenceHistory(0,0,0,restart,false,
                                     )
 
 """
-    PlainHistory
-
 `ConvergeHistory` without resets.
 """
 typealias PlainHistory ConvergenceHistory{Void}
 
 """
-    RestartedHistory
-
 `ConvergeHistory` with resets.
 """
 typealias RestartedHistory ConvergenceHistory{Int}
@@ -187,35 +166,35 @@ end
     nprods(ch)
 
 Number of matrix-vector products plus transposed matrix-vector products
-logged in [`ConvergenceHistory`](@ref) `ch`.
+logged in `ConvergenceHistory` `ch`.
 """
 nprods(ch::ConvergenceHistory) = ch.mvps+ch.mtvps
 
 """
     niters(ch)
 
-Number of iterations logged in [`ConvergenceHistory`](@ref) `ch`.
+Number of iterations logged in `ConvergenceHistory` `ch`.
 """
 niters(ch::ConvergenceHistory) = ch.iters
 
 """
     nrests(ch)
 
-Number of restarts logged in [`ConvergenceHistory`](@ref) `ch`.
+Number of restarts logged in `ConvergenceHistory` `ch`.
 """
 nrests(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
 
 """
     tolkeys(ch)
 
-Key iterator of the tolerances logged in [`ConvergenceHistory`](@ref) `ch`.
+Key iterator of the tolerances logged in `ConvergenceHistory` `ch`.
 """
 tolkeys(ch::ConvergenceHistory) = keys(ch.tol)
 
 """
     datakeys(ch)
 
-Key iterator of the per iteration data logged in [`ConvergenceHistory`](@ref) `ch`.
+Key iterator of the per iteration data logged in `ConvergenceHistory` `ch`.
 """
 datakeys(ch::ConvergenceHistory) = keys(ch.data)
 

@@ -211,15 +211,19 @@ doc1_version = (powm, doc1_call, doc1_msg, doc1_karg)
 doc2_version = (invpowm, doc2_call, doc2_msg, doc2_karg)
 doc3_version = (rqi, doc3_call, doc3_msg, doc3_karg)
 
+i=0
+docstring = Vector(3)
+
 #Build docs
 for (func, call, msg, karg) in [doc1_version, doc2_version, doc3_version]
-@doc """
+i+=1
+docstring[i] = """
 $call
 
 $msg
 
 If `log` is set to `true` is given, method will output a tuple `eig, v, ch`. Where
-`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `eig, v`.
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `eig, v`.
 
 The `plot` attribute can only be used when `log` is set version.
 
@@ -268,5 +272,9 @@ containing extra information of the method execution.
 
 * `:resnom` => `::Vector`: residual norm at each iteration.
 
-""" -> func
+"""
 end
+
+@doc docstring[1] -> powm
+@doc docstring[2] -> invpowm
+@doc docstring[3] -> rqi

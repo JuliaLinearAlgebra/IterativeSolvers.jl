@@ -39,7 +39,8 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         #Issue #55
         let
-            σ1, _ = svdl(A; nsv=1, tol=tol, reltol=tol, log=true)
+            srand(1234)
+            σ1, = svdl(A; nsv=1, tol=tol, reltol=tol)
             @fact abs(σ[1] - σ1[1]) --> less_than(2max(tol*σ[1], tol))
         end
     end

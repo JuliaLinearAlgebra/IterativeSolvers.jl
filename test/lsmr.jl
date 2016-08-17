@@ -133,7 +133,7 @@ facts(string("lsmr")) do
     context("Small dense matrix") do
         A = rand(10, 5)
         b = rand(10)
-        x, = lsmr(A, b, log=true)
+        x = lsmr(A, b)
         @fact norm(x - A\b) --> less_than(√eps())
     end
 

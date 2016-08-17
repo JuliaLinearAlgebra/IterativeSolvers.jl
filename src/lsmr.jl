@@ -263,9 +263,13 @@ doc!_arg = """* `x`: initial guess, overwrite final estimation."""
 doc_version = (lsmr, doc_call, doc_msg, doc_arg)
 doc!_version = (lsmr!, doc!_call, doc!_msg, doc!_arg)
 
+i=0
+docstring = Vector(2)
+
 #Build docs
 for (func, call, msg, arg) in [doc_version, doc!_version]
-@doc """
+i+=1
+docstring[i] =  """
 $call
 
 $msg
@@ -275,7 +279,7 @@ algebraically equivalent to applying MINRES to the normal equation (ATA+λ2I)x=A
 but has better numerical properties, especially if A is ill-conditioned.
 
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
 
 The `plot` attribute can only be used when `log` is set version.
 
@@ -341,5 +345,8 @@ containing extra information of the method execution.
 
 * `:resnom` => `::Vector`: residual norm at each iteration.
 
-""" -> func
+"""
 end
+
+@doc docstring[1] -> lsmr
+@doc docstring[2] -> lsmr!

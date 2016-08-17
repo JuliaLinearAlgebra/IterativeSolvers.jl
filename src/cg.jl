@@ -87,18 +87,22 @@ doc!_arg = """* `x`: initial guess, overwrite final estimation.
 
 * `K::KrylovSubspace`: krylov subspace."""
 
-doc_version = (cg, doc_call, doc_msg, doc_arg)
-doc!_version = (cg!, doc!_call, doc!_msg, doc!_arg)
+doc_version = (doc_call, doc_msg, doc_arg)
+doc!_version = (doc!_call, doc!_msg, doc!_arg)
+
+i = 0
+docstring = Vector(2)
 
 #Build docs
-for (func, call, msg, arg) in [doc_version, doc!_version]
-@doc """
+for (call, msg, arg) in [doc_version, doc!_version] #Start
+i+=1
+docstring[i] = """
 $call
 
 $msg
 
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `x`.
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
 
 The `plot` attribute can only be used when `log` is set version.
 
@@ -143,5 +147,8 @@ containing extra information of the method execution.
 
 * `:resnom` => `::Vector`: residual norm at each iteration.
 
-""" -> func
+"""
 end
+
+@doc docstring[1] -> cg
+@doc docstring[2] -> cg!

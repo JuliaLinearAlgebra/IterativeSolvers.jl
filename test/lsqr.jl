@@ -7,6 +7,10 @@ facts("lsqr") do
 context("Small dense matrix") do
     A = rand(10, 5)
     b = rand(10)
+
+    x = lsqr(A, b)
+    @fact norm(x - A\b) --> less_than(√eps())
+
     x, = lsqr(A, b, log=true)
     @fact norm(x - A\b) --> less_than(√eps())
 end

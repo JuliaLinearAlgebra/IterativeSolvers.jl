@@ -4,7 +4,6 @@
 [![Build Status on Linux](https://travis-ci.org/JuliaLang/IterativeSolvers.jl.svg?branch=master)](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
 [![Coverage Status](https://coveralls.io/repos/JuliaLang/IterativeSolvers.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaLang/IterativeSolvers.jl?branch=master)
 [![codecov.io](https://codecov.io/github/JuliaLang/IterativeSolvers.jl/coverage.svg?branch=master)](https://codecov.io/github/JuliaLang/IterativeSolvers.jl?branch=master)
-[![IterativeSolvers](http://pkg.julialang.org/badges/IterativeSolvers_0.4.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=0.4)
 [![IterativeSolvers](http://pkg.julialang.org/badges/IterativeSolvers_0.5.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=0.5)
 
 `IterativeSolvers` is a [Julia](http://julialang.org) package that provides iterative algorithms for solving linear systems, eigensystems, and singular value problems.

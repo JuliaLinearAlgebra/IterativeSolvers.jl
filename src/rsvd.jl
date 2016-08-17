@@ -38,7 +38,7 @@ largest.
 
 **Implementation note**
 
-This function calls [`rrange`](@ref), which uses naive randomized rangefinding to
+This function calls `rrange`, which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
 \cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
 exact SVD factorization on the restriction of `A` to this randomly selected
@@ -99,7 +99,7 @@ largest.
 
 **Implementation note**
 
-This function calls [`rrange`](@ref), which uses naive randomized rangefinding to
+This function calls `rrange`, which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
 \cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
 exact SVD factorization on the restriction of `A` to this randomly selected
@@ -179,7 +179,7 @@ end
 Compute an orthogonal basis for a subspace of `A` of dimension `l` using adaptive
 randomized rangefinding.
 
-Similar to [`rrange`](@ref), but determines the oversampling parameter adaptively given
+Similar to `rrange`, but determines the oversampling parameter adaptively given
 a threshold `ϵ`.
 
 **Arguments**
@@ -216,7 +216,7 @@ function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
         Tol = maximum([norm(Y[:,i]) for i=j:(j+r-1)])
         Tol > tol || break
 
-        y = viewsub(Y,:,j)
+        y = view(Y,:,j)
         y = Y[:,j] = y - Q*(Q'y)
         q = y/norm(y)
         Q = [Q q]
@@ -225,7 +225,7 @@ function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
         y = A*ω
         y = y - Q*(Q'y)
         Y = [Y y]
-        Yb = viewsub(Y, :, (j+1):(j+r-1))
+        Yb = view(Y, :, (j+1):(j+r-1))
         Yb = Y[:, (j+1):(j+r-1)] = Yb - q * q'Yb
 
         j==maxiter && warn("Maximum number of iterations reached with norm $Tol > $tol")
@@ -240,7 +240,7 @@ end
 Compute an orthonormal basis for a subspace of `A` of dimension `l` using
 randomized rangefinding by subspace iteration.
 
-*Note:* Running with `q=0` is functionally equivalent to [`rrange`](@ref).
+*Note:* Running with `q=0` is functionally equivalent to `rrange`.
 
 **Arguments**
 
@@ -296,7 +296,7 @@ end
 Compute an orthonormal basis for a subspace of `A` of dimension `l` using
 naive randomized rangefinding using stochastic randomized Fourier transforms.
 
-*Note:* similar to [`rrange`](@ref), but does not use gaussian random matrices.
+*Note:* similar to `rrange`, but does not use gaussian random matrices.
 
 **Arguments**
 

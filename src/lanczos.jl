@@ -82,15 +82,19 @@ doc_arg = ""
 
 doc_version = (eiglancz, doc_call, doc_msg, doc_arg)
 
+i=0
+docstring = Vector(1)
+
 #Build docs
 for (func, call, msg, arg) in [doc_version]
-@doc """
+i+=1
+docstring[i] = """
 $call
 
 $msg
 
 If `log` is set to `true` is given, method will output a tuple `eigs, ch`. Where
-`ch` is a [`ConvergenceHistory`](@ref) object. Otherwise it will only return `eigs`.
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `eigs`.
 
 The `plot` attribute can only be used when `log` is set version.
 
@@ -133,5 +137,7 @@ containing extra information of the method execution.
 
 * `:resnom` => `::Vector`: residual norm at each iteration.
 
-""" -> func
+"""
 end
+
+@doc docstring[1] -> eiglancz

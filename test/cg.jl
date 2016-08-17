@@ -11,13 +11,16 @@ context("Small full system") do
     A = A'*A
     rhs = randn(N)
     tol = 1e-12
-    x,ch = cg(A,rhs;tol=tol, maxiter=2*N, log=true)
 
+    x = cg(A,rhs;tol=tol, maxiter=2*N)
+    @fact norm(A*x - rhs) --> less_than(cond(A)*√tol)
+
+    x,ch = cg(A,rhs;tol=tol, maxiter=2*N, log=true)
     @fact norm(A*x - rhs) --> less_than(cond(A)*√tol)
     @fact ch.isconverged --> true
 
     # If you start from the exact solution, you should converge immediately
-    x2,ch2 = cg!(A\rhs, A, rhs; tol=tol*10, log=true)
+    x2, ch2 = cg!(A\rhs, A, rhs; tol=tol*10, log=true)
     @fact niters(ch2) --> less_than_or_equal(1)
 
     # Test with cholfact should converge immediately
@@ -39,9 +42,9 @@ context("Sparse Laplacian") do
     tol = 1e-5
 
     context("matrix") do
-        xCG, = cg(A,rhs;tol=tol,maxiter=100, log=true)
-        xJAC, = cg(A,rhs;Pl=JAC,tol=tol,maxiter=100, log=true)
-        xSGS, = cg(A,rhs;Pl=SGS,tol=tol,maxiter=100, log=true)
+        xCG = cg(A,rhs;tol=tol,maxiter=100)
+        xJAC = cg(A,rhs;Pl=JAC,tol=tol,maxiter=100)
+        xSGS = cg(A,rhs;Pl=SGS,tol=tol,maxiter=100)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
@@ -49,9 +52,9 @@ context("Sparse Laplacian") do
 
     Af = FuncMat(A)
     context("function") do
-        xCG, = cg(Af,rhs;tol=tol,maxiter=100, log=true)
-        xJAC, = cg(Af,rhs;Pl=JAC,tol=tol,maxiter=100, log=true)
-        xSGS, = cg(Af,rhs;Pl=SGS,tol=tol,maxiter=100, log=true)
+        xCG = cg(Af,rhs;tol=tol,maxiter=100)
+        xJAC = cg(Af,rhs;Pl=JAC,tol=tol,maxiter=100)
+        xSGS = cg(Af,rhs;Pl=SGS,tol=tol,maxiter=100)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
