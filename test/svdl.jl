@@ -35,7 +35,7 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
             Σ[:Vt][i, end+1-i] -= sign(Σ[:Vt][i, end+1-i])
         end
         @fact vecnorm(Σ[:U]) --> less_than(σ[1]*√tol)
-        @fact norm(σ - Σ[:S]) --> less_than(2max(tol*ns*σ[1], tol))
+        @fact norm(σ - Σ[:S]) --> less_than(n*max(tol*ns*σ[1], tol))
 
         #Issue #55
         let
