@@ -1,5 +1,11 @@
-import Base: eltype, empty!, eps, length, ndims, push!, real, size, *, A_mul_B!, Ac_mul_B, Ac_mul_B!
-export A_mul_B
+import  Base: eltype, empty!, eps, length, ndims, push!, real, size, *, \,
+        A_mul_B!, Ac_mul_B, Ac_mul_B!
+
+export  A_mul_B
+
+# Improve readability of iterative methods
+\(f::Function, b::VecOrMat) = f(b)
+*(f::Function, b::VecOrMat) = f(b)
 
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))

@@ -113,7 +113,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 
         @eval a = $(VERSION < v"0.4-" ? Triangular(H[1:N, 1:N], :U) \ s[1:N] : UpperTriangular(H[1:N, 1:N]) \ s[1:N])
         w = a[1:N] * K
-        update!(x, 1, isa(Pr, Function) ? Pr(w) : Pr\w) #Right preconditioner
+        update!(x, 1, Pr\w) #Right preconditioner
 
         if rho < tol
             resnorms = resnorms[1:iter, :]
