@@ -20,7 +20,7 @@ context("SOL test") do
     function lsqrSOLtest( m, n, damp )
         fmul  = (out, b) -> Aprodxxx!(out,b,1,m,n)
         fcmul = (out, b) -> Aprodxxx!(out,b,2,m,n)
-        A = MatrixCFcn{Int}(m, n, fmul, fcmul)
+        A = FuncMatrix(m, n, mul=fmul, cmul=fcmul, typ=Int)
         xtrue = n:-1:1
         b = float(A*xtrue)
         x, = lsqr(A, b, atol = 1e-6, btol = 1e-6, conlim = 1e10, maxiter = 10n)
@@ -87,4 +87,3 @@ context("Issue 64") do
 end
 
 end
-
