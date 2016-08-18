@@ -48,7 +48,7 @@ Implementation note:
     R * A, extract the subset of A into B, then compute the P matrix as B\A
     which will automatically compute P using a suitable least-squares
     algorithm.
-    
+
     The approximation we use here is to compute the column pivots of Y,
     rather then use the true column pivots as would be computed by a column-
     pivoted QR process.
@@ -76,10 +76,9 @@ function idfact(A, k::Int, l::Int)
     Y = R * A #size l x n
 
     #Compute column pivots of first k columns of Y
-    maxvals = map(j->maximum(abs(sub(Y, :, j))), 1:n)
+    maxvals = map(j->maximum(abs(view(Y, :, j))), 1:n)
     piv = sortperm(maxvals, rev=true)[1:k]
 
     B = A[:, piv]
     Interpolative(B, B\A)
 end
-

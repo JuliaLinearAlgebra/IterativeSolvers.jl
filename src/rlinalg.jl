@@ -39,7 +39,7 @@ function randnn(el, m::Int, n::Int, normalize::Bool=true)
     end
     normalize || return Ω
     for i=1:n
-        Ω[:, i] /= norm(sub(Ω, :, i))
+        Ω[:, i] /= norm(view(Ω, :, i))
     end
     Ω
 end
@@ -75,7 +75,7 @@ function rnorm(A, r::Int, p::Real=0.05)
     m, n = size(A)
     Ω = randnn(eltype(A), n, r, false)
     AΩ = A*Ω
-    mx = maximum([norm(sub(AΩ, :, j)) for j=1:r])
+    mx = maximum([norm(view(AΩ, :, j)) for j=1:r])
     α * √(2/π) * mx
 end
 
@@ -305,4 +305,3 @@ function *(A, Ω::srft)
     B = vcat([fft(A[i,:]) for i=1:m]...) #Factor of √n cancels out
     B[:, randperm(n)[1:Ω.l]]
 end
-
