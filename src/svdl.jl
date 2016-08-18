@@ -529,7 +529,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
         else rethrow(exc) end
     end::Vector{Tr}
     scale!(r, L.β)
-    M::Matrix{T} = sub(M,1:m, :) + r*sub(M,m+1,:)
+    M::Matrix{T} = sub(M,1:m, :) + r*sub(M,m+1:m+1,:)
 
     M2 = zeros(T, m+1, k+1)
     M2[1:m, 1:k] = M[:,1:k]
