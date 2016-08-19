@@ -299,10 +299,9 @@ Reference:
 
     \[Equation 4.6]{Halko2011}
 """ ->
-function *(A, Ω::srft)
+*(A::Function, Ω::srft) = function *(A, Ω::srft)
     m, n = size(A)
     B = A*Diagonal(exp(2π*im*rand(n))/√Ω.l)
     B = vcat([fft(A[i,:]) for i=1:m]...) #Factor of √n cancels out
     B[:, randperm(n)[1:Ω.l]]
 end
-

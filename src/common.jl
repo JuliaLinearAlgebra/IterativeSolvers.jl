@@ -4,8 +4,8 @@ import  Base: eltype, empty!, eps, length, ndims, push!, real, size, *, \,
 export  A_mul_B
 
 # Improve readability of iterative methods
-\(f::Function, b::VecOrMat) = f(b)
-*(f::Function, b::VecOrMat) = f(b)
+\(f::Function, b) = f(b)
+*(f::Function, b) = f(b)
 
 #### Type-handling
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
