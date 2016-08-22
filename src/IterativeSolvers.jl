@@ -1,6 +1,5 @@
+__precompile__(true)
 module IterativeSolvers
-
-isdefined(:__precompile__) && __precompile__(true)
 
 include("common.jl")
 include("krylov.jl")
