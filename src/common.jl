@@ -1,4 +1,4 @@
-import  Base: eltype, eps, length, ndims, real, size, *, \,
+import  Base: eltype, eps, length, ndims, real, size, *, \, ctranspose,
         A_mul_B!, Ac_mul_B, Ac_mul_B!
 
 export  A_mul_B
@@ -53,59 +53,93 @@ type PosSemidefException <: Exception
     PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
 end
 
-#### Support for linear-operators-defined-as-functions
-#
-# Suppose you have a function implementing multiplication of b by A.
-# This function can have any syntax, but for the purposes of
-# illustration let's suppose it's defined as
-#   mulbyA!(output, b, Adata)
-# Where Adata might be some parameters that your function needs.
-# You can represent it as a linear operator using
-#   A = MatrixFcn{T}(m, n, (output, b) -> mulbyA!(output, b, Adata))
-# where T is the "element type" of Adata.
-# Note that there are a couple of requirements:
-#   - mulbyA! stores the result in the pre-allocated output
-#   - mulbyA! should also return output as its sole return value
+export FuncMatrix
 
-# If the algorithm also needs multiplication by A', use MatrixCFcn
-# instead and initialize it with both functions.
-
-export MatrixFcn, MatrixCFcn
-
-abstract AbstractMatrixFcn{T}
-
-type MatrixFcn{T} <: AbstractMatrixFcn{T}
+"""
+    FuncMatrix{T}
+Represent functions as a matrix.
+**Fields**
+* `m::Int` = number of columns.
+* `n::Int` = number of rows.
+* `mul::Function` = `A*b` implementation.
+* `cmul::Function` = `A'*b` implementation.
+**Constructors**
+    FuncMatrix(A)
+    FuncMatrix(
+        m::Int, n::Int; typ::Type=Float64, ctrans::Bool=false,
+        mul::Function=identity, cmul=identity
+    )
+**Arguments**
+* `A::AbstractMatrix` = matrix.
+* `m::Int` = number of columns.
+* `n::Int` = number of rows.
+* `typ::Type = Float64` = `eltype(::FuncMatrix)`.
+* `mul::Function = identity` = `A*b` implementation.
+* `cmul::Function = identity` = `A'*b` implementation.
+"""
+type FuncMatrix{T}
     m::Int
     n::Int
     mul::Function
+    cmul::Function
+end
+function FuncMatrix(
+        m::Int, n::Int; typ::Type=Float64,
+        mul::Function=identity, cmul=mul
+        )
+    FuncMatrix{typ}(m, n, mul, cmul)
+end
+FuncMatrix(A::AbstractMatrix) = FuncMatrix(
+    size(A, 1),
+    size(A, 2),
+    typ = eltype(A),
+    mul = (output, x)->A_mul_B!(output, A, x),
+    cmul = (output, b) -> Ac_mul_B(output, A, b)
+    )
+
+eltype{T}(::FuncMatrix{T}) = T
+
+ndims(::FuncMatrix) = 2
+
+size(op::FuncMatrix) = (op.m, op.n)
+size(op::FuncMatrix, dim::Integer) = (dim == 1) ? op.m : (dim == 2) ? op.n : 1
+
+length(op::FuncMatrix) = op.m*op.n
+
+ctranspose{T}(op::FuncMatrix{T}) = FuncMatrix{T}(op.n, op.m, op.cmul, op.mul)
+
+*(op::FuncMatrix, b) = A_mul_B(op, b)
+
+function A_mul_B{R,S}(op::FuncMatrix{R}, b::AbstractVector{S})
+    A_mul_B!(Array(promote_type(R,S), op.m), op, b)
+end
+function A_mul_B{R,S}(op::FuncMatrix{R}, b::AbstractMatrix{S})
+    A_mul_B!(Array(promote_type(R,S), op.m, size(b,2)), op, b)
 end
 
-type MatrixCFcn{T} <: AbstractMatrixFcn{T}
-    m::Int
-    n::Int
-    mul::Function
-    mulc::Function
+function A_mul_B!(output, op::FuncMatrix, b::AbstractVector)
+    op.mul == identity && error("A*b not defined")
+    op.mul(output, b)
+end
+function A_mul_B!(output, op::FuncMatrix, b::AbstractMatrix)
+    op.mul == identity && error("A*b not defined")
+    columns = [op.mul(output, b[:,i]) for i in 1:size(b,2)]
+    hcat(columns...)
 end
 
-MatrixFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)-> A_mul_B!(output, A, x))
-MatrixCFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)->A_mul_B!(output, A, x), (output, b) -> Ac_mul_B(output, A, b))
+function Ac_mul_B{R,S}(op::FuncMatrix{R}, b::AbstractVector{S})
+    Ac_mul_B!(Array(promote_type(R,S), op.n), op, b)
+end
+function Ac_mul_B{R,S}(op::FuncMatrix{R}, b::AbstractMatrix{S})
+    Ac_mul_B!(Array(promote_type(R,S), op.n, size(b,2)), op, b)
+end
 
-eltype{T}(op::AbstractMatrixFcn{T}) = T
-
-ndims(op::AbstractMatrixFcn) = 2
-
-size(op::AbstractMatrixFcn, dim::Integer) = (dim == 1) ? op.m :
-                                            (dim == 2) ? op.n : 1
-size(op::AbstractMatrixFcn) = (op.m, op.n)
-
-length(op::AbstractMatrixFcn) = op.m*op.n
-
-*(op::AbstractMatrixFcn, b) = A_mul_B(op, b)
-
-A_mul_B{R,S}(op::AbstractMatrixFcn{R}, b::AbstractVector{S}) = A_mul_B!(Array(promote_type(R,S), op.m), op, b)
-
-A_mul_B!(output, op::AbstractMatrixFcn, b) = op.mul(output, b)
-
-Ac_mul_B{R,S}(op::MatrixCFcn{R}, b::AbstractVector{S}) = Ac_mul_B!(Array(promote_type(R,S), op.n), op, b)
-
-Ac_mul_B!(output, op::AbstractMatrixFcn, b) = op.mulc(output, b)
+function Ac_mul_B!(output, op::FuncMatrix, b::AbstractVector)
+    op.cmul == identity && error("A'*b not defined")
+    op.cmul(output, b)
+end
+function Ac_mul_B!(output, op::FuncMatrix, b::AbstractMatrix)
+    op.mul == identity && error("A'*b not defined")
+    columns = [op.cmul(output, b[:,i]) for i in 1:size(b,2)]
+    hcat(columns...)
+end
