@@ -99,7 +99,7 @@ function rsvd_fnkz(A, k::Int;
         oldnrmB = nrmB
     end
     for i=1:size(B.Y, 2)
-        scale!(slice(B.Y, :, i), 1/√Λ[i])
+        scale!(view(B.Y, :, i), 1/√Λ[i])
     end
     Base.LinAlg.SVD(B.X, √Λ, B.Y')
 end
