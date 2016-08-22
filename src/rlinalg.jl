@@ -299,6 +299,7 @@ Reference:
 
     \[Equation 4.6]{Halko2011}
 """ ->
+#Define two methods here to avoid method ambiguity with f::Function*b::Any
 *(A::Function, Ω::srft) = function *(A, Ω::srft)
     m, n = size(A)
     B = A*Diagonal(exp(2π*im*rand(n))/√Ω.l)
