@@ -46,7 +46,6 @@ context("Linear operator defined as a function") do
 
     output = similar(b)
     @fact A_mul_B!(output, A, b) --> Atimesb
-    @fact A'*b --> Atimesb
 
     A = FuncMatrix(5, 5, typ=Int, mul=shiftback!, cmul=shiftfwd!)
     @fact eltype(A) --> Int

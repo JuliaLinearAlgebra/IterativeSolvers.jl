@@ -56,7 +56,7 @@ end
 export FuncMatrix
 
 """
-    FuncMatrix{T}
+    FuncMatrix{T,A,B}
 Represent functions as a matrix.
 **Fields**
 * `m::Int` = number of columns.
@@ -77,7 +77,7 @@ Represent functions as a matrix.
 * `mul::Function = identity` = `A*b` implementation.
 * `cmul::Function = identity` = `A'*b` implementation.
 """
-type FuncMatrix{T}
+type FuncMatrix{T,A,B}
     m::Int
     n::Int
     mul::Function
@@ -85,9 +85,9 @@ type FuncMatrix{T}
 end
 function FuncMatrix(
         m::Int, n::Int; typ::Type=Float64,
-        mul::Function=identity, cmul=mul
+        mul::Function=identity, cmul::Function=identity
         )
-    FuncMatrix{typ}(m, n, mul, cmul)
+    FuncMatrix{typ,mul!=identity,cmul!=identity}(m, n, mul, cmul)
 end
 FuncMatrix(A::AbstractMatrix) = FuncMatrix(
     size(A, 1),
@@ -106,7 +106,7 @@ size(op::FuncMatrix, dim::Integer) = (dim == 1) ? op.m : (dim == 2) ? op.n : 1
 
 length(op::FuncMatrix) = op.m*op.n
 
-ctranspose{T}(op::FuncMatrix{T}) = FuncMatrix{T}(op.n, op.m, op.cmul, op.mul)
+ctranspose{T,A,B}(op::FuncMatrix{T,A,B}) = FuncMatrix{T,B,A}(op.n, op.m, op.cmul, op.mul)
 
 *(op::FuncMatrix, b) = A_mul_B(op, b)
 
@@ -117,12 +117,11 @@ function A_mul_B{R,S}(op::FuncMatrix{R}, b::AbstractMatrix{S})
     A_mul_B!(Array(promote_type(R,S), op.m, size(b,2)), op, b)
 end
 
-function A_mul_B!(output, op::FuncMatrix, b::AbstractVector)
-    op.mul == identity && error("A*b not defined")
+A_mul_B!{T}(output, op::FuncMatrix{T,false}, b) = error("A*b not defined")
+function A_mul_B!{T}(output, op::FuncMatrix{T,true}, b::AbstractVector)
     op.mul(output, b)
 end
-function A_mul_B!(output, op::FuncMatrix, b::AbstractMatrix)
-    op.mul == identity && error("A*b not defined")
+function A_mul_B!{T}(output, op::FuncMatrix{T,true}, b::AbstractMatrix)
     columns = [op.mul(output, b[:,i]) for i in 1:size(b,2)]
     hcat(columns...)
 end
@@ -134,12 +133,11 @@ function Ac_mul_B{R,S}(op::FuncMatrix{R}, b::AbstractMatrix{S})
     Ac_mul_B!(Array(promote_type(R,S), op.n, size(b,2)), op, b)
 end
 
-function Ac_mul_B!(output, op::FuncMatrix, b::AbstractVector)
-    op.cmul == identity && error("A'*b not defined")
+Ac_mul_B!{T,A}(output, op::FuncMatrix{T,A,false}, b) = error("A'*b not defined")
+function Ac_mul_B!{T,A}(output, op::FuncMatrix{T,A,true}, b::AbstractVector)
     op.cmul(output, b)
 end
-function Ac_mul_B!(output, op::FuncMatrix, b::AbstractMatrix)
-    op.mul == identity && error("A'*b not defined")
+function Ac_mul_B!{T,A}(output, op::FuncMatrix{T,A,true}, b::AbstractMatrix)
     columns = [op.cmul(output, b[:,i]) for i in 1:size(b,2)]
     hcat(columns...)
 end
