@@ -30,7 +30,7 @@ end
 function Base.getindex{T}(B::BrokenArrowBidiagonal{T}, i::Int, j::Int)
     n = size(B, 1)
     k = length(B.av)
-    if !(1 ≤ i ≤ n || 1 ≤ j ≤ n)
+    if !(1 ≤ i ≤ n && 1 ≤ j ≤ n)
         throw(BoundsError())
     end
 

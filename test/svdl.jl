@@ -14,6 +14,7 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
         q = convert(Vector{elty}, ones(n)/√n)
         σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none)
         @fact norm(σ - [n:-1.0:n-4;]) --> less_than(5^2*1e-5)
+        @fact_throws ArgumentError svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=:fakemethod, vecs=:none)
 
         #Check the singular vectors also
         Σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:both)
@@ -66,6 +67,8 @@ facts("BrokenArrowBidiagonal") do
     @fact B[3,3] --> 3
     @fact B[2,3] --> 2
     @fact B[3,2] --> 0
-    @fact B[1,3] --> 1
+    @fact B[1,3] --> 1 
+    @fact size(B) --> (3,3)
+    @fact_throws ArgumentError size(B,3)
+    @fact_throws BoundsError B[1,5]
 end
-

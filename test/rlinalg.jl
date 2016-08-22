@@ -23,4 +23,8 @@ facts("Randomized linear algebra") do
 
     l, u = rcond(A, k, p)
     @fact l <= cond(A) <= u --> true
+
+    @fact_throws ArgumentError IterativeSolvers.randnn(Char, m)
+    @fact_throws ArgumentError IterativeSolvers.randnn(Char, m, n)
+
 end
