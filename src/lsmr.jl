@@ -1,6 +1,6 @@
 export lsmr, lsmr!
 
-using Base.LinAlg 
+using Base.LinAlg
 
 ##############################################################################
 ## LSMR
@@ -10,7 +10,7 @@ using Base.LinAlg
 ## Adapted from the BSD-licensed Matlab implementation at
 ## http://web.stanford.edu/group/SOL/software/lsmr/
 ##
-## A is a StridedVecOrMat or anything that implements 
+## A is a StridedVecOrMat or anything that implements
 ## A_mul_B!(α, A, b, β, c) updates c -> α Ab + βc
 ## Ac_mul_B!(α, A, b, β, c) updates c -> α A'b + βc
 ## eltype(A)
@@ -39,8 +39,8 @@ using Base.LinAlg
 ## x is initial x0. Transformed in place to the solution.
 ## b equals initial b. Transformed in place
 ## v, h, hbar are storage arrays of length size(A, 2)
-function lsmr!(x, A, b, v, h, hbar; 
-    atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8, 
+function lsmr!(x, A, b, v, h, hbar;
+    atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
     maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0)
 
     # Sanity-checking
@@ -93,13 +93,13 @@ function lsmr!(x, A, b, v, h, hbar;
 
     # Items for use in stopping rules.
     normb = β
-    istop = 0 
+    istop = 0
     normr = β
     normAr = α * β
     tests = Tuple{Tr, Tr, Tr}[]
     iter = 0
     # Exit if b = 0 or A'b = 0.
-    if normAr != 0 
+    if normAr != 0
         while iter < maxiter
             iter += 1
             A_mul_B!(1, A, v, -α, u)
@@ -110,12 +110,12 @@ function lsmr!(x, A, b, v, h, hbar;
                 α = norm(v)
                 α > 0 && scale!(v, inv(α))
             end
-        
+
             # Construct rotation Qhat_{k,2k+1}.
             αhat = hypot(αbar, λ)
             chat = αbar / αhat
             shat = λ / αhat
-        
+
             # Use a plane rotation (Q_i) to turn B_i to R_i.
             ρold = ρ
             ρ = hypot(αhat, β)
@@ -123,7 +123,7 @@ function lsmr!(x, A, b, v, h, hbar;
             s = β / ρ
             θnew = s * α
             αbar = c * α
-        
+
             # Use a plane rotation (Qbar_i) to turn R_i^T to R_i^bar.
             ρbarold = ρbar
             ζold = ζ
@@ -134,28 +134,28 @@ function lsmr!(x, A, b, v, h, hbar;
             sbar = θnew / ρbar
             ζ = cbar * ζbar
             ζbar = - sbar * ζbar
-        
+
             # Update h, h_hat, x.
             scale!(hbar, - θbar * ρ / (ρold * ρbarold))
             axpy!(1, h, hbar)
             axpy!(ζ / (ρ * ρbar), hbar, x)
             scale!(h, - θnew / ρ)
             axpy!(1, v, h)
-        
+
             ##############################################################################
             ##
             ## Estimate of ||r||
             ##
             ##############################################################################
-        
+
             # Apply rotation Qhat_{k,2k+1}.
             βacute = chat * βdd
             βcheck = - shat * βdd
-        
+
             # Apply rotation Q_{k,k+1}.
             βhat = c * βacute
             βdd = - s * βacute
-        
+
             # Apply rotation Qtilde_{k-1}.
             θtildeold = θtilde
             ρtildeold = hypot(ρdold, θbar)
@@ -164,34 +164,34 @@ function lsmr!(x, A, b, v, h, hbar;
             θtilde = stildeold * ρbar
             ρdold = ctildeold * ρbar
             βd = - stildeold * βd + ctildeold * βhat
-        
+
             τtildeold = (ζold - θtildeold * τtildeold) / ρtildeold
             τd = (ζ - θtilde * τtildeold) / ρdold
             d += abs2(βcheck)
             normr = sqrt(d + abs2(βd - τd) + abs2(βdd))
-        
+
             # Estimate ||A||.
             normA2 += abs2(β)
             normA  = sqrt(normA2)
             normA2 += abs2(α)
-        
+
             # Estimate cond(A).
             maxrbar = max(maxrbar, ρbarold)
-            if iter > 1 
+            if iter > 1
                 minrbar = min(minrbar, ρbarold)
             end
             condA = max(maxrbar, ρtemp) / min(minrbar, ρtemp)
-        
+
             ##############################################################################
             ##
             ## Test for convergence
             ##
             ##############################################################################
-        
+
             # Compute norms for convergence testing.
             normAr  = abs(ζbar)
             normx = norm(x)
-        
+
             # Now use these norms to estimate certain other quantities,
             # some of which will be small near a solution.
             test1 = normr / normb
@@ -200,7 +200,7 @@ function lsmr!(x, A, b, v, h, hbar;
             push!(tests, (test1, test2, test3))
 
             t1 = test1 / (one(Tr) + normA * normx / normb)
-            rtol = btol + atol * normA * normx / normb      
+            rtol = btol + atol * normA * normx / normb
             # The following tests guard against extremely small values of
             # atol, btol or ctol.  (The user may have set any or all of
             # the parameters atol, btol, conlim  to 0.)
