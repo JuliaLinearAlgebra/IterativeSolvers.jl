@@ -59,7 +59,7 @@ export LinearMap
     LinearMap{T,A,B}
 
 Represent a finite dimensional linear map as a function describing
-its application (a matrix-vector product) and also, optionally, its transpose
+its application (a matrix-vector product) and also, optionally, its transpose.
 
 `T` is the element type of the vector produced by the map.
 
