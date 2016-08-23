@@ -282,7 +282,7 @@ immutable srft{T<:Integer}
     l :: T
 end
 
-(*)(A::FuncMatrix, B::srft) = error(
+(*)(A::LinearMap, B::srft) = error(
     "method only defined to avoid ambiguity. " *
     "If you need this method please open a pull request"
     )

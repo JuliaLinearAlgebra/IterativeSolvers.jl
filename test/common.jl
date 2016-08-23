@@ -36,7 +36,7 @@ context("Linear operator defined as a function") do
     Atimesb = [b[end]; b[1:end-1]]
     Aptimesb = [b[2:end]; b[1]]
 
-    A = FuncMatrix(5, 5, mul=shiftback!, typ=Int)
+    A = LinearMap(Int, 5, 5, mul=shiftback!)
     @fact eltype(A) --> Int
     @fact size(A) --> (5,5)
     @fact size(A,1) --> 5
@@ -47,7 +47,7 @@ context("Linear operator defined as a function") do
     output = similar(b)
     @fact A_mul_B!(output, A, b) --> Atimesb
 
-    A = FuncMatrix(5, 5, typ=Int, mul=shiftback!, cmul=shiftfwd!)
+    A = LinearMap(Int, 5, 5, mul=shiftback!, cmul=shiftfwd!)
     @fact eltype(A) --> Int
     @fact size(A) --> (5,5)
     @fact size(A,1) --> 5
