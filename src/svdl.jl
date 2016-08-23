@@ -189,7 +189,23 @@ iteration.
 ```
 
 """
-function svdl(A, l::Int=min(6, size(A,1)); k::Int=2l,
+function svdl(A, l::Int=min(6, size(A,1)); tol::Real=√eps(), k::Int=2l,
+    maxiter::Int=minimum(size(A)), method::Symbol=:ritz, kwargs...
+    )
+    history = ConvergenceHistory()
+    history[:tol] = tol
+    reserve!(BitArray, history,:conv, maxiter)
+    reserve!(history,:ritz, maxiter, l)
+    reserve!(history,:resnorm, maxiter, l)
+    Bs_type = (method == :ritz) ? BrokenArrowBidiagonal : UpperTriangular
+    reserve!(Bs_type, history,:Bs, maxiter)
+    reserve!(history,:betas, maxiter)
+    X, L = svdl_method!(history, A, l; k=k, tol=tol, maxiter=maxiter, method=method, kwargs...)
+    X, L, history
+end
+
+#Method implementation
+function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::Int=2l,
     j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
@@ -199,23 +215,14 @@ function svdl(A, l::Int=min(6, size(A,1)); k::Int=2l,
 #    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
 
     T0 = time_ns()
-    @assert k>l
+    @assert k>1
     L = build(A, v0, k)
 
-    #Save history of Ritz values
-    ritzvalhist = Vector[]
-    βs = Float64[]
-    convhist = []
-    Bs = AbstractMatrix[deepcopy(L.B)]
-
-    if doplot
-       ttyh, ttyw = Base.tty_size()
-       ttyh -= l+1+5+2
-       ttyw -= 12
-    end
-
+    iter = 0
     local F
     for iter in 1:maxiter
+        nextiter!(log)
+
         #@assert size(L.B) == (k, k)
         F = svdfact(L.B)::LinAlg.SVD{eltype(v0), typeof(real(one(eltype(v0)))), Matrix{eltype(v0)}}
         iter==1 && @assert eltype(F)==eltype(v0)
@@ -228,28 +235,16 @@ function svdl(A, l::Int=min(6, size(A,1)); k::Int=2l,
         end
         extend!(A, L, k)
         if verbose
-	        elapsedtime = round((time_ns()-T0)*1e-9, 3)
-	        info("Iteration $iter: $elapsedtime seconds")
+            elapsedtime = round((time_ns()-T0)*1e-9, 3)
+            info("Iteration $iter: $elapsedtime seconds")
         end
-        conv = isconverged(L, F, l, tol, reltol, verbose)
 
-        push!(convhist, conv)
-        push!(ritzvalhist, F[:S])
-        push!(Bs, deepcopy(L.B))
-        push!(βs, L.β)
+        conv = isconverged(L, F, l, tol, reltol, log, verbose)
 
-        if doplot
-            if isdefined(Main, :UnicodePlots)
-                xs = convert(Vector{Vector{Int}}, map(x->fill(x[1], length(x[2])), enumerate(ritzvalhist)))
-                layer1 = Main.UnicodePlots.scatterplot([xs...;], [ritzvalhist...;], height=ttyh, width=ttyw)::Main.UnicodePlots.Plot{Main.UnicodePlots.BrailleCanvas}
-                display(Main.UnicodePlots.scatterplot!(layer1,
-                    [[fill(x[1], sum(conv)) for x in enumerate(convhist)]...;],
-                    [[x[1:l][conv] for x in ritzvalhist]...;],
-                    height=ttyh, width=ttyw, color=:red))
-            else
-                warn("UnicodePlots not found; no plotsies")
-            end
-        end
+        push!(log, :conv, conv)
+        push!(log, :ritz, F[:S][1:k])
+        push!(log, :Bs, deepcopy(L.B))
+        push!(log, :betas, L.β)
 
         #Lock
         if method == :ritz && dolock
@@ -259,28 +254,31 @@ function svdl(A, l::Int=min(6, size(A,1)); k::Int=2l,
                 end
             end
         end
-        all(conv) && break
+        all(conv) && (setconv(log, true); break)
     end
+    shrink!(log)
+    setmvps(log, iter)
 
     #Compute singular vectors as necessary and return them in the output
     values = F[:S][1:l]
     m, n = size(A)
+
     leftvecs = if vecs == :left || vecs == :both
         L.P*view(F[:U], :, 1:l)
     else
         zeros(eltype(v0), m, 0)
     end
+
     rightvecs = if vecs == :right || vecs == :both
         (view(L.Q, :, 1:size(L.Q,2)-1)*view(F[:V], :, 1:l))'
     else
         zeros(eltype(v0), 0, n)
     end
 
-    push!(βs, L.β)
     if vecs == :none
-        values, L, Bs, βs
+        values, L
     else
-        LinAlg.SVD(leftvecs, values, rightvecs), L, Bs, βs
+        LinAlg.SVD(leftvecs, values, rightvecs), L
     end
 end
 
@@ -368,8 +366,9 @@ year = {1989}
 
 ```
 """
-function isconverged(L::PartialFactorization,
-        F::Base.LinAlg.SVD, k::Int, tol::Real, reltol::Real, verbose::Bool=false)
+function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::Real,
+        reltol::Real, log::ConvergenceHistory, verbose::Bool=false
+        )
 
     @assert tol ≥ 0
 
@@ -425,6 +424,7 @@ function isconverged(L::PartialFactorization,
         warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 
+    push!(log, :resnorm, δσ[1:k])
     conv = (δσ[1:k] .< max(tol, reltol*σ[1]))::BitVector
 end
 

@@ -19,18 +19,25 @@ function lanczos!{T}(K::KrylovSubspace{T})
 end
 
 function eigvals_lanczos(A, neigs::Int=size(A,1); tol::Real = size(A,1)^3*eps(real(eltype(A))), maxiter::Integer = size(A,1))
-    K = KrylovSubspace(A, size(A, 1), 2) #In Lanczos, only remember the last two vectors
-    initrand!(K)
-    resnorms = zeros(maxiter)
-    e1 = eigvals(lanczos!(K), 1:neigs)
-    for iter=1:maxiter
-        e0, e1 = e1, eigvals(lanczos!(K), 1:neigs)
-        resnorms[iter] = norm(e1-e0)
-        if resnorms[iter] < tol
-            resnorms = resnorms[1:iter]
-            break
-        end
-    end
-    e1, ConvergenceHistory(0<=resnorms[end]<tol, tol, K.mvps, resnorms)
+    history = ConvergenceHistory()
+    history[:tol] = tol
+    reserve!(history,:resnorm, maxiter)
+    e1 = eiglancz_method!(history, A, neigs; maxiter=maxiter, tol=tol)
+    e1, history
 end
 
+function eiglancz_method!(log::ConvergenceHistory, A, neigs::Int=size(A,1); tol::Real = size(A,1)^3*eps(real(eltype(A))), maxiter::Integer = size(A,1))
+    K = KrylovSubspace(A, size(A, 1), 2) #In Lanczos, only remember the last two vectors
+    initrand!(K)
+    e1 = eigvals(lanczos!(K), 1:neigs)
+    for iter=1:maxiter
+        nextiter!(log)
+        e0, e1 = e1, eigvals(lanczos!(K), 1:neigs)
+        resnorm = norm(e1-e0)
+        push!(log, :resnorm, resnorm)
+        resnorm < tol && (setconv(log, resnorm>=0); break)
+    end
+    shrink!(log)
+    setmvps(log, K.mvps)
+    e1
+end

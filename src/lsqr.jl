@@ -1,7 +1,5 @@
 export lsqr, lsqr!
 
-using Base.LinAlg # can be removed when 0.3 is no longer supported
-
 # Adapted from the BSD-licensed Matlab implementation at
 #    http://www.stanford.edu/group/SOL/software/lsqr.html
 #
@@ -42,7 +40,7 @@ using Base.LinAlg # can be removed when 0.3 is no longer supported
 #    - Allow an initial guess for x
 #    - Eliminate printing
 #-----------------------------------------------------------------------
-function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))), conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))), maxiter::Int=max(size(A,1), size(A,2)))
+function lsqr_method!(log::ConvergenceHistory, x, A, b; damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))), conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))), maxiter::Int=max(size(A,1), size(A,2)))
     # Sanity-checking
     m = size(A,1)
     n = size(A,2)
@@ -53,8 +51,6 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     end
 
     # Initialize
-    empty!(ch)
-    ch.threshold = (atol, btol, conlim)
     T = Adivtype(A, b)
     Tr = real(T)
     itn = istop = 0
@@ -64,6 +60,10 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     dampsq = abs2(damp)
     tmpm = similar(b, T, m)
     tmpn = similar(x, T, n)
+
+    log[:atol] = atol
+    log[:btol] = btol
+    log[:ctol] = ctol
 
     # Set up the first vectors u and v for the bidiagonalization.
     # These satisfy  beta*u = b-A*x,  alpha*v = A'u.
@@ -81,7 +81,6 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     end
     w = copy(v)
     wrho = similar(w)
-    ch.mvps += 2
 
     Arnorm = alpha*beta
     if Arnorm == 0
@@ -95,6 +94,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
     #     Main iteration loop.
     #------------------------------------------------------------------
     while itn < maxiter
+        nextiter!(log)
         itn += 1
 
         # Perform the next step of the bidiagonalization to obtain the
@@ -121,7 +121,6 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
                 scale!(v, inv(alpha))
             end
         end
-        ch.mvps += 2
 
         # Use a plane rotation to eliminate the damping parameter.
         # This alters the diagonal (rhobar) of the lower-bidiagonal matrix.
@@ -187,7 +186,7 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         r1sq    =   abs2(rnorm) - dampsq*xxnorm
         r1norm  =   sqrt(abs(r1sq));   if r1sq < 0 r1norm = - r1norm; end
         r2norm  =   rnorm
-        push!(ch, r1norm)
+        push!(log, :resnorm, r1norm)
 
         # Now use these norms to estimate certain other quantities,
         # some of which will be small near a solution.
@@ -196,6 +195,9 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         test3   =   inv(Acond)
         t1      =   test1/(1 + Anorm*xnorm/bnorm)
         rtol    =   btol + atol*Anorm*xnorm/bnorm
+        push!(log, :cnorm, test3)
+        push!(log, :anorm, test2)
+        push!(log, :rnorm, test1)
 
         # The following tests guard against extremely small values of
         # atol, btol  or  ctol.  (The user may have set any or all of
@@ -211,21 +213,23 @@ function lsqr!(x, ch::ConvergenceHistory, A, b; damp=0, atol=sqrt(eps(Adivtype(A
         if  test3 <= ctol  istop = 3; end
         if  test2 <= atol  istop = 2; end
         if  test1 <= rtol  istop = 1; end
-
-        if istop > 0
-            ch.isconverged = true
-            break
-        end
     end
+    shrink!(log)
+    setmvps(log, 2*itn+2)
+    setconv(log, istop > 0)
     x
 end
 
-function lsqr!(x, A, b; kwargs...)
+function lsqr!(x, A, b; maxiter::Int=max(size(A,1), size(A,2)), kwargs...)
     T = Adivtype(A, b)
     z = zero(T)
-    ch = ConvergenceHistory(false, (z,z,z), 0, T[])
-    lsqr!(x, ch, A, b; kwargs...)
-    x, ch
+    history = ConvergenceHistory()
+    reserve!(history,:resnorm,maxiter)
+    reserve!(history,:anorm,maxiter)
+    reserve!(history,:rnorm,maxiter)
+    reserve!(history,:cnorm,maxiter)
+    lsqr_method!(history, x, A, b; maxiter=maxiter, kwargs...)
+    x, history
 end
 
 lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
