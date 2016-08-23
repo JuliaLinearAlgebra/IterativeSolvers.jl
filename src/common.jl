@@ -58,8 +58,10 @@ export LinearMap
 """
     LinearMap{T,A,B}
 
-Represent functions as a matrix. `T` is the type of the elements inside of the
-'matrix' `(T == eltype(::LinearMap))`.
+Represent a finite dimensional linear map as a function describing
+its application (a matrix-vector product) and also, optionally, its transpose
+
+`T` is the element type of the vector produced by the map.
 
 **Fields**
 
@@ -71,17 +73,16 @@ Represent functions as a matrix. `T` is the type of the elements inside of the
 **Constructors**
 
     LinearMap(A)
-    LinearMap(
-        m::Int, n::Int; typ::Type=Float64, ctrans::Bool=false,
-        mul::Function=identity, cmul=identity
-    )
+    LinearMap(m, n)
+    LinearMap(typ, m, n)
 
 **Arguments**
 
 * `A::AbstractMatrix` = matrix.
 * `m::Int` = number of columns.
 * `n::Int` = number of rows.
-* `typ::Type = Float64` = `eltype(::LinearMap)`.
+* `typ::Type` = element type of the vector produced by the map, if not given
+`T` defaults to Float64.
 * `mul::Function = identity` = `A*b` implementation.
 * `cmul::Function = identity` = `A'*b` implementation.
 
