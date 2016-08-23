@@ -57,26 +57,37 @@ export FuncMatrix
 
 """
     FuncMatrix{T,A,B}
-Represent functions as a matrix.
+
+Represent functions as a matrix. `T` is the type of the elements inside of the
+'matrix' `(T == eltype(::FuncMatrix))`.
+
 **Fields**
+
 * `m::Int` = number of columns.
 * `n::Int` = number of rows.
 * `mul::Function` = `A*b` implementation.
 * `cmul::Function` = `A'*b` implementation.
+
 **Constructors**
+
     FuncMatrix(A)
     FuncMatrix(
         m::Int, n::Int; typ::Type=Float64, ctrans::Bool=false,
         mul::Function=identity, cmul=identity
     )
+
 **Arguments**
+
 * `A::AbstractMatrix` = matrix.
 * `m::Int` = number of columns.
 * `n::Int` = number of rows.
 * `typ::Type = Float64` = `eltype(::FuncMatrix)`.
 * `mul::Function = identity` = `A*b` implementation.
 * `cmul::Function = identity` = `A'*b` implementation.
+
 """
+#A is true if mul is different from identity, otherwise it is false.
+#The same happens for B with cmul.
 type FuncMatrix{T,A,B}
     m::Int
     n::Int
