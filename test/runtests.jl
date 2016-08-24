@@ -245,11 +245,19 @@ type MyOp{T}
     buf::Matrix{T}
 end
 
+type MySpOp{T}
+    buf::SparseMatrixCSC{T}
+end
+
 import Base: *, size, eltype
 
 *(A::MyOp, x::AbstractVector) = A.buf*x
 size(A::MyOp, i) = size(A.buf, i)
 eltype(A::MyOp) = eltype(A.buf)
+
+*(A::MySpOp, x::AbstractVector) = A.buf*x
+size(A::MySpOp, i) = size(A.buf, i)
+eltype(A::MySpOp) = eltype(A.buf)
 
 facts("eigvals_lanczos") do
 for T in (Float32, Float64)
@@ -269,6 +277,57 @@ for T in (Float32, Float64)
         eval_lanczos, c_lanczos = eigvals_lanczos(A)
         @fact c_lanczos.isconverged --> true
         @fact norm(v - eval_lanczos) --> less_than(√eps(T))
+    end
+end
+end
+
+#Arnoldi methods
+
+facts("eigvals_arnoldi") do
+for T in (Float32, Float64)
+
+    A = convert(Matrix{T}, randn(100,100))
+    A = A + A' #Symmetric
+
+    context("Matrix{$T}") do
+        v = eigvals(A)
+        neigs = 10
+
+        eval_arnoldi, evec_arnoldi, nconv = eigvals_arnoldi(A, neigs, which = :LA)
+        @fact nconv --> neigs
+        @fact norm(sort(eval_arnoldi) - v[end-neigs+1:end]) --> less_than(√eps(T))
+    end
+
+    context("Op{$T}") do
+        Aop = MyOp(A)
+        v = eigvals(Symmetric(Aop.buf))
+        neigs = 10
+
+        eval_arnoldi, evec_arnoldi, nconv = eigvals_arnoldi(Aop, neigs, which = :LA)
+        @fact nconv --> neigs
+        @fact norm(sort(eval_arnoldi) - v[end-neigs+1:end]) --> less_than(√eps(T))
+    end
+
+    A = convert(SparseMatrixCSC{T}, sprandn(100,100,0.8))
+    A = A + A' #Symmetric
+
+    context("SpMat{$T}") do
+        v = eigvals(full(A))
+        neigs = 10
+
+        eval_arnoldi, evec_arnoldi, nconv = eigvals_arnoldi(A, neigs, which = :LA)
+        @fact nconv --> neigs
+        @fact norm(sort(eval_arnoldi) - v[end-neigs+1:end]) --> less_than(√eps(T))
+    end
+
+    context("SpOp{$T}") do
+        Aop = MySpOp(A)
+        v = eigvals(Symmetric(full(Aop.buf)))
+        neigs = 10
+
+        eval_arnoldi, evec_arnoldi, nconv = eigvals_arnoldi(Aop, neigs, which = :LA)
+        @fact nconv --> neigs
+        @fact norm(sort(eval_arnoldi) - v[end-neigs+1:end]) --> less_than(√eps(T))
     end
 end
 end
