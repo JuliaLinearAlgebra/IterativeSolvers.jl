@@ -29,7 +29,7 @@ function chebyshev_method!(
 	d::eltype(b) = (λmax + λmin)/2
 	c::eltype(b) = (λmax - λmin)/2
 	for iter = 1:maxiter
-        nextiter!(log)
+        nextiter!(log, mvps=1)
 		z = Pr\r
 		if iter == 1
 			p = z
@@ -48,7 +48,6 @@ function chebyshev_method!(
         resnorm < tol && break
 	end
     shrink!(log)
-    setmvps(log, K.mvps)
     setconv(log, 0<=norm(r)<tol)
 	x
 end

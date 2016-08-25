@@ -85,7 +85,6 @@ function gmres_method!(log::ConvergenceHistory, x, A, b, Pl=1, Pr=1;
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,3)         #Givens rotation values
     tol = tol * norm(Pl\b)         #Relative tolerance
-    isconverged = false
     matvecs = 0
     K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
     for iter = 1:maxiter
@@ -95,7 +94,7 @@ function gmres_method!(log::ConvergenceHistory, x, A, b, Pl=1, Pr=1;
 
         N = restart
         for j = 1:restart
-            nextiter!(log)
+            nextiter!(log, mvps=1)
             #Calculate next orthonormal basis vector in the Krylov subspace
             H[1:j+1, j] = arnoldi!(K, w)
 
@@ -127,14 +126,10 @@ function gmres_method!(log::ConvergenceHistory, x, A, b, Pl=1, Pr=1;
         update!(x, 1, Pr\w) #Right preconditioner
 
         if rho < tol
-            isconverged = true
-            matvecs = (iter-1)*restart + N
+            setconv(log, true)
             break
         end
     end
     shrink!(log)
-    setconv(log, isconverged)
-    setmvps(log, matvecs)
-
     x
 end

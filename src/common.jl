@@ -1,5 +1,5 @@
 import  Base: eltype, empty!, eps, length, ndims, push!, real, size, *, \,
-        A_mul_B!, Ac_mul_B, Ac_mul_B!, getindex, setindex!, push!
+        A_mul_B!, Ac_mul_B, Ac_mul_B!, getindex, setindex!, push!, keys
 
 export  A_mul_B
 
@@ -59,9 +59,8 @@ Store general and in-depth information about an iterative method.
     - `T == Void`: methods without restarts.
 
 * `isconverged::Bool`: convergence of the method.
-* `tol::Dict{Symbol, Real}`: tolerances of the method.
-* `data::Dict{Symbol, VecOrMat}`: iteration information of a method. It usually
-contains residuals, but can have other information, e.g. ritz values in [svdl](@ref).
+* `data::Dict{Symbol,Any}`: Stores all the information stored during the method execution.
+It tolreances, residuals and other information, e.g. ritz values in [svdl](@ref).
 
 **Constructors**
 
@@ -90,12 +89,11 @@ type ConvergenceHistory{T,K}
     iters::Int
     restart::K
     isconverged::Bool
-    tol::Dict{Symbol, Real}
-    data::Dict{Symbol, VecOrMat}
+    data::Dict{Symbol, Any}
 end
 function ConvergenceHistory(;restart=nothing, partial=true)
-    ConvergenceHistory{!partial,typeof(restart)}(0,0,0,restart,false,
-        Dict{Symbol, Real}(), Dict{Symbol, VecOrMat}()
+    ConvergenceHistory{!partial,typeof(restart)}(
+        0,0,0,restart,false,Dict{Symbol, Any}()
         )
 end
 
@@ -128,20 +126,7 @@ Get collection or tolerance associated with key `s` in `ch::ConvergenceHistory`.
 
 Access elements of the collection associated with key `s` in `ch::ConvergenceHistory`.
 """
-function getindex(ch::PartialHistory, s::Symbol)
-    if haskey(ch.tol, s)
-        ch.tol[s]
-    else
-        ch.data[s][1]
-    end
-end
-function getindex(ch::CompleteHistory, s::Symbol)
-    if haskey(ch.tol, s)
-        ch.tol[s]
-    else
-        ch.data[s]
-    end
-end
+getindex(ch::ConvergenceHistory, s::Symbol) = ch.data[s]
 getindex(ch::CompleteHistory, s::Symbol, kwargs...) = ch.data[s][kwargs...]
 
 """
@@ -153,7 +138,7 @@ Set tolerance value associated with `s` in `ch::ConvergenceHistory` to `tol`.
 
 Set collection element associated with key `s` in `ch::ConvergenceHistory` to val.
 """
-setindex!(ch::ConvergenceHistory, val::Real, s::Symbol) = ch.tol[s] = val
+setindex!(ch::ConvergenceHistory, val, s::Symbol) = ch.data[s] = val
 setindex!(ch::CompleteHistory, val, s::Symbol, kwargs...) = ch.data[s][kwargs...] = val
 
 """
@@ -170,10 +155,10 @@ function push!(ch::ConvergenceHistory, key::Symbol, vec::Union{Vector,Tuple})
         matrix[base+i] = vec[i]
     end
 end
-push!(ch::ConvergenceHistory, key::Symbol, vec) = push_custom_data!(ch, key, vec)
+push!(ch::ConvergenceHistory, key::Symbol, data) = push_custom_data!(ch, key, data)
 
-push_custom_data!(ch::PartialHistory, key::Symbol, val) = ch.data[key][1] = val
-push_custom_data!(ch::CompleteHistory, key::Symbol, val) = ch.data[key][ch.iters] = val
+push_custom_data!(ch::PartialHistory, key::Symbol, data) = ch.data[key] = data
+push_custom_data!(ch::CompleteHistory, key::Symbol, data) = ch.data[key][ch.iters] = data
 
 """
     reserve!(ch, key, maxiter)
@@ -188,31 +173,39 @@ vector it will reserve matrix of dimensions `(maxiter, size)`.
 
 * `typ::Type`: Type of the elements to store. Defaults to `Float64` when not given.
 * `ch::ConvergenceHistory`: convergence history.
-* `key::Symbol`: key used to identify the data.
+* `key::Union{Symbol,Vector{Symbol}}`: key used to identify the data.
 * `maxiter::Int`: number of iterations to save space for.
 * `size::Int`: number of elements to store with the `key` identifier.
 
 """
-function reserve!(ch::ConvergenceHistory, key::Symbol, maxiter::Int, kwargs...)
-    len = isa(ch,CompleteHistory) ? maxiter : 1
-    _reserve!(Float64, ch, key, len, kwargs...)
+function reserve!(ch::ConvergenceHistory, keys::Vector{Symbol}, kwargs...)
+    for key in keys
+        reserve!(ch, key, kwargs...)
+    end
 end
-function reserve!(typ::Type, ch::ConvergenceHistory, key::Symbol, maxiter::Int, kwargs...)
-    len = isa(ch,CompleteHistory) ? maxiter : 1
-    _reserve!(typ, ch, key, len, kwargs...)
+function reserve!(ch::ConvergenceHistory, key::Symbol, kwargs...)
+    reserve!(Float64, ch, key, kwargs...)
+end
+function reserve!(typ::Type, ch::ConvergenceHistory, key::Symbol, kwargs...)
+    _reserve!(typ, ch, key, kwargs...)
 end
 
-function _reserve!(typ::Type, ch::ConvergenceHistory, key::Symbol, len::Int)
+#If partialhistory, theres no need to store a vector or matrix, instead
+#store nothing or store a vector respectively.
+_reserve!(typ::Type, ch::PartialHistory, key::Symbol, ::Int) = nothing
+function _reserve!(typ::Type, ch::PartialHistory, key::Symbol, ::Int, size::Int)
+    ch.data[key] = Vector{typ}(size)
+end
+function _reserve!(typ::Type, ch::CompleteHistory, key::Symbol, len::Int)
     ch.data[key] = Vector{typ}(len)
 end
-function _reserve!(typ::Type, ch::ConvergenceHistory, key::Symbol, len::Int, size::Int)
-    ch.data[key] = Matrix{typ}(len,size)
+function _reserve!(typ::Type, ch::CompleteHistory, key::Symbol, len::Int, size::Int)
+    ch.data[key] = Matrix{typ}(len, size)
 end
 
 """
     shrink!(ml)
-
-shrinks the reserved space for `MethodLog` `ch` to the space actually used to log.
+shrinks the reserved space for `ConvergenceHistory` `ch` to the space actually used to log.
 """
 shrink!(::PartialHistory) = nothing
 function shrink!(ch::CompleteHistory)
@@ -249,47 +242,33 @@ Number of restarts logged in `ConvergenceHistory` `ch`.
 nrests(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
 
 """
-    tolkeys(ch)
-
-Key iterator of the tolerances logged in `ConvergenceHistory` `ch`.
-"""
-tolkeys(ch::ConvergenceHistory) = keys(ch.tol)
-
-"""
-    datakeys(ch)
+    keys(ch)
 
 Key iterator of the per iteration data logged in `ConvergenceHistory` `ch`.
 """
-datakeys(ch::ConvergenceHistory) = keys(ch.data)
-
-"""
-    setmvps(ml, val)
-
-Set `val` as number of matrix-vector products in [`MethodLog`](@ref) `ch`.
-"""
-setmvps(ch::ConvergenceHistory, val::Int) = ch.mvps=val
-
-"""
-    setmtvps(ml, val)
-
-Set `val` as number of transposed matrix-vector products in [`MethodLog`](@ref) `ch`.
-"""
-setmtvps(ch::ConvergenceHistory, val::Int) = ch.mtvps=val
+keys(ch::ConvergenceHistory) = keys(ch.data)
 
 """
     setconv(ml, val)
 
-Set `val` as convergence status of the method in [`MethodLog`](@ref) ch.
+Set `val` as convergence status of the method in [`ConvergenceHistory`](@ref) ch.
 """
 setconv(ch::ConvergenceHistory, val::Bool) = ch.isconverged=val
+
+
 
 """
     nextiter!(ml)
 
-Adds one the the number of iterations in [`MethodLog`](@ref) `ch`. This is
-necessary to avoid overwriting information with `push!(ml)`.
+Adds one the the number of iterations in [`ConvergenceHistory`](@ref) `ch`. This is
+necessary to avoid overwriting information with `push!(ml)`. It is also able
+to update other information of the method.
 """
-nextiter!(ch::ConvergenceHistory) = ch.iters+=1
+function nextiter!(ch::ConvergenceHistory; mvps=0,mtvps=0)
+    ch.iters+=1
+    ch.mvps+=mvps
+    ch.mtvps+=mtvps
+end
 
 #### Errors
 export PosSemidefException

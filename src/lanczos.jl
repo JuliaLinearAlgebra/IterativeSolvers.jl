@@ -31,13 +31,12 @@ function eiglancz_method!(log::ConvergenceHistory, A, neigs::Int=size(A,1); tol:
     initrand!(K)
     e1 = eigvals(lanczos!(K), 1:neigs)
     for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
         e0, e1 = e1, eigvals(lanczos!(K), 1:neigs)
         resnorm = norm(e1-e0)
         push!(log, :resnorm, resnorm)
         resnorm < tol && (setconv(log, resnorm>=0); break)
     end
     shrink!(log)
-    setmvps(log, K.mvps)
     e1
 end

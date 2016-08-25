@@ -94,7 +94,7 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b; damp=0, atol=sqrt(eps(Ad
     #     Main iteration loop.
     #------------------------------------------------------------------
     while itn < maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=2)
         itn += 1
 
         # Perform the next step of the bidiagonalization to obtain the
@@ -215,7 +215,6 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b; damp=0, atol=sqrt(eps(Ad
         if  test1 <= rtol  istop = 1; end
     end
     shrink!(log)
-    setmvps(log, 2*itn+2)
     setconv(log, istop > 0)
     x
 end
@@ -224,10 +223,7 @@ function lsqr!(x, A, b; maxiter::Int=max(size(A,1), size(A,2)), kwargs...)
     T = Adivtype(A, b)
     z = zero(T)
     history = ConvergenceHistory()
-    reserve!(history,:resnorm,maxiter)
-    reserve!(history,:anorm,maxiter)
-    reserve!(history,:rnorm,maxiter)
-    reserve!(history,:cnorm,maxiter)
+    reserve!(history,[:resnorm,:anorm,:rnorm,:cnorm],maxiter)
     lsqr_method!(history, x, A, b; maxiter=maxiter, kwargs...)
     x, history
 end

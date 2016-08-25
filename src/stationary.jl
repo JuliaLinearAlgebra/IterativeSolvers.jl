@@ -23,7 +23,7 @@ function jacobi_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
 	for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
 		for i=1:n
 			xi = z
 			for j=[1:i-1;i+1:n]
@@ -39,7 +39,6 @@ function jacobi_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
 		copy!(xold, x)
 	end
     shrink!(log)
-    setmvps(log, iter)
 	x
 end
 
@@ -64,7 +63,7 @@ function gauss_seidel_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
 	for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
 		for i=1:n
 			σ=z
 			for j=1:i-1
@@ -83,7 +82,6 @@ function gauss_seidel_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
 		copy!(xold, x)
 	end
     shrink!(log)
-    setmvps(log, iter)
 	x
 end
 
@@ -111,7 +109,7 @@ function sor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real;
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
 	for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
 		for i=1:n
 			σ=z
 			for j=1:i-1
@@ -131,7 +129,6 @@ function sor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real;
 		copy!(xold, x)
 	end
     shrink!(log)
-    setmvps(log, iter)
 	x
 end
 
@@ -160,7 +157,7 @@ function ssor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real
     z = zero(Amultype(A, x))
     tol = tol * norm(b)
 	for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
 		for i=1:n #Do a SOR sweep
 			σ=z
 			for j=1:i-1
@@ -193,6 +190,5 @@ function ssor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real
 		copy!(xold, x)
 	end
     shrink!(log)
-    setmvps(log, iter)
 	x
 end

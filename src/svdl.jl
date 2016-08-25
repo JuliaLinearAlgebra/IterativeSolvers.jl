@@ -195,8 +195,7 @@ function svdl(A, l::Int=min(6, size(A,1)); tol::Real=√eps(), k::Int=2l,
     history = ConvergenceHistory()
     history[:tol] = tol
     reserve!(BitArray, history,:conv, maxiter)
-    reserve!(history,:ritz, maxiter, l)
-    reserve!(history,:resnorm, maxiter, l)
+    reserve!(history,[:ritz,:resnorm], maxiter, l)
     Bs_type = (method == :ritz) ? BrokenArrowBidiagonal : UpperTriangular
     reserve!(Bs_type, history,:Bs, maxiter)
     reserve!(history,:betas, maxiter)
@@ -257,7 +256,6 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
         all(conv) && (setconv(log, true); break)
     end
     shrink!(log)
-    setmvps(log, iter)
 
     #Compute singular vectors as necessary and return them in the output
     values = F[:S][1:l]

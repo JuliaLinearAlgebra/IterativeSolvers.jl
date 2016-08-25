@@ -21,7 +21,7 @@ function cg_method!(log::ConvergenceHistory, x, K::KrylovSubspace, b, Pl=1;
     p = z = Pl\r
     γ = dot(r, z)
     for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log, mvps=1)
         append!(K, p)
         q = nextvec(K)
         α = γ/dot(p, q)
@@ -38,7 +38,6 @@ function cg_method!(log::ConvergenceHistory, x, K::KrylovSubspace, b, Pl=1;
         p = z + β*p
     end
     shrink!(log)
-    setmvps(log, K.mvps)
     setconv(log, 0<=norm(r)<tol)
     x
 end

@@ -122,7 +122,7 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
             f[i] = vecdot(P[i], R)
         end
         for k in 1:s
-            nextiter!(log)
+            nextiter!(log,mvps=1)
 
             # Solve small system and make v orthogonal to P
 
@@ -185,7 +185,6 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
             iter += 1
             if normR < tol || iter > maxiter
                 shrink!(log)
-                setmvps(log, iter-1)
                 setconv(log, 0<=normR<tol)
                 return X
             end
@@ -218,7 +217,7 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
             normR = vecnorm(R_s)
         end
         iter += 1
-        nextiter!(log)
+        nextiter!(log,mvps=1)
         push!(log, :resnorm, normR)
     end
     if smoothing
@@ -226,6 +225,5 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
     end
     shrink!(log)
     setconv(log, 0<=normR<tol)
-    setmvps(log, iter)
     X
 end

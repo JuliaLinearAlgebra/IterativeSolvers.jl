@@ -104,7 +104,7 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     # Exit if b = 0 or A'b = 0.
     if normAr != 0
         while iter < maxiter
-            nextiter!(log)
+            nextiter!(log,mvps=2)
             iter += 1
             A_mul_B!(1, A, v, -α, u)
             β = norm(u)
@@ -223,7 +223,6 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
         end
     end
     shrink!(log)
-    setmvps(log, 2*iter)
     setconv(log, istop ∉ (3, 6, 7))
     x
 end
@@ -232,9 +231,7 @@ end
 ## x is initial x0. Transformed in place to the solution.
 function lsmr!(x, A, b; maxiter::Integer = max(size(A,1)), kwargs...)
     history = ConvergenceHistory()
-    reserve!(history,:anorm,maxiter)
-    reserve!(history,:rnorm,maxiter)
-    reserve!(history,:cnorm,maxiter)
+    reserve!(history,[:anorm,:rnorm,:cnorm],maxiter)
 
     T = Adivtype(A, b)
     m, n = size(A, 1), size(A, 2)

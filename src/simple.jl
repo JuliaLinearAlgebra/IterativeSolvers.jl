@@ -9,7 +9,7 @@ function powm_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T};
     θ = zero(T)
     v = Array(T, K.n)
     for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
         v = lastvec(K)
         y = nextvec(K)
         θ = dot(v, y)
@@ -18,8 +18,6 @@ function powm_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T};
         resnorm <= tol*abs(θ) && (setconv(log, resnorm >= 0); break)
         appendunit!(K, y)
     end
-    shrink!(log)
-    setmvps(log, K.mvps)
     Eigenpair(θ, v)
 end
 
@@ -47,7 +45,7 @@ function invpowm_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T}, σ::N
     y = Array(T, K.n)
     σ = convert(T, σ)
     for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
         v = lastvec(K)
         y = (K.A-σ*eye(K))\v
         θ = dot(v, y)
@@ -57,7 +55,6 @@ function invpowm_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T}, σ::N
         appendunit!(K, y)
     end
     shrink!(log)
-    setmvps(log, K.mvps)
     Eigenpair(σ+1/θ, y/θ)
 end
 
@@ -82,7 +79,7 @@ function rqi_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T}, σ::Numbe
     v = lastvec(K)
     ρ = dot(v, nextvec(K))
     for iter=1:maxiter
-        nextiter!(log)
+        nextiter!(log,mvps=1)
         y = (K.A-ρ*eye(K))\v
         θ = norm(y)
         ρ += dot(y,v)/θ^2
@@ -92,7 +89,6 @@ function rqi_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T}, σ::Numbe
         θ >= 1/tol && (setconv(log, resnorm >= 0); break)
     end
     shrink!(history)
-    setmvps(log, K.mvps)
     Eigenpair(ρ, v)
 end
 
