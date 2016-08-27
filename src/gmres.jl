@@ -47,7 +47,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 
     history = ConvergenceHistory(restart=restart)
     history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
+    reserve!(history,:resnorm, maxiter*restart)
     gmres_method!(history, x, A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
     x, history
 end
