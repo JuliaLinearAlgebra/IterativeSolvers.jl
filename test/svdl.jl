@@ -67,7 +67,7 @@ facts("BrokenArrowBidiagonal") do
     @fact B[3,3] --> 3
     @fact B[2,3] --> 2
     @fact B[3,2] --> 0
-    @fact B[1,3] --> 1 
+    @fact B[1,3] --> 1
     @fact size(B) --> (3,3)
     @fact_throws ArgumentError size(B,3)
     @fact_throws BoundsError B[1,5]

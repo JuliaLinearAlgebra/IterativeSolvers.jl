@@ -77,17 +77,21 @@ References
     [4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
 """
 idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2, smoothing=false) =
-    idrs_core!(zerox(A, b), linsys_op, (A,), b, s, tol, maxiter; smoothing=smoothing)
+    idrs!(zerox(A, b), A, b; s=s, tol=tol, maxiter=maxiter, smoothing=smoothing)
 
-idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2, smoothing=false) =
-    idrs_core!(x, linsys_op, (A,), b, s, tol, maxiter; smoothing=smoothing)
+function idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2, smoothing=false)
+    history = ConvergenceHistory()
+    history[:tol] = tol
+    reserve!(history,:resnorm, maxiter)
+    idrs_method!(history, x, linsys_op, (A,), b, s, tol, maxiter; smoothing=smoothing)
+    x, history
+end
 
-function idrs_core!{T}(X, op, args, C::T,
+function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
     s::Number, tol::Number, maxiter::Number; smoothing::Bool=false)
 
     R = C - op(X, args...)::T
     normR = vecnorm(R)
-    res = typeof(tol)[normR]
 	iter = 0
 
     if smoothing
@@ -118,6 +122,7 @@ function idrs_core!{T}(X, op, args, C::T,
             f[i] = vecdot(P[i], R)
         end
         for k in 1:s
+            nextiter!(log,mvps=1)
 
             # Solve small system and make v orthogonal to P
 
@@ -176,10 +181,12 @@ function idrs_core!{T}(X, op, args, C::T,
 
                 normR = vecnorm(R_s)
             end
-            res = [res; normR]
+            push!(log, :resnorm, normR)
             iter += 1
             if normR < tol || iter > maxiter
-                return X, ConvergenceHistory(normR < tol, tol, length(res), res)
+                shrink!(log)
+                setconv(log, 0<=normR<tol)
+                return X
             end
             if k < s
                 f[k+1:s] = f[k+1:s] - beta*M[k+1:s,k]
@@ -210,11 +217,13 @@ function idrs_core!{T}(X, op, args, C::T,
             normR = vecnorm(R_s)
         end
         iter += 1
-        res = [res; normR]
+        nextiter!(log,mvps=1)
+        push!(log, :resnorm, normR)
     end
     if smoothing
         copy!(X, X_s)
     end
-    return X, ConvergenceHistory(res[end]<tol, tol, length(res), res)
+    shrink!(log)
+    setconv(log, 0<=normR<tol)
+    X
 end
-

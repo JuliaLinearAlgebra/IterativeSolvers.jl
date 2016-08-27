@@ -44,6 +44,16 @@ gmres(A, b, Pl=1, Pr=1;
 
 function gmres!(x, A, b, Pl=1, Pr=1;
         tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
+
+    history = ConvergenceHistory(restart=restart)
+    history[:tol] = tol
+    reserve!(history,:resnorm, maxiter)
+    gmres_method!(history, x, A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
+    x, history
+end
+
+function gmres_method!(log::ConvergenceHistory, x, A, b, Pl=1, Pr=1;
+        tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
 #Generalized Minimum RESidual
 #Reference: http://www.netlib.org/templates/templates.pdf
 #           2.3.4 Generalized Minimal Residual (GMRES)
@@ -75,8 +85,6 @@ function gmres!(x, A, b, Pl=1, Pr=1;
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,3)         #Givens rotation values
     tol = tol * norm(Pl\b)         #Relative tolerance
-    resnorms = zeros(typeof(real(b[1])), maxiter, restart)
-    isconverged = false
     matvecs = 0
     K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
     for iter = 1:maxiter
@@ -86,6 +94,7 @@ function gmres!(x, A, b, Pl=1, Pr=1;
 
         N = restart
         for j = 1:restart
+            nextiter!(log, mvps=1)
             #Calculate next orthonormal basis vector in the Krylov subspace
             H[1:j+1, j] = arnoldi!(K, w)
 
@@ -104,7 +113,8 @@ function gmres!(x, A, b, Pl=1, Pr=1;
             #-conj(G.s) * s[j]
             s[j]  *= J[j,1] #G.c
 
-            resnorms[iter, j] = rho = abs(s[j+1])
+            rho = abs(s[j+1])
+            push!(log, :resnorm, rho)
             if rho < tol
                 N = j
                 break
@@ -116,12 +126,10 @@ function gmres!(x, A, b, Pl=1, Pr=1;
         update!(x, 1, Pr\w) #Right preconditioner
 
         if rho < tol
-            resnorms = resnorms[1:iter, :]
-            isconverged = true
-            matvecs = (iter-1)*restart + N
+            setconv(log, true)
             break
         end
     end
-
-    return x, ConvergenceHistory(isconverged, tol, matvecs, resnorms)
+    shrink!(log)
+    x
 end

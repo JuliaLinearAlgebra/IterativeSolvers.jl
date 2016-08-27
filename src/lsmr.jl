@@ -39,7 +39,7 @@ using Base.LinAlg
 ## x is initial x0. Transformed in place to the solution.
 ## b equals initial b. Transformed in place
 ## v, h, hbar are storage arrays of length size(A, 2)
-function lsmr!(x, A, b, v, h, hbar;
+function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
     maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0)
 
@@ -64,6 +64,10 @@ function lsmr!(x, A, b, v, h, hbar;
     Ac_mul_B!(1, A, u, 0, v)
     α = norm(v)
     α > 0 && scale!(v, inv(α))
+
+    log[:atol] = atol
+    log[:btol] = btol
+    log[:ctol] = ctol
 
     # Initialize variables for 1st iteration.
     ζbar = α * β
@@ -96,15 +100,19 @@ function lsmr!(x, A, b, v, h, hbar;
     istop = 0
     normr = β
     normAr = α * β
-    tests = Tuple{Tr, Tr, Tr}[]
     iter = 0
     # Exit if b = 0 or A'b = 0.
+
+    log.mvps=1
+    log.mtvps=1
     if normAr != 0
         while iter < maxiter
+            nextiter!(log,mvps=1)
             iter += 1
             A_mul_B!(1, A, v, -α, u)
             β = norm(u)
             if β > 0
+                log.mtvps+=1
                 scale!(u, inv(β))
                 Ac_mul_B!(1, A, u, -β, v)
                 α = norm(v)
@@ -197,7 +205,9 @@ function lsmr!(x, A, b, v, h, hbar;
             test1 = normr / normb
             test2 = normAr / (normA * normr)
             test3 = inv(condA)
-            push!(tests, (test1, test2, test3))
+            push!(log, :cnorm, test3)
+            push!(log, :anorm, test2)
+            push!(log, :rnorm, test1)
 
             t1 = test1 / (one(Tr) + normA * normx / normb)
             rtol = btol + atol * normA * normx / normb
@@ -216,21 +226,24 @@ function lsmr!(x, A, b, v, h, hbar;
             if test1 <= rtol  istop = 1; break end
         end
     end
-    converged = istop ∉ (3, 6, 7)
-    tol = (atol, btol, ctol)
-    ch = ConvergenceHistory(converged, tol, 2 * iter, tests)
-    return x, ch
+    shrink!(log)
+    setconv(log, istop ∉ (3, 6, 7))
+    x
 end
 
 ## Arguments:
 ## x is initial x0. Transformed in place to the solution.
-function lsmr!(x, A, b; kwargs...)
+function lsmr!(x, A, b; maxiter::Integer = max(size(A,1)), kwargs...)
+    history = ConvergenceHistory()
+    reserve!(history,[:anorm,:rnorm,:cnorm],maxiter)
+
     T = Adivtype(A, b)
     m, n = size(A, 1), size(A, 2)
     btmp = similar(b, T)
     copy!(btmp, b)
     v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
-    lsmr!(x, A, btmp, v, h, hbar; kwargs...)
+    lsmr_method!(history, x, A, btmp, v, h, hbar; maxiter=maxiter, kwargs...)
+    x, history
 end
 
 function lsmr(A, b; kwargs...)
@@ -244,4 +257,3 @@ for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
         end
     end
 end
-
