@@ -60,7 +60,7 @@ Store general and in-depth information about an iterative method.
 
 * `isconverged::Bool`: convergence of the method.
 * `data::Dict{Symbol,Any}`: Stores all the information stored during the method execution.
-It tolreances, residuals and other information, e.g. ritz values in [svdl](@ref).
+It stores tolerances, residuals and other information, e.g. ritz values in [svdl](@ref).
 
 **Constructors**
 

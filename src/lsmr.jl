@@ -102,13 +102,17 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     normAr = α * β
     iter = 0
     # Exit if b = 0 or A'b = 0.
+
+    log.mvps=1
+    log.mtvps=1
     if normAr != 0
         while iter < maxiter
-            nextiter!(log,mvps=2)
+            nextiter!(log,mvps=1)
             iter += 1
             A_mul_B!(1, A, v, -α, u)
             β = norm(u)
             if β > 0
+                log.mtvps+=1
                 scale!(u, inv(β))
                 Ac_mul_B!(1, A, u, -β, v)
                 α = norm(v)

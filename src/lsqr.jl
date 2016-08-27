@@ -72,6 +72,7 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b; damp=0, atol=sqrt(eps(Ad
     beta = norm(u)
     alpha = zero(Tr)
     if beta > 0
+        log.mtvps=1
         scale!(u, inv(beta))
         Ac_mul_B!(v,A,u)
         alpha = norm(v)
@@ -94,7 +95,7 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b; damp=0, atol=sqrt(eps(Ad
     #     Main iteration loop.
     #------------------------------------------------------------------
     while itn < maxiter
-        nextiter!(log,mvps=2)
+        nextiter!(log,mvps=1)
         itn += 1
 
         # Perform the next step of the bidiagonalization to obtain the
@@ -109,6 +110,7 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b; damp=0, atol=sqrt(eps(Ad
         LinAlg.axpy!(one(eltype(tmpm)), tmpm, u)
         beta = norm(u)
         if beta > 0
+            log.mtvps+=1
             scale!(u, inv(beta))
             Anorm = sqrt(abs2(Anorm) + abs2(alpha) + abs2(beta) + dampsq)
             # Note that the following three lines are a band aid for a GEMM: X: C := αA'B + βC.

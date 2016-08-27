@@ -215,7 +215,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
 
     T0 = time_ns()
     @assert k>1
-    L = build(A, v0, k)
+    L = build(log, A, v0, k)
 
     iter = 0
     local F
@@ -232,7 +232,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
         else
             throw(ArgumentError("Unknown restart method $method"))
         end
-        extend!(A, L, k)
+        extend!(log, A, L, k)
         if verbose
             elapsedtime = round((time_ns()-T0)*1e-9, 3)
             info("Iteration $iter: $elapsedtime seconds")
@@ -427,7 +427,7 @@ function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::R
 end
 
 #Hernandez2008
-function build{T}(A, q::AbstractVector{T}, k::Int)
+function build{T}(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int)
     m, n = size(A)
     Tr = typeof(real(one(T)))
     β = norm(q)
@@ -435,7 +435,7 @@ function build{T}(A, q::AbstractVector{T}, k::Int)
     p = A*q
     α = convert(Tr, norm(p))
     scale!(p, inv(α))
-    extend!(A, PartialFactorization(
+    extend!(log, A, PartialFactorization(
         reshape(p, m, 1), reshape(q, n, 1), Bidiagonal([α], Tr[], true), β
         ), k)
 end
@@ -631,8 +631,10 @@ year = {1976}
 }
 
 """
-function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
-    orthleft::Bool=false, orthright::Bool=true, α::Real = 1/√2)
+function extend!{T,Tr}(
+    log::ConvergenceHistory, A, L::PartialFactorization{T, Tr}, k::Int,
+    orthleft::Bool=false, orthright::Bool=true, α::Real = 1/√2
+    )
 
     l = size(L.B, 2)::Int-1
     p = L.P[:,l+1]
@@ -650,6 +652,7 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
 
     β = L.β
     for j=l+1:k
+        log.mtvps+=1
         Ac_mul_B!(q, A, p) #q = A'p
 
         if orthright #Orthogonalize right Lanczos vector
@@ -667,6 +670,7 @@ function extend!{T,Tr}(A, L::PartialFactorization{T, Tr}, k::Int,
         L.Q = [L.Q q]
         j==k && break
 
+        log.mvps+=1
         #p = A*q - β*p
         A_mul_B!(p, A, q)
         Base.LinAlg.axpy!(-β, view(L.P, :, j), p)
