@@ -1,4 +1,7 @@
+import  Base: getindex, setindex!, push!, keys
+
 export ConvergenceHistory
+export nprods, niters, nrests
 
 ########
 # Type #
@@ -79,8 +82,6 @@ typealias RestartedHistory{T} ConvergenceHistory{T, Int}
 #############
 # Functions #
 #############
-
-import  Base: getindex, setindex!, push!, keys
 
 """
     getindex(ch, s)
@@ -185,6 +186,33 @@ function shrink!(ch::CompleteHistory)
 end
 
 """
+    nextiter!(ml)
+
+Adds one the the number of iterations in [`ConvergenceHistory`](@ref) `ch`. This is
+necessary to avoid overwriting information with `push!(ml)`. It is also able
+to update other information of the method.
+"""
+function nextiter!(ch::ConvergenceHistory; mvps=0,mtvps=0)
+    ch.iters+=1
+    ch.mvps+=mvps
+    ch.mtvps+=mtvps
+end
+
+"""
+    keys(ch)
+
+Key iterator of the per iteration data logged in `ConvergenceHistory` `ch`.
+"""
+keys(ch::ConvergenceHistory) = keys(ch.data)
+
+"""
+    setconv(ml, val)
+
+Set `val` as convergence status of the method in [`ConvergenceHistory`](@ref) ch.
+"""
+setconv(ch::ConvergenceHistory, val::Bool) = ch.isconverged=val
+
+"""
     nprods(ch)
 
 Number of matrix-vector products plus transposed matrix-vector products
@@ -205,30 +233,3 @@ niters(ch::ConvergenceHistory) = ch.iters
 Number of restarts logged in `ConvergenceHistory` `ch`.
 """
 nrests(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
-
-"""
-    keys(ch)
-
-Key iterator of the per iteration data logged in `ConvergenceHistory` `ch`.
-"""
-keys(ch::ConvergenceHistory) = keys(ch.data)
-
-"""
-    setconv(ml, val)
-
-Set `val` as convergence status of the method in [`ConvergenceHistory`](@ref) ch.
-"""
-setconv(ch::ConvergenceHistory, val::Bool) = ch.isconverged=val
-
-"""
-    nextiter!(ml)
-
-Adds one the the number of iterations in [`ConvergenceHistory`](@ref) `ch`. This is
-necessary to avoid overwriting information with `push!(ml)`. It is also able
-to update other information of the method.
-"""
-function nextiter!(ch::ConvergenceHistory; mvps=0,mtvps=0)
-    ch.iters+=1
-    ch.mvps+=mvps
-    ch.mtvps+=mtvps
-end
