@@ -3,6 +3,7 @@ module IterativeSolvers
 
 include("common.jl")
 include("krylov.jl")
+include("history.jl")
 
 #Specialized factorizations
 include("factorization.jl")
