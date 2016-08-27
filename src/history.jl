@@ -308,3 +308,66 @@ function plot_collection{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
     end
     plot
 end
+
+## Recipes (See Plots.jl tutorial on recipes)
+
+using RecipesBase
+
+# Plot entire ConvergenceHistory. `sep` is the color of the restart separator.
+@recipe function chef(ch::CompleteHistory; sep = :white)
+    candidates = collect(values(ch.data))
+    plotables = convert(Vector{Bool}, map(plotable, candidates))
+    n = length(filter(identity, plotables))
+    n > 0 || error("No plotables")
+    frame = 1
+    layout := (n, 1)
+    for (name, draw) in collect(ch.data)[plotables]
+        @series begin
+            isa(draw, Vector) && (seriestype:= :line; label:="$name")
+            isa(draw, Matrix) && (seriestype:= :scatter; title:="$name"; label:="")
+            subplot := frame
+            map(x->isnan(x) ? typeof(x)(0) : x,draw)
+        end
+        if isa(ch, RestartedHistory)
+            label := ""
+            linecolor := sep
+
+            left=1
+            maxy = round(maximum(draw),2)
+            miny = round(minimum(draw),2)
+            for restart in 2:nrests(ch)
+                @series begin
+                    left+=ch.restart
+                    subplot := frame
+                    [left,left],[miny,maxy]
+                end
+            end
+        end
+        frame+=1
+    end
+end
+
+# Plot collection `ch[name]`. `sep` is the color of the restart separator.
+@recipe function chef(ch::CompleteHistory, name::Symbol; sep = :white)
+    draw = ch[name]
+    plotable(draw) || error("Not plotable")
+    isa(draw, Vector) && (seriestype-->:line; label-->"$name")
+    isa(draw, Matrix) && (seriestype-->:scatter; title-->"$name"; label-->"")
+    @series begin
+        draw
+    end
+    if isa(ch, RestartedHistory)
+        label := ""
+        linecolor := sep
+
+        left=1
+        maxy = round(maximum(draw),2)
+        miny = round(minimum(draw),2)
+        for restart in 2:nrests(ch)
+            @series begin
+                left+=ch.restart
+                [left,left],[miny,maxy]
+            end
+        end
+    end
+end
