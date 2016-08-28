@@ -12,12 +12,12 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         A = full(Diagonal(elty[1.0:n;]))
         q = convert(Vector{elty}, ones(n)/√n)
-        σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none)
+        σ, L = svdl(A, nsv=ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none)
         @fact norm(σ - [n:-1.0:n-4;]) --> less_than(5^2*1e-5)
-        @fact_throws ArgumentError svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=:fakemethod, vecs=:none)
+        @fact_throws ArgumentError svdl(A, nsv=ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=:fakemethod, vecs=:none)
 
         #Check the singular vectors also
-        Σ, L = svdl(A, ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:both)
+        Σ, L = svdl(A, nsv=ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:both)
 
         #The vectors should have the structure
         # [ 0  0 ...  0 ]
@@ -40,7 +40,7 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         #Issue #55
         let
-            σ1, _ = svdl(A, 1, tol=tol, reltol=tol)
+            σ1, _ = svdl(A, nsv=1, tol=tol, reltol=tol)
             @fact abs(σ[1] - σ1[1]) --> less_than(2max(tol*σ[1], tol))
         end
     end
@@ -54,7 +54,7 @@ for method in (:ritz, :harmonic) context("Thick restart with method=$method") do
 
         A = convert(Matrix{elty}, randn(m,n))
         q = convert(Vector{elty}, randn(n))|>x->x/norm(x)
-        σ, L = svdl(A, k, k=l, v0=q, tol=1e-5, maxiter=30, method=method)
+        σ, L = svdl(A, nsv=k, k=l, v0=q, tol=1e-5, maxiter=30, method=method)
         @fact norm(σ - svdvals(A)[1:k]) --> less_than(k^2*1e-5)
     end
   end

@@ -7,7 +7,7 @@ facts("lsqr") do
 context("Small dense matrix") do
     A = rand(10, 5)
     b = rand(10)
-    x, = lsqr(A, b)
+    x = lsqr(A, b)
     @fact norm(x - A\b) --> less_than(√eps())
 end
 
@@ -23,7 +23,7 @@ context("SOL test") do
         A = MatrixCFcn{Int}(m, n, fmul, fcmul)
         xtrue = n:-1:1
         b = float(A*xtrue)
-        x, = lsqr(A, b, atol = 1e-6, btol = 1e-6, conlim = 1e10, maxiter = 10n)
+        x = lsqr(A, b, atol = 1e-6, btol = 1e-6, conlim = 1e10, maxiter = 10n)
         r = b - A*x
         @fact norm(r) --> less_than_or_equal(1e-4)
         x
@@ -79,7 +79,7 @@ context("Issue 64") do
     A=sprand(n,n,.5)
     b=rand(n)
 
-    x, ch = lsqr(A,b,maxiter=100)
+    x, ch = lsqr(A,b,maxiter=100, log=true)
     resnorm = norm(A*x - b)
     @fact resnorm --> less_than(√eps())
     @fact ch.isconverged --> true

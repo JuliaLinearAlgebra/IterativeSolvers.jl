@@ -1,5 +1,28 @@
 export gmres, gmres!
 
+####################
+# API method calls #
+####################
+
+gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
+
+function gmres!(x, A, b;
+    tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
+    maxiter::Int=restart, plot::Bool=false, log::Bool=false, kwargs...
+    )
+    (plot & !log) && error("Can't plot when log keyword is false")
+    history = ConvergenceHistory(partial=!log, restart=restart)
+    history[:tol] = tol
+    reserve!(history,:resnorm, maxiter*restart)
+    gmres_method!(history, x, A, b; tol=tol, maxiter=maxiter, restart=restart, kwargs...)
+    plot && (shrink!(history); showplot(history))
+    log ? (x, history) : x
+end
+
+#########################
+# Method Implementation #
+#########################
+
 #One Arnoldi iteration
 #Optionally takes a truncation parameter l
 function arnoldi!(K::KrylovSubspace, w; l=K.order)
@@ -38,56 +61,22 @@ function compute_givens(a, b, i, j)
     end
 end
 
-gmres(A, b, Pl=1, Pr=1;
-      tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b))) =
-    gmres!(zerox(A,b), A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
-
-function gmres!(x, A, b, Pl=1, Pr=1;
-        tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
-
-    history = ConvergenceHistory(restart=restart)
-    history[:tol] = tol
-    reserve!(history,:resnorm, maxiter*restart)
-    gmres_method!(history, x, A, b, Pl, Pr; tol=tol, maxiter=maxiter, restart=restart)
-    x, history
-end
-
-function gmres_method!(log::ConvergenceHistory, x, A, b, Pl=1, Pr=1;
-        tol=sqrt(eps(typeof(real(b[1])))), maxiter::Int=1, restart::Int=min(20,length(b)))
-#Generalized Minimum RESidual
-#Reference: http://www.netlib.org/templates/templates.pdf
-#           2.3.4 Generalized Minimal Residual (GMRES)
-#
-#           http://www.netlib.org/lapack/lawnspdf/lawn148.pdf
-#           Givens rotation based on Algorithm 1
-#
-#   Solve A*x=b using the Generalized Minimum RESidual Method with restarts
-#
-#   Effectively solves the equation inv(Pl)*A*inv(Pr)*y=b where x = inv(Pr)*y
-#
-#   Required Arguments:
-#       A: Linear operator
-#       b: Right hand side
-#
-#   Named Arguments:
-#       Pl:      Left preconditioner
-#       Pr:      Right preconditioner
-#       restart: Number of iterations before restart (GMRES(restart))
-#       maxiter:  Maximum number of outer iterations
-#       tol:     Convergence Tolerance
-#
-#   The input A (resp. Pl, Pr) can be a matrix, a function returning A*x,
-#   (resp. inv(Pl)*x, inv(Pr)*x), or any type representing a linear operator
-#   which implements *(A,x) (resp. \(Pl,x), \(Pr,x)).
+function gmres_method!(log::ConvergenceHistory, x, A, b;
+    Pl=1, Pr=1, tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
+    maxiter::Int=restart, verbose::Bool=false
+    )
+    verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","resnorm")
+    macroiter=0
+    macroiters=Int(ceil(maxiter/restart))
     n = length(b)
     T = eltype(b)
     H = zeros(T,n+1,restart)       #Hessenberg matrix
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,3)         #Givens rotation values
     tol = tol * norm(Pl\b)         #Relative tolerance
-    matvecs = 0
     K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
-    for iter = 1:maxiter
+    for macroiter = 1:macroiters
+        log.mvps+=1
         w    = Pl\(b - A*x)
         s[1] = rho = norm(w)
         init!(K, w / rho)
@@ -115,7 +104,8 @@ function gmres_method!(log::ConvergenceHistory, x, A, b, Pl=1, Pr=1;
 
             rho = abs(s[j+1])
             push!(log, :resnorm, rho)
-            if rho < tol
+            verbose && @printf("%3d\t%3d\t%1.2e\n",macroiter,j,rho)
+            if (rho < tol) | ((macroiter-1)*restart+j >= maxiter)
                 N = j
                 break
             end
@@ -125,11 +115,95 @@ function gmres_method!(log::ConvergenceHistory, x, A, b, Pl=1, Pr=1;
         w = a[1:N] * K
         update!(x, 1, Pr\w) #Right preconditioner
 
-        if rho < tol
-            setconv(log, true)
+        if (rho<tol) | ((macroiter-1)*restart+N >= maxiter)
+            setconv(log, rho<tol)
             break
         end
     end
-    shrink!(log)
+    verbose && @printf("\n")
     x
+end
+
+#################
+# Documentation #
+#################
+
+let
+#Initialize parameters
+doc_call = """    gmres(A, b)
+"""
+doc!_call = """    gmres!(x, A, b)
+"""
+
+doc_msg = "Solve A*x=b using the generalized minimal residual method with restarts."
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (gmres, doc_call, doc_msg, doc_arg)
+doc!_version = (gmres!, doc!_call, doc!_msg, doc!_arg)
+
+i=0
+docstring = Vector(2)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+i+=1
+docstring[i] = """
+$call
+
+$msg
+
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
+The `plot` attribute can only be used when `log` is set version.
+
+**Arguments**
+
+$arg
+* `A`: linear operator.
+* `b`: right hand side.
+
+*Keywords*
+
+* `Pl = 1`: left preconditioner of the method.
+* `Pr = 1`: left preconditioner of the method.
+* `tol::Real = sqrt(eps())`: stopping tolerance.
+* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+* `verbose::Bool = false`: print method information.
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+* `plot::Bool = false`: plot data. (Only when `log` is set)
+
+**Output**
+
+*`log` is `false`:*
+
+* `x`: approximated solution.
+
+*`log` is `true`:*
+
+* `x`: approximated solution.
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:tol` => `::Real`: stopping tolerance.
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+**References**
+
+* http://www.netlib.org/templates/templates.pdf
+    2.3.4 Generalized Minimal Residual (GMRES)
+
+* http://www.netlib.org/lapack/lawnspdf/lawn148.pdf
+    Givens rotation based on Algorithm 1
+
+"""
+end
+
+@doc docstring[1] -> gmres
+@doc docstring[2] -> gmres!
 end
