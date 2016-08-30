@@ -6,9 +6,9 @@ julia:
     - nightly
 notifications:
     email: false
-script:
-    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-    - julia -e 'Pkg.clone(pwd())'
-    - julia -e 'Pkg.test("IterativeSolvers", coverage=true)'
+# script:
+#     - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+#     - julia -e 'Pkg.clone(pwd())'
+#     - julia -e 'Pkg.test("IterativeSolvers", coverage=true)'
 after_success:
     - julia -e 'Pkg.add("Coverage"); cd(Pkg.dir("IterativeSolvers")); using Coverage; Coveralls.submit(Coveralls.process_folder()); Codecov.submit(process_folder())'

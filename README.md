@@ -1,10 +1,10 @@
 # Iterative Solvers
 
-[![IterativeSolvers](http://pkg.julialang.org/badges/IterativeSolvers_0.3.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=0.3)
-[![IterativeSolvers](http://pkg.julialang.org/badges/IterativeSolvers_0.4.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers&ver=0.4)
-[![Build Status on Linux](https://travis-ci.org/JuliaLang/IterativeSolvers.jl.svg?branch=master)](https://travis-ci.org/JuliaLang/IterativeSolvers.jl)
-[![Coverage Status](https://coveralls.io/repos/JuliaLang/IterativeSolvers.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/JuliaLang/IterativeSolvers.jl?branch=master)
-[![codecov.io](https://codecov.io/github/JuliaLang/IterativeSolvers.jl/coverage.svg?branch=master)](https://codecov.io/github/JuliaLang/IterativeSolvers.jl?branch=master)
+[![IterativeSolvers](http://pkg.julialang.org/badges/IterativeSolvers_0.4.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers)
+[![IterativeSolvers](http://pkg.julialang.org/badges/IterativeSolvers_0.5.svg)](http://pkg.julialang.org/?pkg=IterativeSolvers)
+[![Build Status on Linux](https://travis-ci.org/JuliaMath/IterativeSolvers.jl.svg?branch=master)](https://travis-ci.org/JuliaMath/IterativeSolvers.jl)
+[![Coveralls](https://coveralls.io/repos/github/JuliaMath/IterativeSolvers.jl/badge.svg?branch=master)](https://coveralls.io/github/JuliaMath/IterativeSolvers.jl?branch=master)
+[![Codecov](https://codecov.io/gh/JuliaMath/IterativeSolvers.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaMath/IterativeSolvers.jl)
 
 &copy; 2013---2016 [The Contributors](https://github.com/JuliaLang/IterativeSolvers.jl/contributors). Released under the [MIT License](https://github.com/JuliaLang/julia/blob/master/LICENSE.md).
 
