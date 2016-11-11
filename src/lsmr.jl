@@ -2,46 +2,40 @@ export lsmr, lsmr!
 
 using Base.LinAlg
 
-##############################################################################
-## LSMR
-##
-## Minimize ||Ax-b||^2 + λ^2 ||x||^2
-##
-## Adapted from the BSD-licensed Matlab implementation at
-## http://web.stanford.edu/group/SOL/software/lsmr/
-##
-## A is a StridedVecOrMat or anything that implements
-## A_mul_B!(α, A, b, β, c) updates c -> α Ab + βc
-## Ac_mul_B!(α, A, b, β, c) updates c -> α A'b + βc
-## eltype(A)
-## size(A)
-## (this includes SparseMatrixCSC)
-## x, v, h, hbar are AbstractVectors or anything that implements
-## norm(x)
-## copy!(x1, x2)
-## scale!(x, α)
-## axpy!(α, x1, x2)
-## similar(x, T)
-## length(x)
-## b is an AbstractVector or anything that implements
-## eltype(b)
-## norm(b)
-## copy!(x1, x2)
-## fill!(b, α)
-## scale!(b, α)
-## similar(b, T)
-## length(b)
+####################
+# API method calls #
+####################
 
-##############################################################################
+lsmr(A, b; kwargs...) = lsmr!(zerox(A, b), A, b; kwargs...)
 
+function lsmr!(x, A, b;
+    plot::Bool=false, maxiter::Integer = max(size(A,1), size(A,2)),
+    log::Bool=false, kwargs...
+    )
+    (plot & !log) && error("Can't plot when log keyword is false")
+    history = ConvergenceHistory(partial=!log)
+    reserve!(history,[:anorm,:rnorm,:cnorm],maxiter)
 
-## Arguments:
-## x is initial x0. Transformed in place to the solution.
-## b equals initial b. Transformed in place
-## v, h, hbar are storage arrays of length size(A, 2)
+    T = Adivtype(A, b)
+    m, n = size(A, 1), size(A, 2)
+    btmp = similar(b, T)
+    copy!(btmp, b)
+    v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
+    lsmr_method!(history, x, A, btmp, v, h, hbar; maxiter=maxiter, kwargs...)
+    plot && (shrink!(history); showplot(history))
+    log ? (x, history) : x
+end
+
+#########################
+# Method Implementation #
+#########################
+
 function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
-    maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0)
+    maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0,
+    verbose::Bool=false
+    )
+    verbose && @printf("=== lsmr ===\n%4s\t%7s\t\t%7s\t\t%7s\n","iter","anorm","cnorm","rnorm")
 
     # Sanity-checking
     m = size(A, 1)
@@ -208,6 +202,7 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
             push!(log, :cnorm, test3)
             push!(log, :anorm, test2)
             push!(log, :rnorm, test1)
+            verbose && @printf("%3d\t%1.2e\t%1.2e\t%1.2e\n",iter,test2,test3,test1)
 
             t1 = test1 / (one(Tr) + normA * normx / normb)
             rtol = btol + atol * normA * normx / normb
@@ -226,28 +221,9 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
             if test1 <= rtol  istop = 1; break end
         end
     end
-    shrink!(log)
+    verbose && @printf("\n")
     setconv(log, istop ∉ (3, 6, 7))
     x
-end
-
-## Arguments:
-## x is initial x0. Transformed in place to the solution.
-function lsmr!(x, A, b; maxiter::Integer = max(size(A,1)), kwargs...)
-    history = ConvergenceHistory()
-    reserve!(history,[:anorm,:rnorm,:cnorm],maxiter)
-
-    T = Adivtype(A, b)
-    m, n = size(A, 1), size(A, 2)
-    btmp = similar(b, T)
-    copy!(btmp, b)
-    v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
-    lsmr_method!(history, x, A, btmp, v, h, hbar; maxiter=maxiter, kwargs...)
-    x, history
-end
-
-function lsmr(A, b; kwargs...)
-    lsmr!(zerox(A, b), A, b; kwargs...)
 end
 
 for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
@@ -256,4 +232,98 @@ for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
             BLAS.gemm!($symbol, 'N', convert(eltype(y), α), A, x, convert(eltype(y), β), y)
         end
     end
+end
+
+#################
+# Documentation #
+#################
+
+let
+#Initialize parameters
+doc_call = """    lsmr(A, b)
+"""
+doc!_call = """    lsmr!(x, A, b)
+"""
+
+doc_msg = "Minimize ||Ax-b||^2 + λ^2 ||x||^2 for A*x=b.\n"
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (lsmr, doc_call, doc_msg, doc_arg)
+doc!_version = (lsmr!, doc!_call, doc!_msg, doc!_arg)
+
+i=0
+docstring = Vector(2)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+i+=1
+docstring[i] =  """
+$call
+
+$msg
+
+The method is based on the Golub-Kahan bidiagonalization process. It is
+algebraically equivalent to applying MINRES to the normal equation (ATA+λ2I)x=ATb,
+but has better numerical properties, especially if A is ill-conditioned.
+
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
+
+The `plot` attribute can only be used when `log` is set version.
+
+**Arguments**
+
+$arg
+* `A`: linear operator.
+* `b`: right hand side.
+
+*Keywords*
+
+* `λ::Number = 0`: lambda.
+* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+(The final `x` will usually have fewer correct digits,
+depending on `cond(A)` and the size of damp).
+* `conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
+of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
+conlim could be as large as 1.0e+12 (say).  For least-squares
+problems, conlim should be less than 1.0e+8.
+Maximum precision can be obtained by setting
+`atol` = `btol` = `conlim` = zero, but the number of iterations
+may then be excessive.
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+* `verbose::Bool = false`: print method information.
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+* `plot::Bool = false`: plot data. (Only when `log` is set)
+
+**Output**
+
+*`log` is `false`:*
+
+* `x`: approximated solution.
+
+*`log` is `true`:*
+
+* `x`: approximated solution.
+* `ch`: convergence history.
+
+*ConvergenceHistory keys*
+
+* `:atol` => `::Real`: atol stopping tolerance.
+* `:btol` => `::Real`: btol stopping tolerance.
+* `:ctol` => `::Real`: ctol stopping tolerance.
+* `:anorm` => `::Real`: anorm.
+* `:rnorm` => `::Real`: rnorm.
+* `:cnorm` => `::Real`: cnorm.
+* `:resnom` => `::Vector`: residual norm at each iteration.
+
+"""
+end
+
+@doc docstring[1] -> lsmr
+@doc docstring[2] -> lsmr!
 end

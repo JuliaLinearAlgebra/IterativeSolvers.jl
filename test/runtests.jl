@@ -26,24 +26,24 @@ facts("Stationary solvers") do
         T<:Complex && (x0+=convert(Vector{T}, im*randn(n)))
         x = A\b
         for solver in [jacobi, gauss_seidel]
-            xi, ci=solver(A, b, maxiter=n^4)
+            xi, ci=solver(A, b, maxiter=n^4, log=true)
             @fact ci.isconverged --> true
             @fact norm(x-xi) --> less_than(n^3*eps(typeof(real(b[1]))))
         end
         for solver in [jacobi!, gauss_seidel!]
-            xi, ci=solver(copy(x0), A, b, maxiter=n^4)
+            xi, ci=solver(copy(x0), A, b, maxiter=n^4, log=true)
             @fact ci.isconverged --> true
             @fact norm(x-xi) --> less_than(n^3*eps(typeof(real(b[1]))))
         end
 
         ω = 0.5
         for solver in [sor, ssor]
-            xi, ci=solver(A, b, ω, maxiter=n^4)
+            xi, ci=solver(A, b, ω, maxiter=n^4, log=true)
             @fact ci.isconverged --> true
             @fact norm(x-xi) --> less_than(n^3*eps(typeof(real(b[1]))))
         end
         for solver in [sor!, ssor!]
-            xi, ci=solver(copy(x0), A, b, ω, maxiter=n^4)
+            xi, ci=solver(copy(x0), A, b, ω, maxiter=n^4, log=true)
             @fact ci.isconverged --> true
             @fact norm(x-xi) --> less_than(n^3*eps(typeof(real(b[1]))))
         end
@@ -74,15 +74,15 @@ for T in (Float32, Float64, Complex64, Complex128)
     F = lufact(A)
     b = b/norm(b)
 
-    x_gmres, c_gmres = gmres(A, b, L, R)
+    x_gmres, c_gmres = gmres(A, b, Pl=L, Pl=R, log=true)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(A, b, F; maxiter=1, restart=1)
+    x_gmres, c_gmres = gmres(A, b, Pl=F, maxiter=1, restart=1, log=true)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(A, b, 1, F; maxiter=1, restart=1)
+    x_gmres, c_gmres = gmres(A, b, Pl=1, Pr=F, maxiter=1, restart=1, log=true)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
     end
@@ -103,15 +103,15 @@ for T in (Float64, Complex128)
     F = lufact(A)
     b = b / norm(b)
 
-    x_gmres, c_gmres= gmres(A, b, L, R)
+    x_gmres, c_gmres= gmres(A, b, Pl=L, Pr=R, log=true)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(A, b, F; maxiter=1, restart=1)
+    x_gmres, c_gmres = gmres(A, b, Pl=F, maxiter=1, restart=1, log=true)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
-    x_gmres, c_gmres = gmres(A, b, 1, F; maxiter=1, restart=1)
+    x_gmres, c_gmres = gmres(A, b, Pl=1, Pr=F, maxiter=1, restart=1, log=true)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
     end
@@ -135,7 +135,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     end
     b = b/norm(b)
 
-    x_idrs, c_idrs = idrs(A, b)
+    x_idrs, c_idrs = idrs(A, b, log=true)
     @fact c_idrs.isconverged --> true
     @fact norm(A*x_idrs - b) --> less_than(√eps(real(one(T))))
     end
@@ -151,7 +151,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     end
     b = b/norm(b)
 
-    x_idrs, c_idrs = idrs(A, b; smoothing=true)
+    x_idrs, c_idrs = idrs(A, b; smoothing=true, log=true)
     @fact c_idrs.isconverged --> true
     @fact norm(A*x_idrs - b) --> less_than(√eps(real(one(T))))
     end
@@ -167,7 +167,7 @@ for T in (Float64, Complex128)
     end
     b = b / norm(b)
 
-    x_idrs, c_idrs= idrs(A, b)
+    x_idrs, c_idrs= idrs(A, b, log=true)
     @fact c_idrs.isconverged --> true
     @fact norm(A*x_idrs - b) --> less_than(√eps(real(one(T))))
     end
@@ -189,7 +189,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     v = eigvals(A)
     mxv = maximum(v)
     mnv = minimum(v)
-    x_cheby, c_cheby= chebyshev(A, b, mxv+(mxv-mnv)/100, mnv-(mxv-mnv)/100, tol=tol, maxiter=10^5)
+    x_cheby, c_cheby= chebyshev(A, b, mxv+(mxv-mnv)/100, mnv-(mxv-mnv)/100, tol=tol, maxiter=10^5, log=true)
     @fact c_cheby.isconverged --> true
     @fact norm(A*x_cheby-b) --> less_than(tol)
     end
@@ -215,7 +215,7 @@ for T in (Float32, Float64, Complex64, Complex128)
 
     context("Power iteration") do
     eval_big = maximum(v) > abs(minimum(v)) ? maximum(v) : minimum(v)
-    eval_pow = eigvals_power(A; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
+    eval_pow = powm(A; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1]
     @fact norm(eval_big-eval_pow) --> less_than(tol)
     end
 
@@ -225,13 +225,13 @@ for T in (Float32, Float64, Complex64, Complex128)
     # Perturb the eigenvalue by < 1/4 of the distance to the nearest eigenvalue
     eval_diff = min(abs(v[irnd]-eval_rand), abs(v[irnd+2]-eval_rand))
     σ = eval_rand + eval_diff/2*(rand()-.5)
-    eval_ii = eigvals_ii(A, σ; tol=sqrt(eps(real(one(T)))), maxiter=2000)[1].val
+    eval_ii = invpowm(A; shift=σ, tol=sqrt(eps(real(one(T)))), maxiter=2000)[1]
     @fact norm(eval_rand-eval_ii) --> less_than(tol)
     end
 
     #context("Rayleigh quotient iteration") do
     #XXX broken?
-    #l = eigvals_rqi(A, eigvals_rand, 2000, √eps()).val
+    #l = eigvals_rqi(A, eigvals_rand, 2000, √eps())[2]
     #@fact norm(eigvals_rand-l) --> less_than(tol)
     #end
 
@@ -251,14 +251,14 @@ import Base: *, size, eltype
 size(A::MyOp, i) = size(A.buf, i)
 eltype(A::MyOp) = eltype(A.buf)
 
-facts("eigvals_lanczos") do
+facts("eiglancz") do
 for T in (Float32, Float64)
     context("Matrix{$T}") do
     A = convert(Matrix{T}, randn(n,n))
     A = A + A' #Symmetric
     v = eigvals(A)
 
-    eval_lanczos, c_lanczos = eigvals_lanczos(A)
+    eval_lanczos, c_lanczos = eiglancz(A, log=true)
     @fact c_lanczos.isconverged --> true
     @fact norm(v - eval_lanczos) --> less_than(√eps(T))
     end
@@ -266,7 +266,7 @@ for T in (Float32, Float64)
     context("Op{$T}") do
         A = MyOp(convert(Matrix{T}, randn(5,5)) |> t -> t + t')
         v = eigvals(Symmetric(A.buf))
-        eval_lanczos, c_lanczos = eigvals_lanczos(A)
+        eval_lanczos, c_lanczos = eiglancz(A, log=true)
         @fact c_lanczos.isconverged --> true
         @fact norm(v - eval_lanczos) --> less_than(√eps(T))
     end

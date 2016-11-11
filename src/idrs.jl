@@ -1,7 +1,29 @@
 import Base.LinAlg.BLAS: axpy!
 export idrs, idrs!
 
-####
+####################
+# API method calls #
+####################
+
+
+idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
+
+function idrs!(x, A, b;
+    s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
+    plot::Bool=false, log::Bool=false, kwargs...
+    )
+    (plot & !log) && error("Can't plot when log keyword is false")
+    history = ConvergenceHistory(partial=!log)
+    history[:tol] = tol
+    reserve!(history,:resnorm, maxiter)
+    idrs_method!(history, x, linsys_op, (A,), b, s, tol, maxiter; kwargs...)
+    plot && (shrink!(history); showplot(history))
+    log ? (x, history) : x
+end
+
+#########################
+# Method Implementation #
+#########################
 
 @inline function omega(t, s)
     angle = sqrt(2.)/2
@@ -19,77 +41,16 @@ end
 @inline linsys_op(x, A) = A*x
 
 """
-IDRsSolver.jl
-============================
-
 The Induced Dimension Reduction method is a family of simple and fast Krylov
 subspace algorithms for solving large nonsymmetric linear systems. The idea
 behind the IDR(s) variant is to generate residuals that are in the nested
-subspaces of shrinking dimension s.
-
-
-
-Syntax
-------
-
-        X, h::ConvergenceHistory = idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2))
-
-        The operator A must support multiplication with b,
-        the right hand side b must support vecnorm, vecdot, copy, rand! and axpy!.
-        .
-
-Arguments
----------
-
-       s -- dimension reduction number. Normally, a higher s gives faster convergence,
-            but also  makes the method more expensive.
-       tol -- tolerance of the method.
-       maxiter -- maximum number of iterations
-       smoothing -- (Logical) specifies if residual smoothing must be applied. Default is false.
-
-
-Output
-------
-
-        X -- Approximated solution by IDR(s)
-        h -- Convergence history
-
-
-        The [`ConvergenceHistory`](https://github.com/JuliaLang/IterativeSolvers.jl/issues/6) type provides information about the iteration history.
-            - `isconverged::Bool`, a flag for whether or not the algorithm is converged.
-            - `threshold`, the convergence threshold
-            - `residuals::Vector`, the value of the convergence criteria at each iteration
-
-
-
-
-References
-----------
-
-    [1] IDR(s): a family of simple and fast algorithms for solving large
-        nonsymmetric linear systems. P. Sonneveld and M. B. van Gijzen
-        SIAM J. Sci. Comput. Vol. 31, No. 2, pp. 1035--1062, 2008
-    [2] Algorithm 913: An Elegant IDR(s) Variant that Efficiently Exploits
-        Bi-orthogonality Properties. M. B. van Gijzen and P. Sonneveld
-        ACM Trans. Math. Software,, Vol. 38, No. 1, pp. 5:1-5:19, 2011
-    [3] This file is a translation of the following MATLAB implementation:
-        http://ta.twi.tudelft.nl/nw/users/gijzen/idrs.m
-    [4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
+subspaces of shrinking dimensions.
 """
-idrs(A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter = length(b)^2, smoothing=false) =
-    idrs!(zerox(A, b), A, b; s=s, tol=tol, maxiter=maxiter, smoothing=smoothing)
-
-function idrs!(x, A, b; s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2, smoothing=false)
-    history = ConvergenceHistory()
-    history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
-    idrs_method!(history, x, linsys_op, (A,), b, s, tol, maxiter; smoothing=smoothing)
-    x, history
-end
-
 function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
-    s::Number, tol::Number, maxiter::Number; smoothing::Bool=false)
+    s::Number, tol::Number, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
+    )
 
+    verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - op(X, args...)::T
     normR = vecnorm(R)
 	iter = 0
@@ -182,6 +143,7 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
                 normR = vecnorm(R_s)
             end
             push!(log, :resnorm, normR)
+            verbose && @printf("%3d\t%1.2e\n",iter,normR)
             iter += 1
             if normR < tol || iter > maxiter
                 shrink!(log)
@@ -223,7 +185,69 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
     if smoothing
         copy!(X, X_s)
     end
-    shrink!(log)
+    verbose && @printf("\n")
     setconv(log, 0<=normR<tol)
     X
+end
+
+#################
+# Documentation #
+#################
+
+let
+#Initialize parameters
+doc_call = """    idrs(A, b)
+"""
+doc!_call = """    idrs!(x, A, b)
+"""
+
+doc_msg = "Solve A*x=b using the induced dimension reduction method."
+doc!_msg = "Overwrite `x`.\n\n" * doc_msg
+
+doc_arg = ""
+doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+
+doc_version = (idrs, doc_call, doc_msg, doc_arg)
+doc!_version = (idrs!, doc!_call, doc!_msg, doc!_arg)
+
+i=0
+docstring = Vector(2)
+
+#Build docs
+for (func, call, msg, arg) in [doc_version, doc!_version]
+i+=1
+docstring[i] =  """
+$call
+$msg
+If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
+The `plot` attribute can only be used when `log` is set version.
+**Arguments**
+$arg
+* `A`: linear operator.
+* `b`: right hand side.
+*Keywords*
+* `Pl = 1`: left preconditioner of the method.
+* `Pr = 1`: left preconditioner of the method.
+* `tol::Real = sqrt(eps())`: stopping tolerance.
+* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+* `verbose::Bool = false`: print method information.
+* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+containing extra information of the method execution.
+* `plot::Bool = false`: plot data. (Only when `log` is set)
+**Output**
+*`log` is `false`:*
+* `x`: approximated solution.
+*`log` is `true`:*
+* `x`: approximated solution.
+* `ch`: convergence history.
+*ConvergenceHistory keys*
+* `:tol` => `::Real`: stopping tolerance.
+* `:resnom` => `::Vector`: residual norm at each iteration.
+"""
+end
+
+@doc docstring[1] -> idrs
+@doc docstring[2] -> idrs!
 end

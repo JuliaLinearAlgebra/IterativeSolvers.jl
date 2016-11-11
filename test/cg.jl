@@ -11,19 +11,22 @@ context("Small full system") do
     A = A'*A
     rhs = randn(N)
     tol = 1e-12
-    x,ch = cg(A,rhs;tol=tol, maxiter=2*N)
 
+    x = cg(A,rhs;tol=tol, maxiter=2*N)
+    @fact norm(A*x - rhs) --> less_than(cond(A)*√tol)
+
+    x,ch = cg(A,rhs;tol=tol, maxiter=2*N, log=true)
     @fact norm(A*x - rhs) --> less_than(cond(A)*√tol)
     @fact ch.isconverged --> true
 
     # If you start from the exact solution, you should converge immediately
-    x2,ch2 = cg!(A\rhs, A, rhs; tol=tol*10)
-    @fact length(ch2[:resnorm]) --> less_than_or_equal(1)
+    x2, ch2 = cg!(A\rhs, A, rhs; tol=tol*10, log=true)
+    @fact niters(ch2) --> less_than_or_equal(1)
 
     # Test with cholfact should converge immediately
     F = cholfact(A)
-    x2,ch2 = cg(A, rhs, F)
-    @fact length(ch2[:resnorm]) --> less_than_or_equal(2)
+    x2,ch2 = cg(A, rhs; Pl=F, log=true)
+    @fact niters(ch2) --> less_than_or_equal(2)
 end
 
 context("Sparse Laplacian") do
@@ -39,9 +42,9 @@ context("Sparse Laplacian") do
     tol = 1e-5
 
     context("matrix") do
-        xCG, = cg(A,rhs;tol=tol,maxiter=100)
-        xJAC, = cg(A,rhs,JAC;tol=tol,maxiter=100)
-        xSGS, = cg(A,rhs,SGS;tol=tol,maxiter=100)
+        xCG = cg(A,rhs;tol=tol,maxiter=100)
+        xJAC = cg(A,rhs;Pl=JAC,tol=tol,maxiter=100)
+        xSGS = cg(A,rhs;Pl=SGS,tol=tol,maxiter=100)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
@@ -49,9 +52,9 @@ context("Sparse Laplacian") do
 
     Af = MatrixFcn(A)
     context("function") do
-        xCG, = cg(Af,rhs;tol=tol,maxiter=100)
-        xJAC, = cg(Af,rhs,JAC;tol=tol,maxiter=100)
-        xSGS, = cg(Af,rhs,SGS;tol=tol,maxiter=100)
+        xCG = cg(Af,rhs;tol=tol,maxiter=100)
+        xJAC = cg(Af,rhs;Pl=JAC,tol=tol,maxiter=100)
+        xSGS = cg(Af,rhs;Pl=SGS,tol=tol,maxiter=100)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
@@ -60,16 +63,16 @@ context("Sparse Laplacian") do
     context("function with specified starting guess") do
         tol = 1e-4
         x0 = randn(size(rhs))
-        xCG, hCG = cg!(copy(x0),Af,rhs,identity;tol=tol,maxiter=100)
-        xJAC, hJAC = cg!(copy(x0),Af,rhs,JAC;tol=tol,maxiter=100)
-        xSGS, hSGS = cg!(copy(x0),Af,rhs,SGS;tol=tol,maxiter=100)
+        xCG, hCG = cg!(copy(x0),Af,rhs;Pl=identity,tol=tol,maxiter=100, log=true)
+        xJAC, hJAC = cg!(copy(x0),Af,rhs;Pl=JAC,tol=tol,maxiter=100, log=true)
+        xSGS, hSGS = cg!(copy(x0),Af,rhs;Pl=SGS,tol=tol,maxiter=100, log=true)
         @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
 
-        iterCG = length(hCG[:resnorm])
-        iterJAC = length(hJAC[:resnorm])
-        iterSGS = length(hSGS[:resnorm])
+        iterCG = niters(hCG)
+        iterJAC = niters(hJAC)
+        iterSGS = niters(hSGS)
         @fact iterJAC --> iterCG
         @fact iterSGS --> less_than_or_equal(iterJAC) "Preconditioner increased the number of iterations"
     end
