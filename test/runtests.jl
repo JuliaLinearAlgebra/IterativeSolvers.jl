@@ -284,6 +284,8 @@ include("rlinalg.jl")
 include("rsvd.jl")
 include("rsvd_fnkz.jl")
 
+include("history.jl")
+
 #Expensive tests - don't run by default
 #include("matrixmarket.jl")
 #include("matrixcollection.jl")
