@@ -17,7 +17,8 @@ function cg!(x, A, b;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     cg_method!(history, x, K, b; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 

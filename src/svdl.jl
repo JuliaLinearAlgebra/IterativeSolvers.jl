@@ -159,7 +159,8 @@ function svdl(A;
     reserve!(Bs_type, history,:Bs, maxiter)
     reserve!(history,:betas, maxiter)
     X, L = svdl_method!(history, A, nsv; k=k, tol=tol, maxiter=maxiter, method=method, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (X, L, history) : (X, L)
 end
 

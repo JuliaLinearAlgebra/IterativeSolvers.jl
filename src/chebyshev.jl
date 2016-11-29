@@ -19,7 +19,8 @@ function chebyshev!(x, A, b, λmin::Real, λmax::Real;
     history[:tol] = tol
     reserve!(history,:resnorm,maxiter)
     chebyshev_method!(history, x, K, b, λmin, λmax; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 

@@ -22,7 +22,8 @@ function lsmr!(x, A, b;
     copy!(btmp, b)
     v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
     lsmr_method!(history, x, A, btmp, v, h, hbar; maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 
