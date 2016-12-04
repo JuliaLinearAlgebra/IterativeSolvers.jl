@@ -41,6 +41,7 @@ context("Linear operator defined as a function") do
     @fact size(A) --> (5,5)
     @fact size(A,1) --> 5
     @fact size(A,2) --> 5
+    @fact ndims(A) --> 2
     @fact length(A) --> 25
     @fact A*b --> Atimesb
 
