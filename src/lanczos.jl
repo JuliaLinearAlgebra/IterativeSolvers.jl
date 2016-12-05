@@ -15,7 +15,8 @@ function eiglancz(A;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     e1 = eiglancz_method(history, A; maxiter=maxiter, tol=tol, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (e1, history) : e1
 end
 

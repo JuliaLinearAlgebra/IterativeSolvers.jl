@@ -17,7 +17,8 @@ function jacobi!(x, A::AbstractMatrix, b;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     jacobi_method!(history, x, A, b; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 
@@ -72,7 +73,8 @@ function gauss_seidel!(x, A::AbstractMatrix, b;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     gauss_seidel_method!(history, x, A, b; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 
@@ -130,7 +132,8 @@ function sor!(x, A::AbstractMatrix, b, ω::Real;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     sor_method!(history, x, A, b, ω; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 
@@ -191,7 +194,8 @@ function ssor!(x, A::AbstractMatrix, b, ω::Real;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     ssor_method!(history, x, A, b, ω; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 

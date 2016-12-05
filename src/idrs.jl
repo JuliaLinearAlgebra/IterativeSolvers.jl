@@ -17,7 +17,8 @@ function idrs!(x, A, b;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     idrs_method!(history, x, linsys_op, (A,), b, s, tol, maxiter; kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 

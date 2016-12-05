@@ -17,7 +17,8 @@ function lsqr!(x, A, b;
     history = ConvergenceHistory(partial=!log)
     reserve!(history,[:resnorm,:anorm,:rnorm,:cnorm],maxiter)
     lsqr_method!(history, x, A, b; maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 

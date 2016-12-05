@@ -17,7 +17,8 @@ function powm(A;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     eig, v = powm_method!(history, K; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (eig, v, history) : (eig, v)
 end
 
@@ -62,7 +63,8 @@ function invpowm(A;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     eig, v = invpowm_method!(history, K, shift; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (eig, v, history) : (eig, v)
 end
 
@@ -109,7 +111,8 @@ function rqi(A;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     eig, v = rqi_method!(history, K, shift; tol=tol, maxiter=maxiter, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (eig, v, history) : (eig, v)
 end
 

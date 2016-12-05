@@ -15,7 +15,8 @@ function gmres!(x, A, b;
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter*restart)
     gmres_method!(history, x, A, b; tol=tol, maxiter=maxiter, restart=restart, kwargs...)
-    plot && (shrink!(history); showplot(history))
+    (plot || log) && shrink!(history)
+    plot && showplot(history)
     log ? (x, history) : x
 end
 
