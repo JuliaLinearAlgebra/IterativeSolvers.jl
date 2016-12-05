@@ -75,13 +75,13 @@ function orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, p::Int=K.order;
     if method == :GramSchmidt
         cs = T[dot(e, v) for e in Kk]
         for (i, e) in enumerate(Kk)
-            v -= cs[i] * e
+            @blas! v -= cs[i] * e
         end
     elseif method == :ModifiedGramSchmidt
         cs = zeros(T, p)
         for (i, e) in enumerate(Kk)
             cs[i] = dot(e, v)
-            v-= cs[i] * e
+            @blas! v -= cs[i] * e
         end
     elseif method == :Householder
         #Use brute force Householder

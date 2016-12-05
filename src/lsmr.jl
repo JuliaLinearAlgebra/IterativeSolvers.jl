@@ -55,10 +55,10 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     # form the first vectors u and v (satisfy  β*u = b,  α*v = A'u)
     u = A_mul_B!(-1, A, x, 1, b)
     β = norm(u)
-    β > 0 && scale!(u, inv(β))
+    β > 0 && @blas! u *= inv(β)
     Ac_mul_B!(1, A, u, 0, v)
     α = norm(v)
-    α > 0 && scale!(v, inv(α))
+    α > 0 && @blas! v *= inv(α)
 
     log[:atol] = atol
     log[:btol] = btol
@@ -72,7 +72,7 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     cbar = one(Tr)
     sbar = zero(Tr)
 
-    copy!(h, v)
+    @blas! h = v
     fill!(hbar, zero(Tr))
 
     # Initialize variables for estimation of ||r||.
@@ -108,10 +108,10 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
             β = norm(u)
             if β > 0
                 log.mtvps+=1
-                scale!(u, inv(β))
+                @blas! u *= inv(β)
                 Ac_mul_B!(1, A, u, -β, v)
                 α = norm(v)
-                α > 0 && scale!(v, inv(α))
+                α > 0 && @blas! v *= inv(α)
             end
 
             # Construct rotation Qhat_{k,2k+1}.
@@ -139,11 +139,11 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
             ζbar = - sbar * ζbar
 
             # Update h, h_hat, x.
-            scale!(hbar, - θbar * ρ / (ρold * ρbarold))
-            axpy!(1, h, hbar)
-            axpy!(ζ / (ρ * ρbar), hbar, x)
-            scale!(h, - θnew / ρ)
-            axpy!(1, v, h)
+            @blas! hbar *= - θbar * ρ / (ρold * ρbarold)
+            @blas! hbar += h
+            @blas! x += (ζ / (ρ * ρbar))*hbar
+            @blas! h *= - θnew / ρ
+            @blas! h += v
 
             ##############################################################################
             ##

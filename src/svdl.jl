@@ -389,10 +389,10 @@ function build{T}(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int)
     m, n = size(A)
     Tr = typeof(real(one(T)))
     β = norm(q)
-    scale!(q, inv(β))
+    @blas! q *= inv(β)
     p = A*q
     α = convert(Tr, norm(p))
-    scale!(p, inv(α))
+    @blas! p *= inv(α)
     extend!(log, A, PartialFactorization(
         reshape(p, m, 1), reshape(q, n, 1), Bidiagonal([α], Tr[], true), β
         ), k)
@@ -431,7 +431,7 @@ function thickrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     #@assert ρ[i] ≈ f⋅L.P[:, i]
     f -= L.P*ρ
     α = convert(Tr, norm(f))
-    scale!(f, inv(α))
+    @blas! f *= inv(α)
     L.P = [L.P f]
 
     g = A'f - α*L.Q[:, end]
@@ -491,7 +491,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
             pinv(full(L.B))*r0
         else rethrow(exc) end
     end::Vector{Tr}
-    scale!(r, L.β)
+    @blas! r *= L.β
     M::Matrix{T} = view(M,1:m, :) + r*view(M,m+1:m+1,:)
 
     M2 = zeros(T, m+1, k+1)
@@ -512,16 +512,16 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     f = A*view(Q,:,k+1)
     f -= P*(P'f)
     α = convert(Tr, norm(f))
-    scale!(f, inv(α))
+    @blas! f *= inv(α)
     P = [P f]
     B = UpperTriangular{Tr,Matrix{Tr}}([(Diagonal(Σ)*triu(R')); zeros(Tr,1,k) α])
     #@assert size(P, 2) == size(B, 1) == size(Q, 2)
     g = A'f
     q = view(Q,:,k+1)
     #g-= (g⋅q)*q
-    axpy!(-(g⋅q), q, g)
+    @blas! g -= (g⋅q)*q
     β = convert(Tr, norm(g))
-    scale!(g, inv(β))
+    @blas! g *= inv(β)
     #@assert size(P, 2) == size(Q, 2) == size(B, 2)
     L.P = P
     L.Q = Q
@@ -627,7 +627,7 @@ function extend!{T,Tr}(
         end
 
         β = norm(q)
-        scale!(q, inv(β))
+        @blas! q *= inv(β)
 
         L.Q = [L.Q q]
         j==k && break
@@ -635,7 +635,7 @@ function extend!{T,Tr}(
         log.mvps+=1
         #p = A*q - β*p
         A_mul_B!(p, A, q)
-        Base.LinAlg.axpy!(-β, view(L.P, :, j), p)
+        @blas! p -= β*view(L.P, :, j)
 
         if orthleft #Orthogonalize left Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization
@@ -647,7 +647,7 @@ function extend!{T,Tr}(
         end
 
         α = norm(p)
-        scale!(p, inv(α))
+        @blas! p *= inv(α)
         if isa(L.B, Bidiagonal) || isa(L.B, BrokenArrowBidiagonal)
             push!(L.B.dv, α)
             push!(L.B.ev, β)

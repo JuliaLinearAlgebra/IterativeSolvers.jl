@@ -32,7 +32,8 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
     verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","resnorm")
     tol = tol * norm(b)
     r = b - nextvec(K)
-    p = z = Pl\r
+    z = isa(Pl, Function) ? Pl(r) : Pl\r
+    p = copy(z)
     γ = dot(r, z)
     for iter=1:maxiter
         nextiter!(log, mvps=1)
@@ -40,8 +41,8 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
         q = nextvec(K)
         α = γ/dot(p, q)
         # α>=0 || throw(PosSemidefException("α=$α"))
-        update!(x, α, p)
-        r -= α*q
+        @blas! x += α*p
+        @blas! r += -α*q
         resnorm = norm(r)
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
@@ -50,7 +51,8 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
         oldγ = γ
         γ = dot(r, z)
         β = γ/oldγ
-        p = z + β*p
+        @blas! p *= β
+        @blas! p += z
     end
     verbose && @printf("\n")
     setconv(log, 0<=norm(r)<tol)

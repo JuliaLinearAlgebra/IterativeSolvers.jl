@@ -1,6 +1,8 @@
 __precompile__(true)
 module IterativeSolvers
 
+using SugarBLAS
+
 include("common.jl")
 include("krylov.jl")
 include("history.jl")

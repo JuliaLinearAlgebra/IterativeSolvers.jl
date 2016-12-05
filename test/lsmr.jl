@@ -68,6 +68,7 @@ function Base.fill!(a::DampenedVector, α::Number)
     return a
 end
 
+Base.scale!(α::Number, a::DampenedVector) = Base.scale!(a, α)
 function Base.scale!(a::DampenedVector, α::Number)
     scale!(a.y, α)
     scale!(a.x, α)

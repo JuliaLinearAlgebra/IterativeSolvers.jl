@@ -54,8 +54,8 @@ function chebyshev_method!(
 			p = z + β*p
 		end
 		append!(K, p)
-		update!(x, α, p)
-		r -= α*nextvec(K)
+		@blas! x += α*p
+		@blas! r -= α*nextvec(K)
 		#Check convergence
 		resnorm = norm(r)
         push!(log, :resnorm, resnorm)
