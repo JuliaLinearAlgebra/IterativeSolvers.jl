@@ -51,7 +51,7 @@ function jacobi_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
 		resnorm < tol && (setconv(log, resnorm>=0); break)
-		copy!(xold, x)
+		@blas! xold = x
 	end
     verbose && @printf("\n")
 	x
@@ -110,7 +110,7 @@ function gauss_seidel_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm < tol && (setconv(log, resnorm>=0); break)
-		copy!(xold, x)
+		@blas! xold = x
 	end
     verbose && @printf("\n")
 	x
@@ -172,7 +172,7 @@ function sor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real;
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm < tol && (setconv(log, resnorm>=0); break)
-		copy!(xold, x)
+		@blas! xold = x
 	end
     verbose && @printf("\n")
 	x
@@ -229,7 +229,7 @@ function ssor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real
 			σ=(b[i]-σ)/A[i,i]
 			x[i]=xold[i]+ω*(σ-xold[i])
 		end
-		copy!(xold, x)
+		@blas! xold = x
 		for i=n:-1:1 #Do a backward SOR sweep
 			σ=z
 			for j=1:i-1
@@ -247,7 +247,7 @@ function ssor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm < tol && (setconv(log, resnorm>=0); break)
-		copy!(xold, x)
+		@blas! xold = x
 	end
     verbose && @printf("\n")
 	x

@@ -1,4 +1,3 @@
-import Base.LinAlg.BLAS: axpy!
 export idrs, idrs!
 
 ####################
@@ -89,32 +88,32 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
             # Solve small system and make v orthogonal to P
 
             c = LowerTriangular(M[k:s,k:s])\f[k:s]
-            copy!(V, G[k])
-            scale!(c[1], V)
+            @blas! V = G[k]
+            @blas! V *= c[1]
 
-            copy!(Q, U[k])
-            scale!(c[1], Q)
+            @blas! Q = U[k]
+            @blas! Q *= c[1]
             for i = k+1:s
-                axpy!(c[i-k+1], G[i], V)
-                axpy!(c[i-k+1], U[i], Q)
+                @blas! V += c[i-k+1]*G[i]
+                @blas! Q += c[i-k+1]*U[i]
             end
 
             # Compute new U[:,k] and G[:,k], G[:,k] is in space G_j
 
             #V = R - V
-            scale!(-1., V)
-            axpy!(1., R, V)
+            @blas! V *= -1.
+            @blas! V += R
 
-            copy!(U[k], Q)
-            axpy!(om, V, U[k])
+            @blas! U[k] = Q
+            @blas! U[k] += om*V
             G[k] = op(U[k], args...)
 
             # Bi-orthogonalise the new basis vectors
 
             for i in 1:k-1
                 alpha = vecdot(P[i],G[k])/M[i,i]
-                axpy!(-alpha, G[i], G[k])
-                axpy!(-alpha, U[i], U[k])
+                @blas! G[k] += -alpha*G[i]
+                @blas! U[k] += -alpha*U[i]
             end
 
             # New column of M = P'*G  (first k-1 entries are zero)
@@ -126,20 +125,22 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
             #  Make r orthogonal to q_i, i = 1..k
 
             beta = f[k]/M[k,k]
-            axpy!(-beta, G[k], R)
-            axpy!(beta, U[k], X)
+            @blas! R += -beta*G[k]
+            @blas! X += beta*U[k]
 
             normR = vecnorm(R)
             if smoothing
                 # T_s = R_s - R
-                copy!(T_s, R_s); axpy!(-1., R, T_s)
+                @blas! T_s = R_s
+                @blas! T_s += (-1.)*R
 
                 gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
 
-                # R_s = R_s - gamma*T_s
-                axpy!(-gamma, T_s, R_s)
+                @blas! R_s += -gamma*T_s
                 # X_s = X_s - gamma*(X_s - X)
-                copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s)
+                @blas! T_s = X_s
+                @blas! T_s += (-1.)*X
+                @blas! X_s += -gamma*T_s
 
                 normR = vecnorm(R_s)
             end
@@ -159,23 +160,25 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
 
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
         # Note: r is already perpendicular to P so v = r
-        copy!(V, R)
+        @blas! V = R
         Q = op(V, args...)::T
         om = omega(Q, R)
-        axpy!(-om, Q, R)
-        axpy!(om, V, X)
+        @blas! R += -om*Q
+        @blas! X += om*V
 
         normR = vecnorm(R)
         if smoothing
             # T_s = R_s - R
-            copy!(T_s, R_s); axpy!(-1., R, T_s)
+            @blas! T_s = R_s
+            @blas! T_s += (-1.)*R
 
             gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
 
-            # R_s = R_s - gamma*T_s
-            axpy!(-gamma, T_s, R_s)
+            @blas! R_s += -gamma*T_s
             # X_s = X_s - gamma*(X_s - X)
-            copy!(T_s, X_s); axpy!(-1., X, T_s); axpy!(-gamma, T_s, X_s)
+            @blas! T_s = X_s
+            @blas! T_s += (-1.)*X
+            @blas! X_s += -gamma*T_s
 
             normR = vecnorm(R_s)
         end
@@ -184,7 +187,7 @@ function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
         push!(log, :resnorm, normR)
     end
     if smoothing
-        copy!(X, X_s)
+        @blas! X = X_s
     end
     verbose && @printf("\n")
     setconv(log, 0<=normR<tol)

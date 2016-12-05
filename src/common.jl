@@ -27,13 +27,6 @@ function zerox(A, b)
 end
 
 #### Numerics
-function update!(x, α::Number, p::AbstractVector)
-    for i = 1:length(x)
-        x[i] += α*p[i]
-    end
-    x
-end
-
 function initrand!(v::Vector)
     _randn!(v)
     nv = norm(v)
