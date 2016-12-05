@@ -41,7 +41,8 @@ function size(K::KrylovSubspace, n::Int)
     if isa(K.A, AbstractMatrix)
         return size(K.A, n)
     else
-        return n==2 ? size(K) : error("Illegal dimension $n of KrylovSubspace")
+        n == 2 && return size(K)
+        throw(ArgumentError("Illegal dimension $n of KrylovSubspace"))
     end
 end
 eye{T}(K::KrylovSubspace{T}) = isa(K.A, Function) ? x->x : eye(T, size(K.A)...)

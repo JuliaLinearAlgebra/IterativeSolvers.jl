@@ -22,11 +22,13 @@ context("Small full system") do
     # If you start from the exact solution, you should converge immediately
     x2, ch2 = cg!(A\rhs, A, rhs; tol=tol*10, log=true)
     @fact niters(ch2) --> less_than_or_equal(1)
+    @fact nprods(ch2) --> less_than_or_equal(2)
 
     # Test with cholfact should converge immediately
     F = cholfact(A)
     x2,ch2 = cg(A, rhs; Pl=F, log=true)
     @fact niters(ch2) --> less_than_or_equal(2)
+    @fact nprods(ch2) --> less_than_or_equal(2) 
 end
 
 context("Sparse Laplacian") do

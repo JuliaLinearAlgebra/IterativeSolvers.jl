@@ -51,5 +51,10 @@ for rsvd in [IterativeSolvers.rsvdfact]
             A = [1. 2 3; 4 5 6; 7 8 9]
             @fact size(IterativeSolvers.rrange_adaptive(A, 3, 1e-3)) --> (3,2)
         end
+        
+        context("rrange") do
+            A = [1. 2 3; 4 5 6; 7 8 9]
+            @fact_throws ArgumentError IterativeSolvers.rrange(A, 20)
+        end
     end
 end
