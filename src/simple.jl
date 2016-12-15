@@ -166,8 +166,8 @@ using the rayleigh quotient iteration method. This method converges rapidly
 but is not guaranteed to compute the eigenvalue closes to `shift`.
 """
 doc1_karg = ""
-doc2_karg = "* `shift::Number=0`: shift to be applied to matrix A."
-doc3_karg = "* `shift::Number=0`: shift to be applied to matrix A."
+doc2_karg = "`shift::Number=0`: shift to be applied to matrix A."
+doc3_karg = "`shift::Number=0`: shift to be applied to matrix A."
 
 doc1_version = (powm, doc1_call, doc1_msg, doc1_karg)
 doc2_version = (invpowm, doc2_call, doc2_msg, doc2_karg)
@@ -186,41 +186,53 @@ $msg
 
 If `log` is set to `true` is given, method will output a tuple `eig, v, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `eig, v`.
+
 The `plot` attribute can only be used when `log` is set version.
 
-**Arguments**
+# Arguments
 
-* `K::KrylovSubspace`: krylov subspace.
-* `A`: linear operator.
+`K::KrylovSubspace`: krylov subspace.
 
-*Keywords*
+`A`: linear operator.
+
+## Keywords
 
 $karg
-* `x = random unit vector`: initial eigenvector guess.
-* `tol::Real = eps()*size(A,2)^3`: stopping tolerance.
-* `maxiter::Integer = size(A,2)`: maximum number of iterations.
-* `verbose::Bool = false`: verbose flag.
-* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+
+`x = random unit vector`: initial eigenvector guess.
+
+`tol::Real = eps()*size(A,2)^3`: stopping tolerance.
+
+`maxiter::Integer = size(A,2)`: maximum number of iterations.
+
+`verbose::Bool = false`: verbose flag.
+
+`log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-* `plot::Bool = false`: plot data. (Only when `log` is set)
 
-**Output**
+`plot::Bool = false`: plot data. (Only when `log` is set)
 
-*`log` is `false`:*
+# Output
 
-* `eig::Real`: eigen value
-* `v::Vector`: eigen vector
+**if `log` is `false`**
 
-*`log` is `true`:*
+`eig::Real`: eigen value
 
-* `eig::Real`: eigen value
-* `v::Vector`: eigen vector
-* `ch`: convergence history.
+`v::Vector`: eigen vector
 
-*ConvergenceHistory keys*
+**if `log` is `true`**
 
-* `:tol` => `::Real`: stopping tolerance.
-* `:resnom` => `::Vector`: residual norm at each iteration.
+`eig::Real`: eigen value
+
+`v::Vector`: eigen vector
+
+`ch`: convergence history.
+
+**ConvergenceHistory keys**
+
+`:tol` => `::Real`: stopping tolerance.
+
+`:resnom` => `::Vector`: residual norm at each iteration.
 
 """
 end

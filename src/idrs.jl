@@ -209,7 +209,7 @@ doc_msg = "Solve A*x=b using the induced dimension reduction method."
 doc!_msg = "Overwrite `x`.\n\n" * doc_msg
 
 doc_arg = ""
-doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+doc!_arg = """`x`: initial guess, overwrite final estimation."""
 
 doc_version = (idrs, doc_call, doc_msg, doc_arg)
 doc!_version = (idrs!, doc!_call, doc!_msg, doc!_arg)
@@ -222,33 +222,58 @@ for (func, call, msg, arg) in [doc_version, doc!_version]
 i+=1
 docstring[i] =  """
 $call
+
 $msg
+
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
+
 The `plot` attribute can only be used when `log` is set version.
-**Arguments**
+
+# Arguments
+
 $arg
-* `A`: linear operator.
-* `b`: right hand side.
-*Keywords*
-* `Pl = 1`: left preconditioner of the method.
-* `Pr = 1`: left preconditioner of the method.
-* `tol::Real = sqrt(eps())`: stopping tolerance.
-* `restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
-* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-* `verbose::Bool = false`: print method information.
-* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+
+`A`: linear operator.
+
+`b`: right hand side.
+
+## Keywords
+
+`Pl = 1`: left preconditioner of the method.
+
+`Pr = 1`: left preconditioner of the method.
+
+`tol::Real = sqrt(eps())`: stopping tolerance.
+
+`restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
+
+`maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+`verbose::Bool = false`: print method information.
+
+`log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-* `plot::Bool = false`: plot data. (Only when `log` is set)
-**Output**
-*`log` is `false`:*
-* `x`: approximated solution.
-*`log` is `true`:*
-* `x`: approximated solution.
-* `ch`: convergence history.
-*ConvergenceHistory keys*
-* `:tol` => `::Real`: stopping tolerance.
-* `:resnom` => `::Vector`: residual norm at each iteration.
+
+`plot::Bool = false`: plot data. (Only when `log` is set)
+
+# Output
+
+**if `log` is `false`**
+
+`x`: approximated solution.
+
+**if `log` is `true`**
+
+`x`: approximated solution.
+
+`ch`: convergence history.
+
+**ConvergenceHistory keys**
+
+`:tol` => `::Real`: stopping tolerance.
+
+`:resnom` => `::Vector`: residual norm at each iteration.
 """
 end
 

@@ -8,7 +8,18 @@ export  A_mul_B
 *(f::Function, b) = f(b)
 
 #### Type-handling
+"""
+    Adivtype(A, b)
+Determine type of the division of an element of `b` against an element of `A`:
+`typeof(one(eltype(b))/one(eltype(A)))`
+"""
 Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
+
+"""
+    Amultype(A, x)
+Determine type of the multiplication of an element of `b` with an element of `A`:
+`typeof(one(eltype(A))*one(eltype(x)))`
+"""
 Amultype(A, x) = typeof(one(eltype(A))*one(eltype(x)))
 if VERSION < v"0.4.0-dev+6068"
     real{T<:Real}(::Type{Complex{T}}) = T
@@ -16,17 +27,29 @@ if VERSION < v"0.4.0-dev+6068"
 end
 eps{T<:Real}(::Type{Complex{T}}) = eps(T)
 
+"""
+    randx(A, b)
+Build a random unitary vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
+"""
 function randx(A, b)
     T = Adivtype(A, b)
     x = initrand!(Array(T, size(A, 2)))
 end
 
+"""
+    zerox(A, b)
+Build a zeros vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
+"""
 function zerox(A, b)
     T = Adivtype(A, b)
     x = zeros(T, size(A, 2))
 end
 
 #### Numerics
+"""
+    initrand!(v)
+Overwrite `v` with a random unitary vector of the same length.
+"""
 function initrand!(v::Vector)
     _randn!(v)
     nv = norm(v)
