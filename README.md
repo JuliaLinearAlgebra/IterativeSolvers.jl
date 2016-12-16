@@ -11,7 +11,7 @@
 ## Resources
 
 - [Manual](https://JuliaMath.github.io/IterativeSolvers.jl/latest/)
-- [Contributing](https://JuliaMath.github.io/IterativeSolvers.jl/latest/about/contributing)
+- [Contributing](https://juliamath.github.io/IterativeSolvers.jl/latest/about/CONTRIBUTING)
 
 ## Installing
 
