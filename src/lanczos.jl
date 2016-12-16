@@ -83,30 +83,52 @@ for (func, call, msg, arg) in [doc_version]
 i+=1
 docstring[i] = """
 $call
+
 $msg
+
 If `log` is set to `true` is given, method will output a tuple `eigs, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `eigs`.
+
 The `plot` attribute can only be used when `log` is set version.
-**Arguments**
+
+# Arguments
+
 $arg
-* `A`: linear operator.
-*Keywords*
-* `neigs::Int = size(A,1)`: number of eigen values.
-* `tol::Real = size(A,1)^3*eps()`: stopping tolerance.
-* `maxiter::Integer=size(A,1)`: maximum number of iterations.
-* `verbose::Bool = false`: verbose flag.
-* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+
+`A`: linear operator.
+
+## Keywords
+
+`neigs::Int = size(A,1)`: number of eigen values.
+
+`tol::Real = size(A,1)^3*eps()`: stopping tolerance.
+
+`maxiter::Integer=size(A,1)`: maximum number of iterations.
+
+`verbose::Bool = false`: verbose flag.
+
+`log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-* `plot::Bool = false`: plot data. (Only when `log` is set)
-**Output**
-*`log` is `false`:*
-* `eigs::Vector`: eigen values.
-*`log` is `true`:*
-* `eigs::Vector`: eigen values.
-* `ch`: convergence history.
-*ConvergenceHistory keys*
-* `:tol` => `::Real`: stopping tolerance.
-* `:resnom` => `::Vector`: residual norm at each iteration.
+
+`plot::Bool = false`: plot data. (Only when `log` is set)
+
+# Output
+
+**if `log` is `false`**
+
+`eigs::Vector`: eigen values.
+
+**if `log` is `true`**
+
+`eigs::Vector`: eigen values.
+
+`ch`: convergence history.
+
+**ConvergenceHistory keys**
+
+`:tol` => `::Real`: stopping tolerance.
+
+`:resnom` => `::Vector`: residual norm at each iteration.
 """
 end
 

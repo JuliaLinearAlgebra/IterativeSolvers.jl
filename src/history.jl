@@ -12,38 +12,43 @@ using UnicodePlots
 """
 Store general and in-depth information about an iterative method.
 
-**Fields**
+# Fields
 
-* `mvps::Int`: number of matrix vector products.
-* `mtvps::Int`: number of transposed matrix-vector products
-* `iters::Int`: iterations taken by the method.
-* `restart::T`: restart relevant information.
-    - `T == Int`: iterations per restart.
-    - `T == Void`: methods without restarts.
+`mvps::Int`: number of matrix vector products.
 
-* `isconverged::Bool`: convergence of the method.
-* `data::Dict{Symbol,Any}`: Stores all the information stored during the method execution.
+`mtvps::Int`: number of transposed matrix-vector products
+
+`iters::Int`: iterations taken by the method.
+
+`restart::T`: restart relevant information.
+
+* `T == Int`: iterations per restart.
+* `T == Void`: methods without restarts.
+
+`isconverged::Bool`: convergence of the method.
+
+`data::Dict{Symbol,Any}`: Stores all the information stored during the method execution.
 It stores tolerances, residuals and other information, e.g. ritz values in [svdl](@ref).
 
-**Constructors**
+# Constructors
 
     ConvergenceHistory()
     ConvergenceHistory(restart)
 
 Create `ConvergenceHistory` with empty fields.
 
-**Arguments**
+# Arguments
 
-* `restart`: number of iterations per restart.
+`restart`: number of iterations per restart.
 
-**Plots**
+# Plots
 
 Supports plots using the `Plots.jl` package via a type recipe. Vectors are
 ploted as series and matrices as scatterplots.
 
-**Implements**
+# Implements
 
-* `Base`: `getindex`, `setindex!`, `push!`
+`Base`: `getindex`, `setindex!`, `push!`
 
 """
 type ConvergenceHistory{T,K}
@@ -137,13 +142,17 @@ push_custom_data!(ch::CompleteHistory, key::Symbol, data) = ch.data[key][ch.iter
 Reserve space for per iteration data in `ch`. If size is provided, intead of a
 vector it will reserve matrix of dimensions `(maxiter, size)`.
 
-**Arguments**
+# Arguments
 
-* `typ::Type`: Type of the elements to store. Defaults to `Float64` when not given.
-* `ch::ConvergenceHistory`: convergence history.
-* `key::Union{Symbol,Vector{Symbol}}`: key used to identify the data.
-* `maxiter::Int`: number of iterations to save space for.
-* `size::Int`: number of elements to store with the `key` identifier.
+`typ::Type`: Type of the elements to store. Defaults to `Float64` when not given.
+
+`ch::ConvergenceHistory`: convergence history.
+
+`key::Union{Symbol,Vector{Symbol}}`: key used to identify the data.
+
+`maxiter::Int`: number of iterations to save space for.
+
+`size::Int`: number of elements to store with the `key` identifier.
 
 """
 function reserve!(ch::ConvergenceHistory, keys::Vector{Symbol}, kwargs...)
@@ -173,6 +182,7 @@ end
 
 """
     shrink!(ml)
+
 shrinks the reserved space for `ConvergenceHistory` `ch` to the space actually used to log.
 """
 shrink!(::PartialHistory) = nothing
@@ -242,6 +252,7 @@ nrests(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
 
 """
     plotable(x)
+
 Determine whether a collection `x` is plotable. Only vectors and matrices are
 such objects.
 """
@@ -252,6 +263,7 @@ plotable(::Any)::Bool = false
 
 """
     showplot(ch)
+
 Print all plotable information inside `ConvergenceHistory` `ch`.
 *Note:* This is what is called when the `plot` keyword is set.
 """
@@ -270,6 +282,7 @@ end
 
 """
     plot_collection(x)
+
 Build a `UnicodePlot.Plot` object from the plotable collection `x`.
 If `x` is a vector, a series will be made. In case of being a matrix an scatterplot
 will be returned.

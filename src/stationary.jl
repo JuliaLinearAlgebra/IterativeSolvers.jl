@@ -285,12 +285,12 @@ doc3!_msg = "Overwrite `x`.\n\n" * doc3_msg
 doc4!_msg = "Overwrite `x`.\n\n" * doc4_msg
 doc1_arg = ""
 doc2_arg = ""
-doc3_arg = "* `shift::Number=0`: shift to be applied to matrix A."
-doc4_arg = "* `shift::Number=0`: shift to be applied to matrix A."
-doc1!_arg = "* `x`: initial guess, overwrite final estimation."
-doc2!_arg = "* `x`: initial guess, overwrite final estimation."
-doc3!_arg = "* `x`: initial guess, overwrite final estimation.\n\n$doc3_arg"
-doc4!_arg = "* `x`: initial guess, overwrite final estimation.\n\n$doc4_arg"
+doc3_arg = "`shift::Number=0`: shift to be applied to matrix A."
+doc4_arg = "`shift::Number=0`: shift to be applied to matrix A."
+doc1!_arg = "`x`: initial guess, overwrite final estimation."
+doc2!_arg = "`x`: initial guess, overwrite final estimation."
+doc3!_arg = "`x`: initial guess, overwrite final estimation.\n\n$doc3_arg"
+doc4!_arg = "`x`: initial guess, overwrite final estimation.\n\n$doc4_arg"
 
 doc1_version = (jacobi, doc1_call, doc1_msg, doc1_arg)
 doc2_version = (gauss_seidel, doc2_call, doc2_msg, doc2_arg)
@@ -317,33 +317,42 @@ $msg
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
 The `plot` attribute can only be used when `log` is set version.
 
-**Arguments**
+# Arguments
 
 $arg
-* `A`: linear operator.
-*Keywords*
-* `tol::Real = size(A,2)^3*eps()`: stopping tolerance.
-* `maxiter::Integer = size(A,2)^2`: maximum number of iterations.
-* `verbose::Bool = false`: verbose flag.
-* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+
+`A`: linear operator.
+
+## Keywords
+
+`tol::Real = size(A,2)^3*eps()`: stopping tolerance.
+
+`maxiter::Integer = size(A,2)^2`: maximum number of iterations.
+
+`verbose::Bool = false`: verbose flag.
+
+`log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-* `plot::Bool = false`: plot data. (Only when `log` is set)
 
-**Output**
+`plot::Bool = false`: plot data. (Only when `log` is set)
 
-*`log` is `false`:*
+# Output
 
-* `x`: approximated solution.
+**if `log` is `false`**
 
-*`log` is `true`:*
+`x`: approximated solution.
 
-* `x`: approximated solution.
-* `ch`: convergence history.
+**if `log` is `true`**
 
-*ConvergenceHistory keys*
+`x`: approximated solution.
 
-* `:tol` => `::Real`: stopping tolerance.
-* `:resnom` => `::Vector`: residual norm at each iteration.
+`ch`: convergence history.
+
+**ConvergenceHistory keys**
+
+`:tol` => `::Real`: stopping tolerance.
+
+`:resnom` => `::Vector`: residual norm at each iteration.
 
 """
 end

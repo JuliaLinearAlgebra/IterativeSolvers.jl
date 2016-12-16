@@ -250,7 +250,7 @@ doc_msg = "Minimize ||Ax-b||^2 + λ^2 ||x||^2 for A*x=b.\n"
 doc!_msg = "Overwrite `x`.\n\n" * doc_msg
 
 doc_arg = ""
-doc!_arg = """* `x`: initial guess, overwrite final estimation."""
+doc!_arg = """`x`: initial guess, overwrite final estimation."""
 
 doc_version = (lsmr, doc_call, doc_msg, doc_arg)
 doc!_version = (lsmr!, doc!_call, doc!_msg, doc!_arg)
@@ -275,52 +275,67 @@ If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
 
 The `plot` attribute can only be used when `log` is set version.
 
-**Arguments**
+# Arguments
 
 $arg
-* `A`: linear operator.
-* `b`: right hand side.
 
-*Keywords*
+`A`: linear operator.
 
-* `λ::Number = 0`: lambda.
-* `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+`b`: right hand side.
+
+## Keywords
+
+`λ::Number = 0`: lambda.
+
+`atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
 1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
 (The final `x` will usually have fewer correct digits,
 depending on `cond(A)` and the size of damp).
-* `conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
+
+`conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
 of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
 conlim could be as large as 1.0e+12 (say).  For least-squares
 problems, conlim should be less than 1.0e+8.
 Maximum precision can be obtained by setting
 `atol` = `btol` = `conlim` = zero, but the number of iterations
 may then be excessive.
-* `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-* `verbose::Bool = false`: print method information.
-* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+
+`maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+
+`verbose::Bool = false`: print method information.
+
+`log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-* `plot::Bool = false`: plot data. (Only when `log` is set)
 
-**Output**
+`plot::Bool = false`: plot data. (Only when `log` is set)
 
-*`log` is `false`:*
+# Output
 
-* `x`: approximated solution.
+**if `log` is `false`**
 
-*`log` is `true`:*
+`x`: approximated solution.
 
-* `x`: approximated solution.
-* `ch`: convergence history.
+**if `log` is `true`**
 
-*ConvergenceHistory keys*
+`x`: approximated solution.
 
-* `:atol` => `::Real`: atol stopping tolerance.
-* `:btol` => `::Real`: btol stopping tolerance.
-* `:ctol` => `::Real`: ctol stopping tolerance.
-* `:anorm` => `::Real`: anorm.
-* `:rnorm` => `::Real`: rnorm.
-* `:cnorm` => `::Real`: cnorm.
-* `:resnom` => `::Vector`: residual norm at each iteration.
+`ch`: convergence history.
+
+**ConvergenceHistory keys**
+
+`:atol` => `::Real`: atol stopping tolerance.
+
+`:btol` => `::Real`: btol stopping tolerance.
+
+`:ctol` => `::Real`: ctol stopping tolerance.
+
+`:anorm` => `::Real`: anorm.
+
+`:rnorm` => `::Real`: rnorm.
+
+`:cnorm` => `::Real`: cnorm.
+
+`:resnom` => `::Vector`: residual norm at each iteration.
 
 """
 end

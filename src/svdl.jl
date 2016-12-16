@@ -90,60 +90,78 @@ If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 
 The `plot` attribute can only be used when `log` is set version.
 
-**Arguents**
+# Arguments
 
-* `A` : The matrix or matrix-like object whose singular values are desired.
+`A` : The matrix or matrix-like object whose singular values are desired.
 
-*Keywords*
+## Keywords
 
-* `nsv::Int = 6`: number of singular values requested.
-* `v0 = random unit vector`: starting guess vector in the domain of `A`.
+`nsv::Int = 6`: number of singular values requested.
+
+`v0 = random unit vector`: starting guess vector in the domain of `A`.
 The length of `q` should be the number of columns in `A`.
-* `k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting.
-* `j::Int = nsv`: number of vectors to keep at the end of the restart.
+
+`k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting.
+
+`j::Int = nsv`: number of vectors to keep at the end of the restart.
 We don't recommend j < nsv.
-* `maxiter::Int = minimum(size(A))`: maximum number of iterations to run.
-* `verbose::Bool = false`: print information at each iteration.
-* `tol::Real = √eps()`: maximum absolute error in each desired singular value.
-* `reltol::Real=√eps()`: maximum error in each desired singular value relative to the
+
+`maxiter::Int = minimum(size(A))`: maximum number of iterations to run.
+
+`verbose::Bool = false`: print information at each iteration.
+
+`tol::Real = √eps()`: maximum absolute error in each desired singular value.
+
+`reltol::Real=√eps()`: maximum error in each desired singular value relative to the
 estimated norm of the input matrix.
-* `method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
 
-    - `:ritz`: Thick restart with Ritz values [Wu2000].
-    - `:harmonic`: Restart with harmonic Ritz values [Baglama2005].
-* `vecs::Symbol = :none`: singular vectors to return.
+`method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
 
-    - `:both`: Both left and right singular vectors are returned.
-    - `:left`: Only the left singular vectors are returned.
-    - `:right`: Only the right singular vectors are returned.
-    - `:none`: No singular vectors are returned.
-* `dolock::Bool=false`: If `true`, locks converged Ritz values, removing them
+* `:ritz`: Thick restart with Ritz values [Wu2000].
+* `:harmonic`: Restart with harmonic Ritz values [Baglama2005].
+
+`vecs::Symbol = :none`: singular vectors to return.
+
+* `:both`: Both left and right singular vectors are returned.
+* `:left`: Only the left singular vectors are returned.
+* `:right`: Only the right singular vectors are returned.
+* `:none`: No singular vectors are returned.
+
+`dolock::Bool=false`: If `true`, locks converged Ritz values, removing them
 from the Krylov subspace being searched in the next macroiteration.
-* `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+
+`log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-* `plot::Bool = false`: plot data. (Only when `log` is set)
 
-**Output**
+`plot::Bool = false`: plot data. (Only when `log` is set)
 
-*`log` is `false`:*
+# Output
 
-* `Σ`: list of the desired singular values if `vecs == :none` (the default),
-    otherwise returns an `SVD` object with the desired singular vectors filled in.
-* `L`: computed partial factorizations of A.
+**if `log` is `false`**
 
-*`log` is `true`:*
+`Σ`: list of the desired singular values if `vecs == :none` (the default),
+otherwise returns an `SVD` object with the desired singular vectors filled in.
 
-* `Σ`: list of the desired singular values if `vecs == :none` (the default),
-    otherwise returns an `SVD` object with the desired singular vectors filled in.
-* `L`: computed partial factorizations of A.
-* `ch::ConvergenceHistory`: convergence history.
+`L`: computed partial factorizations of A.
 
-*ConvergenceHistory keys*
+**if `log` is `true`**
 
-* `:betas` => `betas`: The history of the computed betas.
-* `:Bs` => `Bs`: The history of the computed projected matrices.
-* `:ritz` => `ritzvalhist`: Ritz values computed at each iteration.
-* `:conv` => `convhist`: Convergence data.
+`Σ`: list of the desired singular values if `vecs == :none` (the default),
+otherwise returns an `SVD` object with the desired singular vectors filled in.
+
+`L`: computed partial factorizations of A.
+
+`ch::ConvergenceHistory`: convergence history.
+
+**ConvergenceHistory keys**
+
+`:betas` => `betas`: The history of the computed betas.
+
+`:Bs` => `Bs`: The history of the computed projected matrices.
+
+`:ritz` => `ritzvalhist`: Ritz values computed at each iteration.
+
+`:conv` => `convhist`: Convergence data.
 
 """
 function svdl(A;
@@ -245,17 +263,22 @@ end
 
 Determine if any singular values in a partial factorization have converged.
 
-**Arguments**
+# Arguments
 
-* `L::PartialFactorization` : a `PartialFactorization` computed by an iterative
+`L::PartialFactorization` : a `PartialFactorization` computed by an iterative
 method such as `svdl`.
-* `F::Base.LinAlg.SVD`: a `SVD` factorization computed for `L.B`.
-* `k::Int` : number of singular values to check.
-* `tol::Real`: absolute tolerance for a Ritz value to be considered converged.
-* `reltol::Real`: relative tolerance for a Ritz value to be considered converged.
-* `verbose::Bool = false`: if `true`, prints out all the results of convergence tests.
 
-**Implementation note**
+`F::Base.LinAlg.SVD`: a `SVD` factorization computed for `L.B`.
+
+`k::Int` : number of singular values to check.
+
+`tol::Real`: absolute tolerance for a Ritz value to be considered converged.
+
+`reltol::Real`: relative tolerance for a Ritz value to be considered converged.
+
+`verbose::Bool = false`: if `true`, prints out all the results of convergence tests.
+
+# Implementation note
 
 This convergence test routine uses a variety of different tests.
 1. The crudest estimate of the error bound is a simple error bound which dates
@@ -404,7 +427,7 @@ end
 
 Thick restart (with ordinary Ritz values)
 
-**References**
+# References
 
 [Hernandez2008]
 
@@ -446,7 +469,7 @@ end
 
 Thick restart with harmonic Ritz values.
 
-**References**
+# References
 
 [Baglama2005] - note that they have P and Q swapped relative to our notation,
 which follows that of [Hernandez2008]
@@ -536,15 +559,19 @@ end
 Extend a PartialFactorization L using GKL bidiagonalization with k extra pairs
 of Lanczos vectors.
 
-**Arguments**
+# Arguments
 
-* `A`: matrix or linear map generating the Lanczos vectors
-* `L::PartialFactorization`: partial factorization.
-* `orthleft::Bool = false`: orthogonalize left Lanczos vectors.
-* `orthright::Bool = true`: orthogonalize right Lanczos vectors.
-* `α::Real = 1/√2`: criterion for doing a second reorthogonalization.
+`A`: matrix or linear map generating the Lanczos vectors
 
-**Implementation note**
+`L::PartialFactorization`: partial factorization.
+
+`orthleft::Bool = false`: orthogonalize left Lanczos vectors.
+
+`orthright::Bool = true`: orthogonalize right Lanczos vectors.
+
+`α::Real = 1/√2`: criterion for doing a second reorthogonalization.
+
+# Implementation note
 
 The implementation mostly follows the description in [Simon2000,Hernandez2008].
 
