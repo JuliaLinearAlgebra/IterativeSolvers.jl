@@ -52,7 +52,7 @@ context("Sparse Laplacian") do
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
     end
 
-    Af = MatrixFcn(A)
+    Af = LinearMap(A)
     context("function") do
         xCG = cg(Af,rhs;tol=tol,maxiter=100)
         xJAC = cg(Af,rhs;Pl=JAC,tol=tol,maxiter=100)

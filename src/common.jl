@@ -1,4 +1,4 @@
-import  Base: eltype, eps, length, ndims, real, size, *, \,
+import  Base: eltype, eps, length, ndims, real, size, *, \, ctranspose,
         A_mul_B!, Ac_mul_B, Ac_mul_B!
 
 export  A_mul_B
@@ -69,59 +69,109 @@ type PosSemidefException <: Exception
     PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
 end
 
-#### Support for linear-operators-defined-as-functions
-#
-# Suppose you have a function implementing multiplication of b by A.
-# This function can have any syntax, but for the purposes of
-# illustration let's suppose it's defined as
-#   mulbyA!(output, b, Adata)
-# Where Adata might be some parameters that your function needs.
-# You can represent it as a linear operator using
-#   A = MatrixFcn{T}(m, n, (output, b) -> mulbyA!(output, b, Adata))
-# where T is the "element type" of Adata.
-# Note that there are a couple of requirements:
-#   - mulbyA! stores the result in the pre-allocated output
-#   - mulbyA! should also return output as its sole return value
+export LinearMap
 
-# If the algorithm also needs multiplication by A', use MatrixCFcn
-# instead and initialize it with both functions.
+"""
+    LinearMap{T,A,B}
 
-export MatrixFcn, MatrixCFcn
+Represent a finite dimensional linear map as a function describing
+its application (a matrix-vector product) and also, optionally, its transpose.
 
-abstract AbstractMatrixFcn{T}
+`T` is the element type of the vector produced by the map.
 
-type MatrixFcn{T} <: AbstractMatrixFcn{T}
+**Fields**
+
+* `m::Int` = number of columns.
+* `n::Int` = number of rows.
+* `mul::Function` = `A*b` implementation.
+* `cmul::Function` = `A'*b` implementation.
+
+**Constructors**
+
+    LinearMap(A)
+    LinearMap(m, n)
+    LinearMap(typ, m, n)
+
+**Arguments**
+
+* `A::AbstractMatrix` = matrix.
+* `m::Int` = number of columns.
+* `n::Int` = number of rows.
+* `typ::Type` = element type of the vector produced by the map, if not given
+`T` defaults to Float64.
+* `mul::Function = identity` = `A*b` implementation.
+* `cmul::Function = identity` = `A'*b` implementation.
+
+"""
+#A is true if mul is different from identity, otherwise it is false.
+#The same happens for B with cmul.
+type LinearMap{T,A,B}
     m::Int
     n::Int
     mul::Function
+    cmul::Function
+end
+function LinearMap(
+        m::Int, n::Int;
+        mul::Function=identity, cmul::Function=identity
+        )
+    LinearMap{Float64,mul!=identity,cmul!=identity}(m, n, mul, cmul)
+end
+function LinearMap(
+        typ::Type, m::Int, n::Int;
+        mul::Function=identity, cmul::Function=identity
+        )
+    LinearMap{typ,mul!=identity,cmul!=identity}(m, n, mul, cmul)
+end
+LinearMap(A::AbstractMatrix) = LinearMap(
+    eltype(A),
+    size(A, 1),
+    size(A, 2),
+    mul = (output, x)->A_mul_B!(output, A, x),
+    cmul = (output, b) -> Ac_mul_B(output, A, b)
+    )
+
+eltype{T}(::LinearMap{T}) = T
+
+ndims(::LinearMap) = 2
+
+size(op::LinearMap) = (op.m, op.n)
+size(op::LinearMap, dim::Integer) = (dim == 1) ? op.m : (dim == 2) ? op.n : 1
+
+length(op::LinearMap) = op.m*op.n
+
+ctranspose{T,A,B}(op::LinearMap{T,A,B}) = LinearMap{T,B,A}(op.n, op.m, op.cmul, op.mul)
+
+*(op::LinearMap, b) = A_mul_B(op, b)
+
+function A_mul_B{R,S}(op::LinearMap{R}, b::AbstractVector{S})
+    A_mul_B!(Array(promote_type(R,S), op.m), op, b)
+end
+function A_mul_B{R,S}(op::LinearMap{R}, b::AbstractMatrix{S})
+    A_mul_B!(Array(promote_type(R,S), op.m, size(b,2)), op, b)
 end
 
-type MatrixCFcn{T} <: AbstractMatrixFcn{T}
-    m::Int
-    n::Int
-    mul::Function
-    mulc::Function
+A_mul_B!{T}(output, op::LinearMap{T,false}, b) = error("A*b not defined")
+function A_mul_B!{T}(output, op::LinearMap{T,true}, b::AbstractVector)
+    op.mul(output, b)
+end
+function A_mul_B!{T}(output, op::LinearMap{T,true}, b::AbstractMatrix)
+    columns = [op.mul(output, b[:,i]) for i in 1:size(b,2)]
+    hcat(columns...)
 end
 
-MatrixFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)-> A_mul_B!(output, A, x))
-MatrixCFcn(A::AbstractMatrix) = MatrixFcn{eltype(A)}(size(A, 1), size(A, 2), (output, x)->A_mul_B!(output, A, x), (output, b) -> Ac_mul_B(output, A, b))
+function Ac_mul_B{R,S}(op::LinearMap{R}, b::AbstractVector{S})
+    Ac_mul_B!(Array(promote_type(R,S), op.n), op, b)
+end
+function Ac_mul_B{R,S}(op::LinearMap{R}, b::AbstractMatrix{S})
+    Ac_mul_B!(Array(promote_type(R,S), op.n, size(b,2)), op, b)
+end
 
-eltype{T}(op::AbstractMatrixFcn{T}) = T
-
-ndims(op::AbstractMatrixFcn) = 2
-
-size(op::AbstractMatrixFcn, dim::Integer) = (dim == 1) ? op.m :
-                                            (dim == 2) ? op.n : 1
-size(op::AbstractMatrixFcn) = (op.m, op.n)
-
-length(op::AbstractMatrixFcn) = op.m*op.n
-
-*(op::AbstractMatrixFcn, b) = A_mul_B(op, b)
-
-A_mul_B{R,S}(op::AbstractMatrixFcn{R}, b::AbstractVector{S}) = A_mul_B!(Array(promote_type(R,S), op.m), op, b)
-
-A_mul_B!(output, op::AbstractMatrixFcn, b) = op.mul(output, b)
-
-Ac_mul_B{R,S}(op::MatrixCFcn{R}, b::AbstractVector{S}) = Ac_mul_B!(Array(promote_type(R,S), op.n), op, b)
-
-Ac_mul_B!(output, op::AbstractMatrixFcn, b) = op.mulc(output, b)
+Ac_mul_B!{T,A}(output, op::LinearMap{T,A,false}, b) = error("A'*b not defined")
+function Ac_mul_B!{T,A}(output, op::LinearMap{T,A,true}, b::AbstractVector)
+    op.cmul(output, b)
+end
+function Ac_mul_B!{T,A}(output, op::LinearMap{T,A,true}, b::AbstractMatrix)
+    columns = [op.cmul(output, b[:,i]) for i in 1:size(b,2)]
+    hcat(columns...)
+end
