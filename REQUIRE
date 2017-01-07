@@ -3,3 +3,4 @@ julia 0.5-
 UnicodePlots
 RecipesBase
 SugarBLAS
+LinearMaps
