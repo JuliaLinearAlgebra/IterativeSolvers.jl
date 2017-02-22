@@ -102,6 +102,10 @@ function nextvec(K::KrylovSubspace)
     K.mvps += 1
     K.A*lastvec(K)
 end
+function nextvec{T,OpT<:Function}(K::KrylovSubspace{T,OpT})
+    K.mvps += 1
+    K.A(lastvec(K))
+end
 
 size(K::KrylovSubspace) = length(K.v)
 function size(K::KrylovSubspace, n::Int)

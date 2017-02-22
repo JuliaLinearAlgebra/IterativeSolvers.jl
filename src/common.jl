@@ -1,11 +1,7 @@
-import  Base: eltype, eps, length, ndims, real, size, *, \,
+import  Base: eltype, eps, length, ndims, real, size, *,
         A_mul_B!, Ac_mul_B, Ac_mul_B!
 
 export  A_mul_B
-
-# Improve readability of iterative methods
-\(f::Function, b) = f(b)
-*(f::Function, b) = f(b)
 
 #### Type-handling
 """
