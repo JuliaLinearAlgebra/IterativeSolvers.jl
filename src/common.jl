@@ -43,6 +43,13 @@ end
 
 #### Numerics
 """
+    solve(A,b)
+Solve `A\b` with a direct solver. When `A` is a function `A(b)` is dispatched instead.
+"""
+solve(A::Function,b) = A(b)
+solve(A,b) = A\b
+
+"""
     initrand!(v)
 Overwrite `v` with a random unitary vector of the same length.
 """

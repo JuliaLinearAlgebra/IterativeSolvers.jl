@@ -74,11 +74,11 @@ function gmres_method!(log::ConvergenceHistory, x, A, b;
     H = zeros(T,n+1,restart)       #Hessenberg matrix
     s = zeros(T,restart+1)         #Residual history
     J = zeros(T,restart,3)         #Givens rotation values
-    tol = tol * norm(Pl\b)         #Relative tolerance
-    K = KrylovSubspace(x->Pl\(A*(Pr\x)), n, restart+1, T)
+    tol = tol * norm(solve(Pl,b))         #Relative tolerance
+    K = KrylovSubspace(x->solve(Pl,A*solve(Pr,x)), n, restart+1, T)
     for macroiter = 1:macroiters
         log.mvps+=1
-        w    = Pl\(b - A*x)
+        w    = solve(Pl,(b - A*x))
         s[1] = rho = norm(w)
         init!(K, w / rho)
 
@@ -114,7 +114,7 @@ function gmres_method!(log::ConvergenceHistory, x, A, b;
 
         @eval a = $(VERSION < v"0.4-" ? Triangular(H[1:N, 1:N], :U) \ s[1:N] : UpperTriangular(H[1:N, 1:N]) \ s[1:N])
         w = a[1:N] * K
-        @blas! x = isa(Pr, Function) ? Pr(w) : Pr\w #Right preconditioner
+        @blas! x = solve(Pr,w) #Right preconditioner
 
         if (rho<tol) | ((macroiter-1)*restart+N >= maxiter)
             setconv(log, rho<tol)
