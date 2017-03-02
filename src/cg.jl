@@ -32,7 +32,7 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
     verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","resnorm")
     tol = tol * norm(b)
     r = b - nextvec(K)
-    z = isa(Pl, Function) ? Pl(r) : Pl\r
+    z = solve(Pl,r)
     p = copy(z)
     γ = dot(r, z)
     for iter=1:maxiter
@@ -47,7 +47,7 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm < tol && break
-        z = Pl\r
+        z = solve(Pl,r)
         oldγ = γ
         γ = dot(r, z)
         β = γ/oldγ
