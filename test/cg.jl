@@ -28,7 +28,11 @@ context("Small full system") do
     F = cholfact(A)
     x2,ch2 = cg(A, rhs; Pl=F, log=true)
     @fact niters(ch2) --> less_than_or_equal(2)
-    @fact nprods(ch2) --> less_than_or_equal(2) 
+    @fact nprods(ch2) --> less_than_or_equal(2)
+
+    # All-zeros rhs should give all-zeros lhs
+    x0 = cg(A, zeros(N))
+    @fact x0 --> zeros(N)
 end
 
 context("Sparse Laplacian") do
