@@ -7,14 +7,18 @@ export cg, cg!
 cg(A, b; kwargs...) = cg!(zerox(A,b), A, b; kwargs...)
 
 function cg!(x, A, b;
-    tol::Real=size(A,2)*eps(), maxiter::Integer=size(A,2),
-    plot=false, log::Bool=false, kwargs...
-    )
+             tol::Real=size(A,2)*eps(), maxiter::Integer=size(A,2),
+             plot=false, log::Bool=false, kwargs...
+             )
     (plot & !log) && error("Can't plot when log keyword is false")
     K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
     init!(K, x)
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
+    if all(el->el==0, b)
+        fill!(x, zero(eltype(x)))
+        return log ? (x, history) : x
+    end
     reserve!(history,:resnorm, maxiter)
     cg_method!(history, x, K, b; tol=tol, maxiter=maxiter, kwargs...)
     (plot || log) && shrink!(history)
