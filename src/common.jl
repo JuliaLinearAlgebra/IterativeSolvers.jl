@@ -12,8 +12,6 @@ using   LinearMaps
 #### Type-handling
 """
     Adivtype(A, b)
-If A is a function map then:
-`typeof(one(eltype(b)))`
 Determine type of the division of an element of `b` against an element of `A`:
 `typeof(one(eltype(b))/one(eltype(A)))`
 """
@@ -21,8 +19,6 @@ Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
 
 """
     Amultype(A, x)
-If A is a function map then:
-`typeof(one(eltype(b)))`
 Determine type of the multiplication of an element of `b` with an element of `A`:
 `typeof(one(eltype(A))*one(eltype(x)))`
 """
