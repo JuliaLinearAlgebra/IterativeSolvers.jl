@@ -1,6 +1,8 @@
 import  Base: eltype, eps, length, ndims, real, size, *,
         A_mul_B!, Ac_mul_B, Ac_mul_B!
 
+using   LinearMaps
+
 export  A_mul_B
 
 #### Type-handling
