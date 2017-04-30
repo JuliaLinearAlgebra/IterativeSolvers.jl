@@ -1,5 +1,6 @@
 using IterativeSolvers
 using FactCheck
+using LinearMaps
 
 include("getDivGrad.jl")
 
@@ -28,7 +29,7 @@ context("Small full system") do
     F = cholfact(A)
     x2,ch2 = cg(A, rhs; Pl=F, log=true)
     @fact niters(ch2) --> less_than_or_equal(2)
-    @fact nprods(ch2) --> less_than_or_equal(2) 
+    @fact nprods(ch2) --> less_than_or_equal(2)
 end
 
 context("Sparse Laplacian") do
@@ -52,7 +53,7 @@ context("Sparse Laplacian") do
         @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
     end
 
-    Af = MatrixFcn(A)
+    Af = LinearMap(A)
     context("function") do
         xCG = cg(Af,rhs;tol=tol,maxiter=100)
         xJAC = cg(Af,rhs;Pl=JAC,tol=tol,maxiter=100)
