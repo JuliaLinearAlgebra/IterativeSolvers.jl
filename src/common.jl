@@ -1,13 +1,7 @@
-import  Base: eltype, eps, length, ndims, real, size, *, \,
+import  Base: eltype, eps, length, ndims, real, size, *,
         A_mul_B!, Ac_mul_B, Ac_mul_B!
 
 export  A_mul_B
-
-using   LinearMaps
-
-# Improve readability of iterative methods
-\(f::Function, b) = f(b)
-*(f::Function, b) = f(b)
 
 #### Type-handling
 """
@@ -49,6 +43,13 @@ function zerox(A, b)
 end
 
 #### Numerics
+"""
+    solve(A,b)
+Solve `A\b` with a direct solver. When `A` is a function `A(b)` is dispatched instead.
+"""
+solve(A::Function,b) = A(b)
+solve(A,b) = A\b
+
 """
     initrand!(v)
 Overwrite `v` with a random unitary vector of the same length.

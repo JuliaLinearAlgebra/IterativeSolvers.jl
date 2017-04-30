@@ -44,7 +44,7 @@ function chebyshev_method!(
 	c::eltype(b) = (λmax - λmin)/2
 	for iter = 1:maxiter
         nextiter!(log, mvps=1)
-		z = Pr\r
+		z = solve(Pr,r)
 		if iter == 1
 			p = z
 			α = 2/d
