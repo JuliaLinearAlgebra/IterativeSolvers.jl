@@ -1,8 +1,6 @@
 import  Base: eltype, eps, length, ndims, real, size, *, \,
         A_mul_B!, Ac_mul_B, Ac_mul_B!
 
-import LinearMaps.FunctionMap
-
 export  A_mul_B
 
 using   LinearMaps
@@ -19,7 +17,7 @@ If A is a function map then:
 Determine type of the division of an element of `b` against an element of `A`:
 `typeof(one(eltype(b))/one(eltype(A)))`
 """
-Adivtype(A, b) = isa(A, FunctionMap) ? typeof(one(eltype(b))) : typeof(one(eltype(b))/one(eltype(A)))
+Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
 
 """
     Amultype(A, x)
@@ -28,7 +26,7 @@ If A is a function map then:
 Determine type of the multiplication of an element of `b` with an element of `A`:
 `typeof(one(eltype(A))*one(eltype(x)))`
 """
-Amultype(A, x) = isa(A, FunctionMap) ? typeof(one(eltype(b))) :typeof(one(eltype(A))*one(eltype(x)))
+Amultype(A, x) = typeof(one(eltype(A))*one(eltype(x)))
 
 if VERSION < v"0.4.0-dev+6068"
     real{T<:Real}(::Type{Complex{T}}) = T
