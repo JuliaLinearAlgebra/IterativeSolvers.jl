@@ -91,7 +91,7 @@ end
 
 export MatrixFcn, MatrixCFcn
 
-abstract AbstractMatrixFcn{T}
+@compat abstract type AbstractMatrixFcn{T} end
 
 type MatrixFcn{T} <: AbstractMatrixFcn{T}
     m::Int
