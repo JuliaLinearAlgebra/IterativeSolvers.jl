@@ -268,7 +268,7 @@ for dense A computes the QR factorization using Householder reflectors.
 Algorithm 4.4 of \cite{Halko2011}
 """
 function rrange_si(A, l::Int; At=A', q::Int=0)
-    const basis=_->full(qrfact(_)[:Q])
+    basis=x->full(qrfact(x)[:Q])
     n = size(A, 2)
     Ω = randn(n,l+p)
     Y = A*Ω
