@@ -1,5 +1,6 @@
 using IterativeSolvers
 using FactCheck
+using LinearMaps
 
 facts("Basic operations") do
 
@@ -36,7 +37,7 @@ context("Linear operator defined as a function") do
     Atimesb = [b[end]; b[1:end-1]]
     Aptimesb = [b[2:end]; b[1]]
 
-    A = MatrixFcn{Int}(5, 5, shiftback!)
+    A = LinearMap(shiftback!, 5, 5, Int; ismutating=true)
     @fact eltype(A) --> Int
     @fact size(A) --> (5,5)
     @fact size(A,1) --> 5
@@ -47,9 +48,9 @@ context("Linear operator defined as a function") do
 
     output = similar(b)
     @fact A_mul_B!(output, A, b) --> Atimesb
-    @fact A'*b --> Atimesb
+    @fact_throws A'*b
 
-    A = MatrixCFcn{Int}(5, 5, shiftback!, shiftfwd!)
+    A = LinearMap(shiftback!, shiftfwd!, 5, Int; ismutating=true)
     @fact eltype(A) --> Int
     @fact size(A) --> (5,5)
     @fact size(A,1) --> 5
