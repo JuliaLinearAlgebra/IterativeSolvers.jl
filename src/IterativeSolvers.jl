@@ -7,6 +7,8 @@ module IterativeSolvers
 
 using SugarBLAS
 
+using Compat
+
 include("common.jl")
 include("krylov.jl")
 include("history.jl")

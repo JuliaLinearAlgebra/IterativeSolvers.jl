@@ -68,22 +68,22 @@ end
 """
 Stores information of the current iteration.
 """
-typealias PartialHistory ConvergenceHistory{false}
+@compat const PartialHistory = ConvergenceHistory{false}
 
 """
 Stores the information of all the iterations.
 """
-typealias CompleteHistory ConvergenceHistory{true}
+@compat const CompleteHistory = ConvergenceHistory{true}
 
 """
 History without resets.
 """
-typealias UnrestartedHistory{T} ConvergenceHistory{T, Void}
+@compat const UnrestartedHistory{T} = ConvergenceHistory{T, Void}
 
 """
 History with resets.
 """
-typealias RestartedHistory{T} ConvergenceHistory{T, Int}
+@compat const RestartedHistory{T} = ConvergenceHistory{T, Int}
 
 
 #############
