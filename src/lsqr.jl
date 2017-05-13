@@ -34,8 +34,8 @@ end
 #    - Eliminate printing
 #----------------------------------------------------------------------
 function lsqr_method!(log::ConvergenceHistory, x, A, b;
-    damp=0, atol=sqrt(eps(Adivtype(A,b))), btol=sqrt(eps(Adivtype(A,b))),
-    conlim=real(one(Adivtype(A,b)))/sqrt(eps(Adivtype(A,b))),
+    damp=0, atol=sqrt(eps(real(Adivtype(A,b)))), btol=sqrt(eps(real(Adivtype(A,b)))),
+    conlim=real(one(Adivtype(A,b)))/sqrt(eps(real(Adivtype(A,b)))),
     maxiter::Int=max(size(A,1), size(A,2)), verbose::Bool=false,
     )
     verbose && @printf("=== lsqr ===\n%4s\t%7s\t\t%7s\t\t%7s\t\t%7s\n","iter","resnorm","anorm","cnorm","rnorm")

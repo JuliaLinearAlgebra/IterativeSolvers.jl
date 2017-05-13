@@ -1,4 +1,4 @@
-import  Base: eltype, eps, length, ndims, real, size, *,
+import  Base: eltype, length, ndims, real, size, *,
         A_mul_B!, Ac_mul_B, Ac_mul_B!
 
 using   LinearMaps
@@ -19,12 +19,6 @@ Determine type of the multiplication of an element of `b` with an element of `A`
 `typeof(one(eltype(A))*one(eltype(x)))`
 """
 Amultype(A, x) = typeof(one(eltype(A))*one(eltype(x)))
-
-if VERSION < v"0.4.0-dev+6068"
-    real{T<:Real}(::Type{Complex{T}}) = T
-    real{T<:Real}(::Type{T}) = T
-end
-eps{T<:Real}(::Type{Complex{T}}) = eps(T)
 
 """
     randx(A, b)

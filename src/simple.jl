@@ -6,7 +6,7 @@ export powm, invpowm, rqi
 ####################
 
 function powm(A;
-    x=nothing, tol::Real=eps(eltype(A))*size(A,2)^3, maxiter::Int=size(A,2),
+    x=nothing, tol::Real=eps(real(eltype(A)))*size(A,2)^3, maxiter::Int=size(A,2),
     plot::Bool=false, log::Bool=false, kwargs...
     )
     K = KrylovSubspace(A, 1)
@@ -27,7 +27,7 @@ end
 #########################
 
 function powm_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T};
-    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n, verbose::Bool=false
+    tol::Real=eps(real(T))*K.n^3, maxiter::Int=K.n, verbose::Bool=false
     )
     verbose && @printf("=== powm ===\n%4s\t%7s\n","iter","resnorm")
     θ = zero(T)
@@ -52,7 +52,7 @@ end
 ####################
 
 function invpowm(A;
-    x=nothing, shift::Number=0, tol::Real=eps(eltype(A))*size(A,2)^3,
+    x=nothing, shift::Number=0, tol::Real=eps(real(eltype(A)))*size(A,2)^3,
     maxiter::Int=size(A,2), plot::Bool=false, log::Bool=false, kwargs...
     )
     K = KrylovSubspace(A, 1)
@@ -73,7 +73,7 @@ end
 #########################
 
 function invpowm_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T}, σ::Number=zero(T);
-    tol::Real=eps(T)*K.n^3, maxiter::Int=K.n, verbose::Bool=false
+    tol::Real=eps(real(T))*K.n^3, maxiter::Int=K.n, verbose::Bool=false
     )
     verbose && @printf("=== invpowm ===\n%4s\t%7s\n","iter","resnorm")
     θ = zero(T)
@@ -100,7 +100,7 @@ end
 ####################
 
 function rqi(A;
-    x=nothing, shift::Number=0, tol::Real=eps(eltype(A))*size(A,2)^3,
+    x=nothing, shift::Number=0, tol::Real=eps(real(eltype(A)))*size(A,2)^3,
     maxiter::Int=size(A,2), plot::Bool=false, log::Bool=false, kwargs...
     )
     K = KrylovSubspace(A, 1)
@@ -123,7 +123,7 @@ end
 #Rayleigh quotient iteration
 #XXX Doesn't work well
 function rqi_method!{T}(log::ConvergenceHistory, K::KrylovSubspace{T}, σ::Number;
-    tol::Real=eps(T), maxiter::Int=K.n, verbose::Bool=false
+    tol::Real=eps(real(T)), maxiter::Int=K.n, verbose::Bool=false
     )
     verbose && @printf("=== rqi ===\n%4s\t%7s\n","iter","resnorm")
     v = lastvec(K)
