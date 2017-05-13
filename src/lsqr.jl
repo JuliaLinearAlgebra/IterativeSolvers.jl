@@ -273,7 +273,7 @@ $arg
 
 ## Keywords
 
-`λ::Number = 0`: lambda.
+`damp::Number = 0`: damping parameter.
 
 `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
 1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
