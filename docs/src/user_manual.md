@@ -267,12 +267,4 @@ orthogonalize{T}(v::Vector{T}, K::KrylovSubspace{T}, [p::Int]; [method::Symbol],
 
 ## Define function as matrix
 
-Suppose you have a function implementing multiplication of `b` by `A`.
-This function can have any syntax, but for the purposes of illustration let's
-suppose it's defined as:
-
-```julia
-mulbyA!(output, b, Adata)
-```
-
-Where `Adata` might be some parameters that your function needs.
+This package supports the use of [LinearMaps.jl](https://github.com/Jutho/LinearMaps.jl) for creating matrices using custom functions.
