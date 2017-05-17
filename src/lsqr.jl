@@ -92,7 +92,7 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
     #------------------------------------------------------------------
     #     Main iteration loop.
     #------------------------------------------------------------------
-    while itn < maxiter
+    while (itn < maxiter) & !log.isconverged
         nextiter!(log,mvps=1)
         itn += 1
 
@@ -214,9 +214,10 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
         if  test3 <= ctol  istop = 3; end
         if  test2 <= atol  istop = 2; end
         if  test1 <= rtol  istop = 1; end
+
+        setconv(log, istop > 0)
     end
     verbose && @printf("\n")
-    setconv(log, istop > 0)
     x
 end
 
