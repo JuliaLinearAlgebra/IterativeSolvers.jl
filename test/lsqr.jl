@@ -2,6 +2,7 @@ using IterativeSolvers
 using FactCheck
 using Base.Test
 using LinearMaps
+using JLD
 
 facts("lsqr") do
 
@@ -85,6 +86,12 @@ context("Issue 64") do
     @fact resnorm --> less_than(√eps())
     @fact ch.isconverged --> true
     @fact last(ch[:resnorm]) --> roughly(resnorm, atol=√eps())
+
+    # Issue 117
+    fname = "IterativeSolvers.jld"
+    C = load(fname, "A")
+    b = load(fname, "b")
+    @fact isnan(sum(lsqr( C, b ))) --> false
 end
 
 end
