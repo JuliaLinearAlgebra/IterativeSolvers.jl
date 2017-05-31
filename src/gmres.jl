@@ -173,7 +173,7 @@ $arg
 
 `Pl = 1`: left preconditioner of the method.
 
-`Pr = 1`: left preconditioner of the method.
+`Pr = 1`: right preconditioner of the method.
 
 `tol::Real = sqrt(eps())`: stopping tolerance.
 
