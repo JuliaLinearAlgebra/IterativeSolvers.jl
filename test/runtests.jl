@@ -78,7 +78,7 @@ for T in (Float32, Float64, Complex64, Complex128)
     x_gmres, c_gmres = gmres(A, b, log = true, restart = 3, maxiter = 10);
     @fact all(diff(c_gmres[:resnorm]) .<= 0.0) --> true
 
-    x_gmres, c_gmres = gmres(A, b, Pl=L, Pl=R, log=true)
+    x_gmres, c_gmres = gmres(A, b, Pl=L, Pr=R, log=true)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
 
