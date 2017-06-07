@@ -1,3 +1,4 @@
 # mkdocs site
 /site
 /docs/build
+*.mem
