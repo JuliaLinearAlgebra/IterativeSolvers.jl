@@ -7,8 +7,8 @@ export gmres, gmres!
 gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
 
 function gmres!(x, A, b;
-    tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
-    maxiter::Int=restart, plot::Bool=false, log::Bool=false, kwargs...
+    tol = sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
+    maxiter::Int = restart, plot::Bool=false, log::Bool=false, kwargs...
     )
     (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log, restart=restart)
@@ -26,7 +26,7 @@ end
 
 #One Arnoldi iteration
 #Optionally takes a truncation parameter l
-function arnoldi!(K::KrylovSubspace, w; l=K.order)
+function arnoldi(K::KrylovSubspace, w; l=K.order)
     v = nextvec(K)
     w = copy(v)
     n = min(length(K.v), l)
@@ -86,7 +86,7 @@ function gmres_method!(log::ConvergenceHistory, x, A, b;
         for j = 1:restart
             nextiter!(log, mvps=1)
             #Calculate next orthonormal basis vector in the Krylov subspace
-            H[1:j+1, j] = arnoldi!(K, w)
+            H[1:j+1, j] = arnoldi(K, w)
 
             #Update QR factorization of H
             #The Q is stored as a series of Givens rotations in J

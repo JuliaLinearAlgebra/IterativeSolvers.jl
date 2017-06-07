@@ -50,7 +50,13 @@ end
 Solve `A\b` with a direct solver. When `A` is a function `A(b)` is dispatched instead.
 """
 solve(A::Function,b) = A(b)
+
 solve(A,b) = A\b
+
+solve!{T}(out::AbstractArray{T},A::Int,b::AbstractArray{T}) = scale!(out,b, 1/A)
+
+solve!{T}(out::AbstractArray{T},A,b::AbstractArray{T}) = A_ldiv_B!(out,A,b)
+solve!{T}(out::AbstractArray{T},A::Function,b::AbstractArray{T}) = copy!(out,A(b))
 
 """
     initrand!(v)

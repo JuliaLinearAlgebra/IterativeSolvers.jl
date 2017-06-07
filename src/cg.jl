@@ -52,7 +52,7 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
         push!(log,:resnorm,resnorm)
         verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
         resnorm < tol && break
-        z = solve(Pl,r)
+        solve!(z,Pl,r)
         oldγ = γ
         γ = dot(r, z)
         β = γ/oldγ
