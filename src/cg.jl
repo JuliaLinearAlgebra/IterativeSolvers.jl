@@ -36,13 +36,14 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
     verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","resnorm")
     tol = tol * norm(b)
     r = b - nextvec(K)
+    q = zeros(r)
     z = solve(Pl,r)
     p = copy(z)
     γ = dot(r, z)
     for iter=1:maxiter
         nextiter!(log, mvps=1)
         append!(K, p)
-        q = nextvec(K)
+        nextvec!(q, K)
         α = γ/dot(p, q)
         # α>=0 || throw(PosSemidefException("α=$α"))
         @blas! x += α*p
