@@ -123,6 +123,16 @@ for T in (Float64, Complex128)
     @fact c_gmres.isconverged --> true
     @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
     end
+
+    context("Linear operator defined as a function") do
+        A = LinearMap(cumsum!, 100, 100, Float64; ismutating=true)
+        rhs = randn(size(A,2))
+        rhs/= norm(rhs)
+        tol = 1e-5
+
+        x = gmres(A,rhs;tol=tol,maxiter=2000)
+        @fact norm(A*x - rhs) --> less_than_or_equal(tol)
+    end
 end
 end
 
