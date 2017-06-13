@@ -41,4 +41,28 @@ function cg(; n = 1_000_000, tol = 1e-6, maxiter::Int = 200)
     @benchmark IterativeSolvers.cg!(x0, $A, $b, Pl = $P, maxiter = $maxiter, tol = $tol, log = false) setup=(x0 = copy($initial))
 end
 
+function indefinite(n)
+    # Generate an indefinite "hard" matrix
+    srand(1)
+    A = 4 * speye(n) + sprand(n, n, 60.0 / n)
+    A = (A + A') / 2
+    x = ones(n)
+    b = A * x
+
+    A, b
+end
+
+function gmres(; n = 10000, tol = 1e-5, restart::Int = 15, maxiter::Int = 1500)
+    A, b = indefinite(n)
+    outer = div(maxiter, restart)
+
+    println("Matrix of size ", n, " with ~", nnz(A) / n, " nonzeros per row")
+    println("Tolerance = ", tol, "; restart = ", restart, "; max #iterations = ", maxiter)
+    
+    impr = @benchmark improved_gmres($A, $b, tol = $tol, restart = $restart, outer = $outer)
+    old = @benchmark gmres($A, $b, tol = $tol, restart = $restart, maxiter = $maxiter, log = true)
+
+    impr, old
+end
+
 end
