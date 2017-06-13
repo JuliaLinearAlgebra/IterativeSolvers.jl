@@ -1,66 +1,80 @@
 export cg, cg!
 
-####################
-# API method calls #
-####################
-
-cg(A, b; kwargs...) = cg!(zerox(A,b), A, b; kwargs...)
+cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; kwargs...)
 
 function cg!(x, A, b;
-             tol::Real=size(A,2)*eps(), maxiter::Integer=size(A,2),
-             plot=false, log::Bool=false, kwargs...
-             )
+    tol = sqrt(eps(real(eltype(b)))),
+    maxiter::Integer = min(20, size(A, 1)),
+    plot = false,
+    log::Bool = false,
+    kwargs...
+)
     (plot & !log) && error("Can't plot when log keyword is false")
-    K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
-    init!(K, x)
-    history = ConvergenceHistory(partial=!log)
+    history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
-    if all(el->el==0, b)
-        fill!(x, zero(eltype(x)))
-        return log ? (x, history) : x
-    end
-    reserve!(history,:resnorm, maxiter)
-    cg_method!(history, x, K, b; tol=tol, maxiter=maxiter, kwargs...)
+    reserve!(history, :resnorm, maxiter)
+    cg_method!(history, x, A, b; tol = tol, maxiter = maxiter, kwargs...)
     (plot || log) && shrink!(history)
     plot && showplot(history)
     log ? (x, history) : x
 end
 
-#########################
-# Method Implementation #
-#########################
+function cg_method!(log::ConvergenceHistory, x, A, b;
+    Pl = 1,
+    tol = sqrt(eps(real(eltype(b)))),
+    maxiter::Integer = min(20, size(A, 1)),
+    verbose::Bool = false
+)
+    T = eltype(b)
+    n = size(A, 1)
 
-function cg_method!(log::ConvergenceHistory, x, K, b;
-    Pl=1,tol::Real=size(K.A,2)*eps(),maxiter::Integer=size(K.A,2), verbose::Bool=false
-    )
-    verbose && @printf("=== cg ===\n%4s\t%7s\n","iter","resnorm")
-    tol = tol * norm(b)
-    r = b - nextvec(K)
-    q = zeros(r)
-    z = solve(Pl,r)
-    p = copy(z)
-    γ = dot(r, z)
-    for iter=1:maxiter
-        nextiter!(log, mvps=1)
-        append!(K, p)
-        nextvec!(q, K)
-        α = γ/dot(p, q)
-        # α>=0 || throw(PosSemidefException("α=$α"))
-        @blas! x += α*p
-        @blas! r += -α*q
-        resnorm = norm(r)
-        push!(log,:resnorm,resnorm)
-        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
-        resnorm < tol && break
-        solve!(z,Pl,r)
-        oldγ = γ
-        γ = dot(r, z)
-        β = γ/oldγ
-        @blas! p *= β
-        @blas! p += z
+    # Initial residual vector
+    r = copy(b)
+    @blas! r -= one(T) * A * x
+    c = zeros(T, n)
+    u = zeros(T, n)
+    ρ = one(T)
+    
+    iter = 0
+
+    last_residual = norm(r)
+
+    # Here you could save one inner product if norm(r) is used rather than norm(b)
+    reltol = norm(b) * tol
+
+    while last_residual > reltol && iter < maxiter
+        nextiter!(log, mvps = 1)
+
+        # Preconditioner: c = Pl \ r
+        solve!(c, Pl, r)
+
+        ρ_prev = ρ
+        ρ = dot(c, r)
+        β = -ρ / ρ_prev
+
+        # u := r - βu (almost an axpy)
+        @blas! u *= -β
+        @blas! u += one(T) * c
+
+        # c = A * u
+        A_mul_B!(c, A, u)
+        α = ρ / dot(u, c)
+    
+        # Improve solution and residual
+        @blas! x += α * u
+        @blas! r -= α * c
+
+        iter += 1
+        last_residual = norm(r)
+
+        # Log progress
+        push!(log, :resnorm, last_residual)
+        verbose && @printf("%3d\t%1.2e\n", iter, last_residual)
     end
+
     verbose && @printf("\n")
-    setconv(log, 0<=norm(r)<tol)
+    setconv(log, last_residual < reltol)
+
     x
 end
 
