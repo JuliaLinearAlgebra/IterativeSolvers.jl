@@ -107,6 +107,15 @@ function nextvec{T,OpT<:Function}(K::KrylovSubspace{T,OpT})
     K.A(lastvec(K))
 end
 
+function nextvec!{T}(out::AbstractArray{T}, K::KrylovSubspace{T})
+    K.mvps += 1
+    Base.A_mul_B!(out, K.A, lastvec(K))
+end
+function nextvec!{T,OpT<:Function}(out::AbstractArray{T}, K::KrylovSubspace{T,OpT})
+    K.mvps += 1
+    copy!(out, K.A(lastvec(K)))
+end
+
 size(K::KrylovSubspace) = length(K.v)
 function size(K::KrylovSubspace, n::Int)
     if isa(K.A, AbstractMatrix)

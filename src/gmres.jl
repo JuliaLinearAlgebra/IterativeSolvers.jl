@@ -27,7 +27,8 @@ end
 #One Arnoldi iteration
 #Optionally takes a truncation parameter l
 function arnoldi(K::KrylovSubspace, w; l=K.order)
-    v = nextvec(K)
+    v = similar(w)
+    nextvec!(v,K)
     w = copy(v)
     n = min(length(K.v), l)
     h = zeros(eltype(v), n+1)

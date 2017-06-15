@@ -1,6 +1,8 @@
 using IterativeSolvers
 using FactCheck
 
+srand(1234321)
+
 facts("Randomized linear algebra") do
     srand(1)
     m = n = 100

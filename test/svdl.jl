@@ -1,6 +1,8 @@
 using IterativeSolvers
 using FactCheck
 
+srand(1234567)
+
 facts("svdl") do
 #Thick restart methods
 for method in (:ritz, :harmonic) context("Thick restart with method=$method") do

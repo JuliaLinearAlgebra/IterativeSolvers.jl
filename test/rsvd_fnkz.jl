@@ -1,6 +1,8 @@
 using IterativeSolvers
 using FactCheck
 
+srand(1234321)
+
 facts("rsvd_fnkz") do
 
 context("Rank 2 matrix") do
@@ -24,4 +26,3 @@ context("Zero matrix") do
 end
 
 end
-

@@ -2,7 +2,7 @@ using IterativeSolvers
 using FactCheck
 using Base.Test
 
-
+srand(1234321)
 
 # Type used in SOL test
 type Wrapper
