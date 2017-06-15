@@ -2,6 +2,8 @@ using IterativeSolvers
 using FactCheck
 using LinearMaps
 
+srand(1234321)
+
 include("getDivGrad.jl")
 
 facts("cg") do

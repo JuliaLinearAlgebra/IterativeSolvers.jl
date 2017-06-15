@@ -4,6 +4,8 @@ using Base.Test
 using LinearMaps
 using JLD
 
+srand(1234321)
+
 facts("lsqr") do
 
 context("Small dense matrix") do
@@ -88,7 +90,7 @@ context("Issue 64") do
     @fact last(ch[:resnorm]) --> roughly(resnorm, atol=√eps())
 
     # Issue 117
-    fname = "IterativeSolvers.jld"
+    fname = string(Pkg.dir("IterativeSolvers"),"/test/IterativeSolvers.jld")
     C = load(fname, "A")
     b = load(fname, "b")
     @fact isnan(sum(lsqr( C, b ))) --> false

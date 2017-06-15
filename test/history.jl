@@ -2,6 +2,8 @@ using IterativeSolvers
 using FactCheck
 using Plots
 
+srand(1234321)
+
 unicodeplots() 	#Use UnicodePlots backend because it is the lightest
 
 facts("ConvergenceHistory") do
