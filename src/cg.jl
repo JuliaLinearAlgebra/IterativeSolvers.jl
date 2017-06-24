@@ -10,27 +10,29 @@ function cg!(x, A, b;
     kwargs...
 )
     (plot & !log) && error("Can't plot when log keyword is false")
+    K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
+    init!(K, x)
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
     reserve!(history, :resnorm, maxiter)
-    cg_method!(history, x, A, b; tol = tol, maxiter = maxiter, kwargs...)
+    cg_method!(history, x, K, b; tol = tol, maxiter = maxiter, kwargs...)
     (plot || log) && shrink!(history)
     plot && showplot(history)
     log ? (x, history) : x
 end
 
-function cg_method!(log::ConvergenceHistory, x, A, b;
+function cg_method!(log::ConvergenceHistory, x, K, b;
     Pl = 1,
     tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Integer = min(20, size(A, 1)),
+    maxiter::Integer = min(20, size(K.A, 1)),
     verbose::Bool = false
 )
     T = eltype(b)
-    n = size(A, 1)
+    n = size(K.A, 1)
 
     # Initial residual vector
     r = copy(b)
-    @blas! r -= one(T) * A * x
+    @blas! r -= one(T) * nextvec(K)
     c = zeros(T, n)
     u = zeros(T, n)
     ρ = one(T)
@@ -57,7 +59,8 @@ function cg_method!(log::ConvergenceHistory, x, A, b;
         @blas! u += one(T) * c
 
         # c = A * u
-        A_mul_B!(c, A, u)
+        append!(K, u)
+        nextvec!(c, K)
         α = ρ / dot(u, c)
     
         # Improve solution and residual
