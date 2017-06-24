@@ -1,5 +1,7 @@
 export improved_gmres, improved_gmres!
 
+using Base.LinAlg.Givens
+
 struct NoopPreconditioner end
 
 Base.A_ldiv_B!(::NoopPreconditioner, x) = x
@@ -157,7 +159,7 @@ function extract!{T}(x, arnoldi::ArnoldiDecomp{T}, β, Pl, k::Int)
   # Computes & updates the solution
   rhs = zeros(T, k)
   rhs[1] = β
-  y = @view(arnoldi.H[1 : k, 1 : k - 1]) \ rhs
+  y = solve!(Hessenberg(@view(arnoldi.H[1 : k, 1 : k - 1])), rhs)
 
   # Update x ← x + V * y
   for i = 1 : k - 1
@@ -185,4 +187,35 @@ function orthogonalize!{T}(arnoldi::ArnoldiDecomp{T}, k::Int)
 
   arnoldi.H[k + 1, k] = norm(arnoldi.V[k + 1])
   scale!(arnoldi.V[k + 1], one(T) / arnoldi.H[k + 1, k])
+end
+
+type Hessenberg{T<:AbstractMatrix}
+    H::T
+end
+
+@inline Base.size(H::Hessenberg, args...) = size(H.H, args...)
+
+function Base.A_mul_B!(G::Givens, H::Hessenberg)
+    m, n = size(H)
+    @inbounds for i = G.i1 : n
+        a1, a2 = H.H[G.i1, i], H.H[G.i2, i]
+        H.H[G.i1, i] =       G.c  * a1 + G.s * a2
+        H.H[G.i2, i] = -conj(G.s) * a1 + G.c * a2
+    end
+    return H
+end
+
+function solve!(H::Hessenberg, rhs)
+    width = size(H, 2)
+
+    # Hessenberg -> UpperTriangular; also apply to r.h.s.
+    @inbounds for i = 1 : width
+        rotation = Givens(i, i + 1, H.H[i, i], H.H[i + 1, i])
+        A_mul_B!(rotation, H)
+        A_mul_B!(rotation, rhs)
+    end
+
+    # Solve the upper triangular problem.
+    U = UpperTriangular(@view(H.H[1 : width, 1 : width]))
+    U \ @view(rhs[1 : width])
 end
