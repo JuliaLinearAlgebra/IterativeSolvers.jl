@@ -33,5 +33,5 @@ function spdiags(B,d,m,n)
         a[(round(Int, len[k])+1):round(Int, len[k+1]),:] = [i i+d[k] B[i+(m >= n)*d[k], k]]
     end
 
-    sparse(round(Int, a[:,1]), round(Int, a[:,2]), a[:,3], m, n)
+    sparse(round.(Int, a[:,1]), round.(Int, a[:,2]), a[:,3], m, n)
 end
