@@ -15,6 +15,7 @@ include("history.jl")
 
 #Specialized factorizations
 include("factorization.jl")
+include("hessenberg.jl")
 
 #Linear solvers
 include("stationary.jl")
