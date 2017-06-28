@@ -66,5 +66,3 @@ function gmres(; n = 100_000, tol = 1e-5, restart::Int = 15, maxiter::Int = 1500
 end
 
 end
-
-LinearSystemsBench.gmres_allocations()
