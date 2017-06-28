@@ -1,29 +1,23 @@
 import Base.LinAlg: Givens, givensAlgorithm
 
-mutable struct MyHessenberg{T<:AbstractMatrix}
-    H::T
+mutable struct Hessenberg{T<:AbstractMatrix}
+    H::T # H is assumed to be Hessenberg of size (m + 1) × m
 end
 
-@inline Base.size(H::MyHessenberg, args...) = size(H.H, args...)
+@inline Base.size(H::Hessenberg, args...) = size(H.H, args...)
 
-function Base.A_mul_B!(G::Givens, H::MyHessenberg)
-    m, n = size(H)
-    @inbounds for i = G.i1 : n
-        a1, a2 = H.H[G.i1, i], H.H[G.i2, i]
-        H.H[G.i1, i] =       G.c  * a1 + G.s * a2
-        H.H[G.i2, i] = -conj(G.s) * a1 + G.c * a2
-    end
-    return H
-end
+function solve!(H::Hessenberg, rhs)
+    # Implicitly computes H = QR via Given's rotations
+    # and then computes the least-squares solution y to
+    # |Hy - rhs| = |QRy - rhs| = |Ry - Q'rhs|
 
-function solve!(H::MyHessenberg, rhs)
     width = size(H, 2)
 
-    # MyHessenberg -> UpperTriangular; also apply to r.h.s.
+    # Hessenberg -> UpperTriangular; also apply to r.h.s.
     @inbounds for i = 1 : width
-        c, s, r = givensAlgorithm(H.H[i, i], H.H[i + 1, i])
+        c, s, _ = givensAlgorithm(H.H[i, i], H.H[i + 1, i])
         
-        # Diagonal element
+        # Skip the first sub-diagonal since it'll be zero by design.
         H.H[i, i] = c * H.H[i, i] + s * H.H[i + 1, i]
 
         # Remaining columns

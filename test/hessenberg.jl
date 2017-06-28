@@ -20,10 +20,9 @@ context("Solve") do
     rhs = [i == 1 ? 1.0 : 0.0 for i = 1 : size(H, 1)]
 
     # Compare \ against the optimized version.
-    y1 = H \ rhs
-    y2 = IterativeSolvers.solve!(IterativeSolvers.MyHessenberg(copy(H)), copy(rhs))
+    y2 = IterativeSolvers.solve!(IterativeSolvers.Hessenberg(copy(H)), copy(rhs))
 
-    @fact y2 --> roughly(y1)
+    @fact y2 --> roughly(H \ rhs)
 end
 
 end

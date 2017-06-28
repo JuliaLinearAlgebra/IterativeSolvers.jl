@@ -154,11 +154,11 @@ end
 end
 
 function solve_least_squares!(arnoldi::ArnoldiDecomp{T}, β, k::Int) where {T}
-    # Computes & updates the solution
+    # Compute the least-squares solution to Hy = β e1 via Given's rotations
     rhs = zeros(T, k)
     rhs[1] = β
 
-    H = MyHessenberg(view(arnoldi.H, 1 : k, 1 : k - 1))
+    H = Hessenberg(view(arnoldi.H, 1 : k, 1 : k - 1))
     y = solve!(H, rhs)
 end
 
