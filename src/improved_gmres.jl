@@ -58,17 +58,19 @@ function improved_gmres_method!(history::ConvergenceHistory, x, A, b;
             setconv(history, true)
             break
         end
-        
-        # Set the first basis vector
+
+        # We already have the initial residual
         if restarts > 1
+
+            # Set the first basis vector
             β = init!(arnoldi, x, b, Pl, reserved_vec)
+
+            # And initialize the residual
+            init_residual!(residual, β)
             
             if log
                 history.mvps += 1
             end
-
-            # And initialize the residual
-            init_residual!(residual, β)
         end
 
         # Inner iterations k = 1, ..., restart
@@ -81,7 +83,6 @@ function improved_gmres_method!(history::ConvergenceHistory, x, A, b;
             orthogonalize!(arnoldi, k)
             update_residual!(residual, arnoldi, k)
             
-            # Logging
             if log
                 nextiter!(history, mvps = 1)
                 push!(history, :resnorm, residual.current)
@@ -92,8 +93,10 @@ function improved_gmres_method!(history::ConvergenceHistory, x, A, b;
             k += 1
         end
 
-        # Solve the projected problem Hy = β * e1 in the least-squares sense,
+        # Solve the projected problem Hy = β * e1 in the least-squares sense
         y = solve_least_squares!(arnoldi, β, k)
+
+        # And improve the solution x ← x + Pr \ (V * y)
         update_solution!(x, y, arnoldi, Pr, k)
     end
 
@@ -179,18 +182,18 @@ function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int) where {T}
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl::Identity, Pr::Identity, k::Int)
-    # Simply expands by A * v
+    # Simply expands by A * v without allocating
     A_mul_B!(arnoldi.V[k + 1], arnoldi.A, arnoldi.V[k])
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl, Pr::Identity, k::Int)
-    # Expands by Pl \ (A * v)
+    # Expands by Pl \ (A * v) without allocating
     A_mul_B!(arnoldi.V[k + 1], arnoldi.A, arnoldi.V[k])
     A_ldiv_B!(Pl, arnoldi.V[k + 1])
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl, Pr, k::Int)
-    # Expands by Pl \ (A * (Pr \ v))
+    # Expands by Pl \ (A * (Pr \ v)). Allocates one vector.
     A_ldiv_B!(arnoldi.V[k + 1], Pr, arnoldi.V[k])
     copy!(arnoldi.V[k + 1], arnoldi.A * arnoldi.V[k + 1])
     A_ldiv_B!(Pl, arnoldi.V[k + 1])
