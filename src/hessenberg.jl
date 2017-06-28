@@ -34,6 +34,6 @@ function solve!(H::Hessenberg, rhs)
     end
 
     # Solve the upper triangular problem.
-    U = UpperTriangular(@view(H.H[1 : width, 1 : width]))
-    U \ @view(rhs[1 : width])
+    U = UpperTriangular(view(H.H, 1 : width, 1 : width))
+    U \ UnsafeVectorView(rhs, 1 : width)
 end
