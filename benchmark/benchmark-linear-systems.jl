@@ -52,7 +52,7 @@ function indefinite(n)
     A, b
 end
 
-function gmres(; n = 100_000, tol = 1e-5, restart::Int = 15, maxiter::Int = 1500)
+function gmres(; n = 100_000, tol = 1e-5, restart::Int = 15, maxiter::Int = 200)
     A, b = indefinite(n)
     outer = div(maxiter, restart)
 
