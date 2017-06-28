@@ -5,7 +5,7 @@ using LinearMaps
 facts("hessenberg") do
 
 context("Solve") do
-    # Some Hessenberg matrix (generated with a 1D poisson matrix)
+    # Some Hessenberg matrix
     H = [
         1.19789 1.42354 -0.0371401  0.0118481 -0.0362113  0.00269463;
         1.46142 4.01953  0.890729  -0.0157701 -0.0300656 -0.0191307;
