@@ -26,9 +26,9 @@ For more information on future methods have a look at the package [roadmap](http
 * IDRS
 * LSMR
 * LSQR
-* Conjugate gradients
+* Conjugate gradients (CG)
 * Chebyshev iteration
-* Generalized minimal residual method (with restarts)
+* Generalized minimal residual method (with restarts) (GMRES)
 
 ## Eigen Solvers
 
