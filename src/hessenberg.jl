@@ -22,13 +22,13 @@ function solve!(H::Hessenberg, rhs)
 
         # Remaining columns
         @inbounds for j = i + 1 : width
-            tmp = -s * H.H[i, j] + c * H.H[i + 1, j]
+            tmp = -conj(s) * H.H[i, j] + c * H.H[i + 1, j]
             H.H[i, j] = c * H.H[i, j] + s * H.H[i + 1, j]
             H.H[i + 1, j] = tmp
         end
 
         # Right hand side
-        tmp = -s * rhs[i] + c * rhs[i + 1]
+        tmp = -conj(s) * rhs[i] + c * rhs[i + 1]
         rhs[i] = c * rhs[i] + s * rhs[i + 1]
         rhs[i + 1] = tmp
     end
