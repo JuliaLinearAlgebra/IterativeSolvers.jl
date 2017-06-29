@@ -94,10 +94,10 @@ function improved_gmres_method!(history::ConvergenceHistory, x, A, b;
         end
 
         # Solve the projected problem Hy = β * e1 in the least-squares sense
-        y = solve_least_squares!(arnoldi, β, k)
+        rhs = solve_least_squares!(arnoldi, β, k)
 
         # And improve the solution x ← x + Pr \ (V * y)
-        update_solution!(x, y, arnoldi, Pr, k)
+        update_solution!(x, UnsafeVectorView(rhs, 1 : k - 1), arnoldi, Pr, k)
     end
 
     verbose && @printf("\n")
@@ -162,7 +162,9 @@ function solve_least_squares!(arnoldi::ArnoldiDecomp{T}, β, k::Int) where {T}
     rhs[1] = β
 
     H = Hessenberg(view(arnoldi.H, 1 : k, 1 : k - 1))
-    y = solve!(H, rhs)
+    solve!(H, rhs)
+
+    rhs
 end
 
 function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr::Identity, k::Int) where {T}

@@ -22,9 +22,15 @@ context("Solve") do
     rhs = [i == 1 ? 1.0 : 0.0 for i = 1 : size(H, 1)]
 
     # Compare \ against the optimized version.
-    y2 = IterativeSolvers.solve!(IterativeSolvers.Hessenberg(copy(H)), copy(rhs))
+    solution_with_residual = copy(rhs)
+    IterativeSolvers.solve!(IterativeSolvers.Hessenberg(copy(H)), solution_with_residual)
+    solution = H \ rhs
 
-    @fact y2 --> roughly(H \ rhs)
+    # First part is the solution
+    @fact solution_with_residual[1 : size(H, 2)] --> roughly(H \ rhs)
+
+    # Last element is the residual
+    @fact last(solution_with_residual) --> roughly(norm(H * solution - rhs))
 end
 
 end

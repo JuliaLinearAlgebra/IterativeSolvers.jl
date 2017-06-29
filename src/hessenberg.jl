@@ -35,5 +35,6 @@ function solve!(H::Hessenberg, rhs)
 
     # Solve the upper triangular problem.
     U = UpperTriangular(view(H.H, 1 : width, 1 : width))
-    U \ UnsafeVectorView(rhs, 1 : width)
+    A_ldiv_B!(U, UnsafeVectorView(rhs, 1 : width))
+    nothing
 end

@@ -88,6 +88,7 @@ end
 @inline Base.setindex!(v::UnsafeVectorView, value, idx) = unsafe_store!(v.ptr, value, idx)
 @inline Base.length(v::UnsafeVectorView) = v.len
 @inline Base.pointer(v::UnsafeVectorView{T}) where {T} = v.ptr
+@inline Base.unsafe_convert(::Type{Ptr{T}}, v::UnsafeVectorView{T}) where {T} = v.ptr
 @compat Base.IndexStyle(::Type{V}) where {V <: UnsafeVectorView} = IndexLinear()
 
 # Identity preconditioner
