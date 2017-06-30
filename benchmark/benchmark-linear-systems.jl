@@ -44,7 +44,7 @@ end
 function indefinite(n)
     # Generate an indefinite "hard" matrix
     srand(1)
-    A = 4 * speye(n) + sprand(n, n, 60.0 / n)
+    A = speye(n) + sprand(n, n, 5.0 / n)
     A = (A + A') / 2
     x = ones(n)
     b = A * x
@@ -52,7 +52,7 @@ function indefinite(n)
     A, b
 end
 
-function gmres(; n = 100_000, tol = 1e-5, restart::Int = 15, maxiter::Int = 200)
+function gmres(; n = 100_000, tol = 1e-5, restart::Int = 15, maxiter::Int = 210)
     A, b = indefinite(n)
     outer = div(maxiter, restart)
 
