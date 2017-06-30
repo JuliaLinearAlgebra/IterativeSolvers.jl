@@ -75,22 +75,6 @@ type PosSemidefException <: Exception
     PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
 end
 
-# Non-allocating unsafe vector views
-struct UnsafeVectorView{T} <: DenseVector{T}
-    len::Int
-    ptr::Ptr{T}
-end
-
-@inline UnsafeVectorView(parent::Vector, range::UnitRange) = UnsafeVectorView(length(range), pointer(parent) + sizeof(eltype(parent)) * (start(range) - 1))
-@inline UnsafeVectorView(parent::Matrix, range::UnitRange, column::Int) = UnsafeVectorView(length(range), pointer(parent) + sizeof(eltype(parent)) * ((column - 1) * size(parent, 1) + start(range) - 1))
-@inline Base.size(v::UnsafeVectorView) = (v.len,)
-@inline Base.getindex(v::UnsafeVectorView, idx) = unsafe_load(v.ptr, idx)
-@inline Base.setindex!(v::UnsafeVectorView, value, idx) = unsafe_store!(v.ptr, value, idx)
-@inline Base.length(v::UnsafeVectorView) = v.len
-@inline Base.pointer(v::UnsafeVectorView{T}) where {T} = v.ptr
-@inline Base.unsafe_convert(::Type{Ptr{T}}, v::UnsafeVectorView{T}) where {T} = v.ptr
-@compat Base.IndexStyle(::Type{V}) where {V <: UnsafeVectorView} = IndexLinear()
-
 # Identity preconditioner
 immutable Identity end
 
