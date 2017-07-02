@@ -4,7 +4,7 @@ using LinearMaps
 
 srand(1234321)
 
-include("getDivGrad.jl")
+include("poisson_matrix.jl")
 
 facts("cg") do
 
@@ -39,7 +39,7 @@ context("Small full system") do
 end
 
 context("Sparse Laplacian") do
-    A = getDivGrad(32,32,32)
+    A = poisson_matrix(Float64, 32, 3)
     L = tril(A)
     D = diag(A)
     U = triu(A)
