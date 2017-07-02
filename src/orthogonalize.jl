@@ -1,3 +1,6 @@
+export DGKS, ClassicalGramSchmidt, ModifiedGramSchmidt
+export orthogonalize_and_normalize!
+
 abstract type OrthogonalizationMethod end
 struct DGKS <: OrthogonalizationMethod end
 struct ClassicalGramSchmidt <: OrthogonalizationMethod end
