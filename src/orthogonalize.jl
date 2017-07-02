@@ -16,7 +16,7 @@ function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, 
     nrm = norm(w)
 
     # Constant used by ARPACK.
-    η = one(T) / √2
+    η = one(real(T)) / √2
 
     projection_size = norm(h)
 
