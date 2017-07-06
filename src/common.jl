@@ -3,7 +3,7 @@ import  Base: eltype, length, ndims, real, size, *,
 
 using   LinearMaps
 
-export  A_mul_B
+export  A_mul_B, Identity
 
 #### Type-handling
 """
