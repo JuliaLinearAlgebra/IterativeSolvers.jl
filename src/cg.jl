@@ -71,9 +71,8 @@ function cg_method!(history::ConvergenceHistory, x, A, b, Pl;
         β = ρ / ρ_prev
 
         # u := c + βu (almost an axpy)
-        @inbounds @simd for i = 1 : length(u)
-           u[i] = c[i] + β * u[i]
-        end
+        @blas! u *= β
+        @blas! u += one(T) * c
 
         # c = A * u
         A_mul_B!(c, A, u)
@@ -140,9 +139,8 @@ function cg_method!(history::ConvergenceHistory, x, A, b, Pl::Identity;
         end
 
         # u := r + βu (almost an axpy)
-        @inbounds @simd for i = 1 : length(u)
-           u[i] = r[i] + β * u[i]
-        end
+        @blas! u *= β
+        @blas! u += one(T) * r
 
         # c = A * u
         A_mul_B!(c, A, u)
