@@ -4,32 +4,32 @@ using LinearMaps
 
 srand(1234321)
 
-include("getDivGrad.jl")
+include("poisson_matrix.jl")
 
 facts("cg") do
 
 context("Small full system") do
-    N=10
-    A = randn(N,N)
-    A = A'*A
+    N = 10
+    A = randn(N, N)
+    A = A' * A
     rhs = randn(N)
     tol = 1e-12
 
-    x = cg(A,rhs;tol=tol, maxiter=2*N)
-    @fact norm(A*x - rhs) --> less_than(cond(A)*√tol)
+    x = cg(A, rhs; tol=tol, maxiter=2N)
+    @fact norm(A*x - rhs) --> less_than(cond(A) * √tol)
 
-    x,ch = cg(A,rhs;tol=tol, maxiter=2*N, log=true)
-    @fact norm(A*x - rhs) --> less_than(cond(A)*√tol)
+    x,ch = cg(A, rhs; tol=tol, maxiter=2N, log=true)
+    @fact norm(A * x - rhs) --> less_than(cond(A) * √tol)
     @fact ch.isconverged --> true
 
     # If you start from the exact solution, you should converge immediately
-    x2, ch2 = cg!(A\rhs, A, rhs; tol=tol*10, log=true)
+    x2, ch2 = cg!(A \ rhs, A, rhs; tol=10tol, log=true)
     @fact niters(ch2) --> less_than_or_equal(1)
     @fact nprods(ch2) --> less_than_or_equal(2)
 
     # Test with cholfact should converge immediately
     F = cholfact(A)
-    x2,ch2 = cg(A, rhs; Pl=F, log=true)
+    x2, ch2 = cg(A, rhs; Pl=F, log=true)
     @fact niters(ch2) --> less_than_or_equal(2)
     @fact nprods(ch2) --> less_than_or_equal(2)
 
@@ -39,45 +39,45 @@ context("Small full system") do
 end
 
 context("Sparse Laplacian") do
-    A = getDivGrad(32,32,32)
+    A = poisson_matrix(Float64, 32, 3)
     L = tril(A)
     D = diag(A)
     U = triu(A)
-    JAC(x) = D.\x
-    SGS(x) = L\(D.*(U\x))
+    JAC(x) = D .\ x
+    SGS(x) = L \ (D .* (U \ x))
 
-    rhs = randn(size(A,2))
-    rhs/= norm(rhs)
+    rhs = randn(size(A, 2))
+    rhs /= norm(rhs)
     tol = 1e-5
 
     context("matrix") do
-        xCG = cg(A,rhs;tol=tol,maxiter=100)
-        xJAC = cg(A,rhs;Pl=JAC,tol=tol,maxiter=100)
-        xSGS = cg(A,rhs;Pl=SGS,tol=tol,maxiter=100)
-        @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
-        @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
-        @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
+        xCG = cg(A, rhs; tol=tol, maxiter=100)
+        xJAC = cg(A, rhs; Pl=JAC, tol=tol, maxiter=100)
+        xSGS = cg(A, rhs; Pl=SGS, tol=tol, maxiter=100)
+        @fact norm(A * xCG - rhs) --> less_than_or_equal(tol)
+        @fact norm(A * xSGS - rhs) --> less_than_or_equal(tol)
+        @fact norm(A * xJAC - rhs) --> less_than_or_equal(tol)
     end
 
     Af = LinearMap(A)
     context("function") do
-        xCG = cg(Af,rhs;tol=tol,maxiter=100)
-        xJAC = cg(Af,rhs;Pl=JAC,tol=tol,maxiter=100)
-        xSGS = cg(Af,rhs;Pl=SGS,tol=tol,maxiter=100)
-        @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
-        @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
-        @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
+        xCG = cg(Af, rhs; tol=tol, maxiter=100)
+        xJAC = cg(Af, rhs; Pl=JAC, tol=tol, maxiter=100)
+        xSGS = cg(Af, rhs; Pl=SGS, tol=tol, maxiter=100)
+        @fact norm(A * xCG - rhs) --> less_than_or_equal(tol)
+        @fact norm(A * xSGS - rhs) --> less_than_or_equal(tol)
+        @fact norm(A * xJAC - rhs) --> less_than_or_equal(tol)
     end
 
     context("function with specified starting guess") do
         tol = 1e-4
         x0 = randn(size(rhs))
-        xCG, hCG = cg!(copy(x0),Af,rhs;Pl=identity,tol=tol,maxiter=100, log=true)
-        xJAC, hJAC = cg!(copy(x0),Af,rhs;Pl=JAC,tol=tol,maxiter=100, log=true)
-        xSGS, hSGS = cg!(copy(x0),Af,rhs;Pl=SGS,tol=tol,maxiter=100, log=true)
-        @fact norm(A*xCG - rhs) --> less_than_or_equal(tol)
-        @fact norm(A*xSGS - rhs) --> less_than_or_equal(tol)
-        @fact norm(A*xJAC - rhs) --> less_than_or_equal(tol)
+        xCG, hCG = cg!(copy(x0), Af, rhs; Pl=identity, tol=tol, maxiter=100, log=true)
+        xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=JAC, tol=tol, maxiter=100, log=true)
+        xSGS, hSGS = cg!(copy(x0), Af, rhs; Pl=SGS, tol=tol, maxiter=100, log=true)
+        @fact norm(A * xCG - rhs) --> less_than_or_equal(tol)
+        @fact norm(A * xSGS - rhs) --> less_than_or_equal(tol)
+        @fact norm(A * xJAC - rhs) --> less_than_or_equal(tol)
 
         iterCG = niters(hCG)
         iterJAC = niters(hJAC)
