@@ -14,6 +14,7 @@ function bicgstabl!(x, A, b, l::Int = 2;
 
     mv_products = 0
 
+    # Large vectors.
     rs = zeros(T, n, l + 1)
     us = zeros(T, n, l + 1)
 
@@ -89,6 +90,9 @@ function bicgstabl!(x, A, b, l::Int = 2;
 
         # MR part: M = rs' * rs
         Ac_mul_B!(M, rs, rs)
+        
+        # For l = 2 this would be an LU decomp of a 2 x 2 matrix
+        # Maybe a bit overkill
         
         # γ = M[L, L] \ M[L, 1] 
         F = lufact!(view(M, L, L))
