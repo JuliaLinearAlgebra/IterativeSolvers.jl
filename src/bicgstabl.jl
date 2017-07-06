@@ -13,7 +13,6 @@ function bicgstabl!(x, A, b, l::Int = 2;
     n = size(A, 1)
 
     mv_products = 0
-    residuals = real(T)[]
 
     rs = zeros(T, n, l + 1)
     us = zeros(T, n, l + 1)
@@ -43,7 +42,6 @@ function bicgstabl!(x, A, b, l::Int = 2;
     γ[l] = σ = one(T)
 
     nrm = norm(residual)
-    push!(residuals, nrm)
     iter = 1
 
     # For the least-squares problem
