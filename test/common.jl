@@ -12,6 +12,17 @@ context("Adivtype") do
     @fact IterativeSolvers.Adivtype(A, b) --> Float32
 end
 
+context("Identity preconditioner") do
+    P = Identity()
+    x = rand(10)
+    y = zeros(x)
+
+    # Should be a no-op
+    @fact P \ x --> x
+    @fact A_ldiv_B!(P, copy(x)) --> x
+    @fact A_ldiv_B!(y, P, copy(x)) --> x
+end
+
 context("Linear operator defined as a function") do
     # A = cycle-back operator
     function shiftback!(output, b)

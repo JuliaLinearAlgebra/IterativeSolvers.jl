@@ -10,11 +10,13 @@ using SugarBLAS
 using Compat
 
 include("common.jl")
+include("orthogonalize.jl")
 include("krylov.jl")
 include("history.jl")
 
 #Specialized factorizations
 include("factorization.jl")
+include("hessenberg.jl")
 
 #Linear solvers
 include("stationary.jl")
