@@ -1,222 +1,214 @@
 export gmres, gmres!
 
-####################
-# API method calls #
-####################
-
-gmres(A, b; kwargs...) = gmres!(zerox(A,b), A, b; kwargs...)
+gmres(A, b; kwargs...) = gmres!(zeros(b), A, b; kwargs...)
 
 function gmres!(x, A, b;
-    tol = sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
-    maxiter::Int = restart, plot::Bool=false, log::Bool=false, kwargs...
-    )
+  Pl = Identity(),
+  Pr = Identity(),
+  tol = sqrt(eps(real(eltype(b)))),
+  restart::Int = min(20, length(b)),
+  maxiter::Int = restart,
+  plot::Bool = false,
+  log::Bool = false,
+  kwargs...
+)
     (plot & !log) && error("Can't plot when log keyword is false")
-    history = ConvergenceHistory(partial=!log, restart=restart)
+    history = ConvergenceHistory(partial = !log, restart = restart)
     history[:tol] = tol
-    reserve!(history,:resnorm, maxiter*restart)
-    gmres_method!(history, x, A, b; tol=tol, maxiter=maxiter, restart=restart, kwargs...)
+    log && reserve!(history, :resnorm, maxiter)
+    gmres_method!(history, x, A, b; Pl = Pl, Pr = Pr, tol = tol, maxiter = maxiter, restart = restart, log = log, kwargs...)
     (plot || log) && shrink!(history)
     plot && showplot(history)
     log ? (x, history) : x
 end
 
-#########################
-# Method Implementation #
-#########################
-
-#One Arnoldi iteration
-#Optionally takes a truncation parameter l
-function arnoldi(K::KrylovSubspace, w; l=K.order)
-    v = similar(w)
-    nextvec!(v,K)
-    w = copy(v)
-    n = min(length(K.v), l)
-    h = zeros(eltype(v), n+1)
-    v, h[1:n] = orthogonalize(v, K, n)
-    h[n+1] = norm(v)
-    (h[n+1]==0) && error("Arnoldi iteration terminated")
-    append!(K, v/h[n+1]) #save latest Arnoldi vector, i.e. newest column of Q in the AQ=QH factorization
-    h #Return current Arnoldi coefficients, i.e. newest column of in the AQ=QH factorization
-end
-
-function apply_givens!(H, J, j)
-    for k = 1:(j-1)
-        temp     =       J[k,1]  * H[k,j] + J[k,2] * H[k+1,j]
-        H[k+1,j] = -conj(J[k,2]) * H[k,j] + J[k,1] * H[k+1,j]
-        H[k,j]   = temp
-    end
-end
-
-function compute_givens(a, b, i, j)
-    T = eltype(a)
-    p = abs(a)
-    q = abs(b)
-
-    if q == zero(T)
-        return [one(T), zero(T), a]
-    elseif p == zero(T)
-        return [zero(T), sign(conj(b)), q]
-    else
-        m      = hypot(p,q)
-        temp   = sign(a)
-        return [p / m, temp * conj(b) / m, temp * m]
-    end
-end
-
-function gmres_method!(log::ConvergenceHistory, x, A, b;
-    Pl=1, Pr=1, tol=sqrt(eps(typeof(real(b[1])))), restart::Int=min(20,length(b)),
-    maxiter::Int=restart, verbose::Bool=false
-    )
-    verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","resnorm")
-    macroiter=0
-    macroiters=Int(ceil(maxiter/restart))
-    n = length(b)
+function gmres_method!(history::ConvergenceHistory, x, A, b;
+    Pl = Identity(),
+    Pr = Identity(),
+    tol = sqrt(eps(real(eltype(b)))),
+    restart::Int = min(20, length(b)),
+    outer::Int = 1,
+    maxiter::Int = restart,
+    verbose::Bool = false,
+    log = false
+)
     T = eltype(b)
-    H = zeros(T,n+1,restart)       #Hessenberg matrix
-    s = zeros(T,restart+1)         #Residual history
-    J = zeros(T,restart,3)         #Givens rotation values
-    tol = tol * norm(solve(Pl,b))         #Relative tolerance
-    K = KrylovSubspace(x->solve(Pl,A*solve(Pr,x)), n, restart+1, T)
-    for macroiter = 1:macroiters
-        log.mvps+=1
-        w    = solve(Pl,(b - A*x))
-        s[1] = rho = norm(w)
-        init!(K, w / rho)
 
-        N = restart
-        for j = 1:restart
-            nextiter!(log, mvps=1)
-            #Calculate next orthonormal basis vector in the Krylov subspace
-            H[1:j+1, j] = arnoldi(K, w)
+    # Approximate solution
+    arnoldi = ArnoldiDecomp(A, restart, T)
+    residual = Residual(restart, T)
 
-            #Update QR factorization of H
-            #The Q is stored as a series of Givens rotations in J
-            #The R is stored in H
-            #- Compute Givens rotation that zeros out bottom right entry of H
-            apply_givens!(H, J, j)
-            J[j,1:3] = compute_givens(H[j,j], H[j+1,j], j, j+1)
-            #G = Base.LinAlg.Givens(restart+1, j, j+1, J[j,1], J[j,2], J[j,3])
-            #- Zero out bottom right entry of H
-            H[j,j]   = J[j,3]
-            H[j+1,j] = zero(T)
-            #- Apply Givens rotation j to s, given that s[j+1] = 0
-            s[j+1] = -conj(J[j,2]) * s[j]
-            #-conj(G.s) * s[j]
-            s[j]  *= J[j,1] #G.c
+    # Workspace vector to reduce the # allocs.
+    reserved_vec = similar(b)
+    β = residual.current = init!(arnoldi, x, b, Pl, reserved_vec)
+    init_residual!(residual, β)
 
-            rho = abs(s[j+1])
-            push!(log, :resnorm, rho)
-            verbose && @printf("%3d\t%3d\t%1.2e\n",macroiter,j,rho)
-            if (rho < tol) | ((macroiter-1)*restart+j >= maxiter)
-                N = j
-                break
+    # Log the first mvp for computing the initial residual
+    if log
+        history.mvps += 1
+    end
+
+    # Stopping criterion is based on |r0| / |rk|
+    reltol = residual.current * tol
+
+    # Total iterations (not reset after restart)
+    total_iter = 1
+
+    while total_iter ≤ maxiter
+
+        # We already have the initial residual
+        if total_iter > 1
+
+            # Set the first basis vector
+            β = init!(arnoldi, x, b, Pl, reserved_vec)
+
+            # And initialize the residual
+            init_residual!(residual, β)
+            
+            if log
+                history.mvps += 1
             end
         end
 
-        @eval a = $(VERSION < v"0.4-" ? Triangular(H[1:N, 1:N], :U) \ s[1:N] : UpperTriangular(H[1:N, 1:N]) \ s[1:N])
-        w = a[1:N] * K
-        @blas! x += solve(Pr,w) #Right preconditioner
+        # Inner iterations k = 1, ..., restart
+        k = 1
 
-        if (rho<tol) | ((macroiter-1)*restart+N >= maxiter)
-            setconv(log, rho<tol)
+        while residual.current > reltol && k ≤ restart && total_iter ≤ maxiter
+
+            # Arnoldi step: expand
+            expand!(arnoldi, Pl, Pr, k)
+
+            # Orthogonalize V[:, k + 1] w.r.t. V[:, 1 : k]
+            arnoldi.H[k + 1, k] = orthogonalize_and_normalize!(
+                view(arnoldi.V, :, 1 : k),
+                view(arnoldi.V, :, k + 1),
+                view(arnoldi.H, 1 : k, k)
+            )
+
+            # Implicitly computes the residual
+            update_residual!(residual, arnoldi, k)
+            
+            if log
+                nextiter!(history, mvps = 1)
+                push!(history, :resnorm, residual.current)
+            end
+            
+            verbose && @printf("%3d\t%3d\t%1.2e\n", mod(total_iter, restart), k, residual.current)
+
+            k += 1
+            total_iter += 1
+        end
+
+        # Solve the projected problem Hy = β * e1 in the least-squares sense
+        rhs = solve_least_squares!(arnoldi, β, k)
+
+        # And improve the solution x ← x + Pr \ (V * y)
+        update_solution!(x, view(rhs, 1 : k - 1), arnoldi, Pr, k)
+    
+        # Converged?
+        if residual.current ≤ reltol
+            setconv(history, true)
             break
         end
     end
+
     verbose && @printf("\n")
     x
 end
 
-#################
-# Documentation #
-#################
-
-let
-#Initialize parameters
-doc_call = """    gmres(A, b)
-"""
-doc!_call = """    gmres!(x, A, b)
-"""
-
-doc_msg = "Solve A*x=b using the generalized minimal residual method with restarts."
-doc!_msg = "Overwrite `x`.\n\n" * doc_msg
-
-doc_arg = ""
-doc!_arg = """`x`: initial guess, overwrite final estimation."""
-
-doc_version = (gmres, doc_call, doc_msg, doc_arg)
-doc!_version = (gmres!, doc!_call, doc!_msg, doc!_arg)
-
-i=0
-docstring = Vector(2)
-
-#Build docs
-for (func, call, msg, arg) in [doc_version, doc!_version]
-i+=1
-docstring[i] = """
-$call
-
-$msg
-
-If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
-
-The `plot` attribute can only be used when `log` is set version.
-
-# Arguments
-
-$arg
-
-`A`: linear operator.
-
-`b`: right hand side.
-
-## Keywords
-
-`Pl = 1`: left preconditioner of the method.
-
-`Pr = 1`: right preconditioner of the method.
-
-`tol::Real = sqrt(eps())`: stopping tolerance.
-
-`restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
-
-`maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-
-`verbose::Bool = false`: print method information.
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only when `log` is set)
-
-# Output
-
-**if `log` is `false`**
-
-`x`: approximated solution.
-
-**if `log` is `true`**
-
-`x`: approximated solution.
-
-`ch`: convergence history.
-
-**ConvergenceHistory keys**
-
-`:tol` => `::Real`: stopping tolerance.
-`:resnom` => `::Vector`: residual norm at each iteration.
-
-# References
-
-http://www.netlib.org/templates/templates.pdf
-2.3.4 Generalized Minimal Residual (GMRES)
-
-http://www.netlib.org/lapack/lawnspdf/lawn148.pdf
-Givens rotation based on Algorithm 1
-
-"""
+type ArnoldiDecomp{T}
+    A
+    V::Matrix{T} # Orthonormal basis vectors
+    H::Matrix{T} # Hessenberg matrix
 end
 
-@doc docstring[1] -> gmres
-@doc docstring[2] -> gmres!
+ArnoldiDecomp(A, order::Int, T::Type) = ArnoldiDecomp{T}(
+    A,
+    zeros(T, size(A, 1), order + 1),
+    zeros(T, order + 1, order)
+)
+
+type Residual{numT, resT}
+    current::resT # Current relative residual
+    accumulator::resT # Used to compute the residual on the go
+    nullvec::Vector{numT} # Vector in the null space of H to compute residuals
+    β::resT # the initial residual
+end
+
+Residual(order, T::Type) = Residual{T, real(T)}(
+    one(real(T)),
+    one(real(T)),
+    ones(T, order + 1),
+    one(real(T))
+)
+
+function update_residual!(r::Residual, arnoldi::ArnoldiDecomp, k::Int)
+    # Cheaply computes the current residual
+    r.nullvec[k + 1] = -conj(dot(view(r.nullvec, 1 : k), view(arnoldi.H, 1 : k, k)) / arnoldi.H[k + 1, k])
+    r.accumulator += abs2(r.nullvec[k + 1])
+    r.current = r.β / √r.accumulator
+end
+
+function init!{T}(arnoldi::ArnoldiDecomp{T}, x, b, Pl, reserved_vec)
+    # Initialize the Krylov subspace with the initial residual vector
+    # This basically does V[1] = Pl \ (b - A * x) and then normalize
+    
+    first_col = view(arnoldi.V, :, 1)
+
+    copy!(first_col, b)
+    A_mul_B!(reserved_vec, arnoldi.A, x)
+    @blas! first_col -= one(T) * reserved_vec
+    A_ldiv_B!(Pl, first_col)
+
+    # Normalize
+    β = norm(first_col)
+    @blas! first_col *= one(T) / β
+    β
+end
+
+@inline function init_residual!{numT,resT}(r::Residual{numT, resT}, β)
+    r.accumulator = one(resT)
+    r.β = β
+end
+
+function solve_least_squares!{T}(arnoldi::ArnoldiDecomp{T}, β, k::Int)
+    # Compute the least-squares solution to Hy = β e1 via Given's rotations
+    rhs = zeros(T, k)
+    rhs[1] = β
+
+    H = Hessenberg(view(arnoldi.H, 1 : k, 1 : k - 1))
+    A_ldiv_B!(H, rhs)
+
+    rhs
+end
+
+function update_solution!{T}(x, y, arnoldi::ArnoldiDecomp{T}, Pr::Identity, k::Int)
+    # Update x ← x + V * y
+
+    # TODO: find the SugarBLAS alternative
+    BLAS.gemv!('N', one(T), view(arnoldi.V, :, 1 : k - 1), y, one(T), x)
+end
+
+function update_solution!{T}(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int)
+    # Allocates a temporary while computing x ← x + Pr \ (V * y)
+    tmp = view(arnoldi.V, :, 1 : k - 1) * y
+    @blas! x += one(T) * (Pr \ tmp)
+end
+
+function expand!(arnoldi::ArnoldiDecomp, Pl::Identity, Pr::Identity, k::Int)
+    # Simply expands by A * v without allocating
+    A_mul_B!(view(arnoldi.V, :, k + 1), arnoldi.A, view(arnoldi.V, :, k))
+end
+
+function expand!(arnoldi::ArnoldiDecomp, Pl, Pr::Identity, k::Int)
+    # Expands by Pl \ (A * v) without allocating
+    A_mul_B!(view(arnoldi.V, :, k + 1), arnoldi.A, view(arnoldi.V, :, k))
+    A_ldiv_B!(Pl, view(arnoldi.V, :, k + 1))
+end
+
+function expand!(arnoldi::ArnoldiDecomp, Pl, Pr, k::Int)
+    # Expands by Pl \ (A * (Pr \ v)). Allocates one vector.
+    A_ldiv_B!(view(arnoldi.V, :, k + 1), Pr, view(arnoldi.V, :, k))
+    copy!(view(arnoldi.V, :, k + 1), arnoldi.A * view(arnoldi.V, :, k + 1))
+    A_ldiv_B!(Pl, view(arnoldi.V, :, k + 1))
 end

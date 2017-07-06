@@ -34,7 +34,7 @@ context("Solve") do
 
         # Compare \ against the optimized version.
         solution_with_residual = copy(rhs)
-        IterativeSolvers.solve!(IterativeSolvers.Hessenberg(copy(H)), solution_with_residual)
+        A_ldiv_B!(IterativeSolvers.Hessenberg(copy(H)), solution_with_residual)
         solution = H \ rhs
 
         # First part is the solution

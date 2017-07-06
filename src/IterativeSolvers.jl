@@ -21,7 +21,6 @@ include("hessenberg.jl")
 #Linear solvers
 include("stationary.jl")
 include("cg.jl")
-include("improved_gmres.jl")
 include("gmres.jl")
 include("chebyshev.jl")
 include("idrs.jl")
