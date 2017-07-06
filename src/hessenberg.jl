@@ -1,6 +1,6 @@
 import Base.LinAlg: Givens, givensAlgorithm
 
-mutable struct Hessenberg{T<:AbstractMatrix}
+type Hessenberg{T<:AbstractMatrix}
     H::T # H is assumed to be Hessenberg of size (m + 1) × m
 end
 

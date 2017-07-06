@@ -116,7 +116,7 @@ function improved_gmres_method!(history::ConvergenceHistory, x, A, b;
     x
 end
 
-mutable struct ArnoldiDecomp{T}
+type ArnoldiDecomp{T}
     A
     V::Matrix{T} # Orthonormal basis vectors
     H::Matrix{T} # Hessenberg matrix
@@ -128,7 +128,7 @@ ArnoldiDecomp(A, order::Int, T::Type) = ArnoldiDecomp{T}(
     zeros(T, order + 1, order)
 )
 
-mutable struct Residual{numT, resT}
+type Residual{numT, resT}
     current::resT # Current relative residual
     accumulator::resT # Used to compute the residual on the go
     nullvec::Vector{numT} # Vector in the null space of H to compute residuals
@@ -149,7 +149,7 @@ function update_residual!(r::Residual, arnoldi::ArnoldiDecomp, k::Int)
     r.current = r.β / √r.accumulator
 end
 
-function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, reserved_vec) where {T}
+function init!{T}(arnoldi::ArnoldiDecomp{T}, x, b, Pl, reserved_vec)
     # Initialize the Krylov subspace with the initial residual vector
     # This basically does V[1] = Pl \ (b - A * x) and then normalize
     
@@ -166,12 +166,12 @@ function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, reserved_vec) where {T}
     β
 end
 
-@inline function init_residual!(r::Residual{numT, resT}, β) where {numT,resT}
+@inline function init_residual!{numT,resT}(r::Residual{numT, resT}, β)
     r.accumulator = one(resT)
     r.β = β
 end
 
-function solve_least_squares!(arnoldi::ArnoldiDecomp{T}, β, k::Int) where {T}
+function solve_least_squares!{T}(arnoldi::ArnoldiDecomp{T}, β, k::Int)
     # Compute the least-squares solution to Hy = β e1 via Given's rotations
     rhs = zeros(T, k)
     rhs[1] = β
@@ -182,14 +182,14 @@ function solve_least_squares!(arnoldi::ArnoldiDecomp{T}, β, k::Int) where {T}
     rhs
 end
 
-function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr::Identity, k::Int) where {T}
+function update_solution!{T}(x, y, arnoldi::ArnoldiDecomp{T}, Pr::Identity, k::Int)
     # Update x ← x + V * y
 
     # TODO: find the SugarBLAS alternative
     BLAS.gemv!('N', one(T), view(arnoldi.V, :, 1 : k - 1), y, one(T), x)
 end
 
-function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int) where {T}
+function update_solution!{T}(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int)
     # Allocates a temporary while computing x ← x + Pr \ (V * y)
     tmp = view(arnoldi.V, :, 1 : k - 1) * y
     @blas! x += one(T) * (Pr \ tmp)
