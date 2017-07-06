@@ -74,3 +74,10 @@ type PosSemidefException <: Exception
     msg :: AbstractString
     PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
 end
+
+# Identity preconditioner
+immutable Identity end
+
+Base.:\(::Identity, x) = copy(x)
+Base.A_ldiv_B!(::Identity, x) = x
+Base.A_ldiv_B!(y, ::Identity, x) = copy!(y, x)
