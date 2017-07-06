@@ -78,8 +78,6 @@ function improved_gmres_method!(history::ConvergenceHistory, x, A, b;
             # Arnoldi step: expand
             expand!(arnoldi, Pl, Pr, k)
 
-            @show arnoldi.V[:, k]
-
             # Orthogonalize V[:, k + 1] w.r.t. V[:, 1 : k]
             arnoldi.H[k + 1, k] = orthogonalize_and_normalize!(
                 view(arnoldi.V, :, 1 : k),

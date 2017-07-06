@@ -54,12 +54,11 @@ end
 
 function gmres(; n = 100_000, tol = 1e-5, restart::Int = 15, maxiter::Int = 210)
     A, b = indefinite(n)
-    outer = div(maxiter, restart)
 
     println("Matrix of size ", n, " with ~", nnz(A) / n, " nonzeros per row")
     println("Tolerance = ", tol, "; restart = ", restart, "; max #iterations = ", maxiter)
     
-    impr = @benchmark IterativeSolvers.improved_gmres($A, $b, tol = $tol, restart = $restart, outer = $outer, log = false)
+    impr = @benchmark IterativeSolvers.improved_gmres($A, $b, tol = $tol, restart = $restart, maxiter = $maxiter, log = false)
     old = @benchmark IterativeSolvers.gmres($A, $b, tol = $tol, restart = $restart, maxiter = $maxiter, log = false)
 
     impr, old

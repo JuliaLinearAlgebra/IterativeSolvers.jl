@@ -4,6 +4,9 @@ using FactCheck
 #Common functions and data structures
 include("common.jl")
 
+# Hessenberg problem solver
+include("hessenberg.jl")
+
 #Stationary solvers
 include("stationary.jl")
 
