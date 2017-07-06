@@ -7,60 +7,75 @@ function cg!(x, A, b;
     maxiter::Integer = min(20, size(A, 1)),
     plot = false,
     log::Bool = false,
+    Pl = Identity(),
     kwargs...
 )
     (plot & !log) && error("Can't plot when log keyword is false")
-    K = KrylovSubspace(A, length(b), 1, Vector{Adivtype(A,b)}[])
-    init!(K, x)
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
-    reserve!(history, :resnorm, maxiter)
-    cg_method!(history, x, K, b; tol = tol, maxiter = maxiter, kwargs...)
-    (plot || log) && shrink!(history)
+    log && reserve!(history, :resnorm, maxiter + 1)
+    cg_method!(history, x, A, b, Pl; tol = tol, log = log, maxiter = maxiter, kwargs...)
+    log && shrink!(history)
     plot && showplot(history)
     log ? (x, history) : x
 end
 
-function cg_method!(log::ConvergenceHistory, x, K, b;
-    Pl = 1,
+function cg_method!(history::ConvergenceHistory, x, A, b, Pl;
     tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Integer = min(20, size(K.A, 1)),
-    verbose::Bool = false
+    maxiter::Integer = min(20, size(A, 1)),
+    verbose::Bool = false,
+    log = false
 )
+    # Preconditioned CG
     T = eltype(b)
-    n = size(K.A, 1)
+    n = size(A, 1)
 
     # Initial residual vector
     r = copy(b)
-    @blas! r -= one(T) * nextvec(K)
-    c = zeros(T, n)
+    c = A * x
+    @blas! r -= one(T) * c
     u = zeros(T, n)
     ρ = one(T)
-    
-    iter = 0
 
-    last_residual = norm(r)
+    if log
+        history.mvps += 1
+    end
+    
+    iter = 1
 
     # Here you could save one inner product if norm(r) is used rather than norm(b)
     reltol = norm(b) * tol
+    last_residual = zero(T)
 
-    while last_residual > reltol && iter < maxiter
-        nextiter!(log, mvps = 1)
+    while true
+
+        last_residual = norm(r)
+
+        verbose && @printf("%3d\t%1.2e\n", iter, last_residual)
+
+        if last_residual ≤ reltol || iter > maxiter
+            break
+        end
+
+        # Log progress        
+        if log
+            nextiter!(history, mvps = 1)
+            push!(history, :resnorm, last_residual)
+        end
 
         # Preconditioner: c = Pl \ r
         solve!(c, Pl, r)
 
         ρ_prev = ρ
         ρ = dot(c, r)
-        β = -ρ / ρ_prev
+        β = ρ / ρ_prev
 
-        # u := r - βu (almost an axpy)
-        @blas! u *= -β
+        # u := c + βu (almost an axpy)
+        @blas! u *= β
         @blas! u += one(T) * c
 
         # c = A * u
-        append!(K, u)
-        nextvec!(c, K)
+        A_mul_B!(c, A, u)
         α = ρ / dot(u, c)
     
         # Improve solution and residual
@@ -68,18 +83,82 @@ function cg_method!(log::ConvergenceHistory, x, K, b;
         @blas! r -= α * c
 
         iter += 1
-        last_residual = norm(r)
-
-        # Log progress
-        push!(log, :resnorm, last_residual)
-        verbose && @printf("%3d\t%1.2e\n", iter, last_residual)
     end
 
     verbose && @printf("\n")
-    setconv(log, last_residual < reltol)
+    log && setconv(history, last_residual < reltol)
 
     x
 end
+
+function cg_method!(history::ConvergenceHistory, x, A, b, Pl::Identity;
+    tol = sqrt(eps(real(eltype(b)))),
+    maxiter::Integer = min(20, size(A, 1)),
+    verbose::Bool = false,
+    log = false
+)
+    # Unpreconditioned CG
+    T = eltype(b)
+    n = size(A, 1)
+
+    # Initial residual vector
+    r = copy(b)
+    c = A * x
+    @blas! r -= one(T) * c
+    u = zeros(T, n)
+    ρ = one(T)
+
+    if log
+        history.mvps += 1
+    end
+
+    iter = 1
+
+    reltol = norm(b) * tol
+    last_residual = zero(T)
+
+    while true
+
+        ρ_prev = ρ
+        ρ = dot(r, r)
+        β = ρ / ρ_prev
+
+        last_residual = sqrt(ρ)
+
+        # Log progress
+        if log
+            nextiter!(history, mvps = 1)
+            push!(history, :resnorm, last_residual)
+        end
+
+        verbose && @printf("%3d\t%1.2e\n", iter, last_residual)
+
+        # Stopping condition
+        if last_residual ≤ reltol || iter > maxiter
+            break
+        end
+
+        # u := r + βu (almost an axpy)
+        @blas! u *= β
+        @blas! u += one(T) * r
+
+        # c = A * u
+        A_mul_B!(c, A, u)
+        α = ρ / dot(u, c)
+    
+        # Improve solution and residual
+        @blas! x += α * u
+        @blas! r -= α * c
+
+        iter += 1
+    end
+
+    verbose && @printf("\n")
+    log && setconv(history, last_residual < reltol)
+
+    x
+end
+
 
 #################
 # Documentation #
@@ -126,7 +205,7 @@ $arg
 
 ## Keywords
 
-`Pl = 1`: left preconditioner of the method.
+`Pl = Identity()`: left preconditioner of the method.
 
 `tol::Real = size(A,2)*eps()`: stopping tolerance.
 
