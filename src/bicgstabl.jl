@@ -114,11 +114,11 @@ function bicgstabl!(x, A, b, l::Int = 2;
             κ0 = √(y0' * M * y0)
             κl = √(yl' * M * yl)
             ϱ = yl' * M * y0 / (κ0 * κl)
-            γ̂ = ϱ / abs(ϱ) * max(abs(ϱ), 0.7)
+            γ̂ = ϱ / abs(ϱ) * max(abs(ϱ), real(T)(0.7))
             y0 -= γ̂ * (κ0 / κl) * yl
-            ω = y0[l + 1]
 
-            nrm = √(y0' * M * y0)
+            ω = y0[l + 1]
+            nrm = √abs(y0' * M * y0)
 
             # This could even be BLAS 3 when combined.
             # Also: views don't change during the iterations.
@@ -135,6 +135,7 @@ function bicgstabl!(x, A, b, l::Int = 2;
             BLAS.gemv!('N', one(T), view(rs, :, 1 : l), γ, one(T), x)
             BLAS.gemv!('N', -one(T), view(rs, :, L), γ, one(T), residual)
 
+            ω = γ[l]
             nrm = norm(residual)
         end
         
