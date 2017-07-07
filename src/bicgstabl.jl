@@ -7,6 +7,7 @@ function bicgstabl!(x, A, b, l::Int = 2;
     max_mv_products = min(30, size(A, 1)),
     initial_zero = false,
     tol = sqrt(eps(real(eltype(b)))),
+    convex_combination = true,
     visitor = (a...) -> nothing
 )
     T = eltype(b)
@@ -96,33 +97,46 @@ function bicgstabl!(x, A, b, l::Int = 2;
         # M = rs' * rs
         Ac_mul_B!(M, rs, rs)
         
-        # For l = 2 this would be an LU decomp of a 1 x 1 matrix
-        # Maybe a bit overkill
-        copy!(Z, view(M, 2 : l, 2 : l))
-        F = lufact!(Z)
+        if convex_combination
+            # For l = 2 this would be an LU decomp of a 1 x 1 matrix
+            # Maybe a bit overkill
+            copy!(Z, view(M, 2 : l, 2 : l))
+            F = lufact!(Z)
 
-        y0[1] = -one(T)
-        A_ldiv_B!(view(y0, 2 : l), F, view(M, 2 : l, 1))
-        y0[l + 1] = zero(T)
+            y0[1] = -one(T)
+            A_ldiv_B!(view(y0, 2 : l), F, view(M, 2 : l, 1))
+            y0[l + 1] = zero(T)
 
-        yl[1] = zero(T)
-        A_ldiv_B!(view(yl, 2 : l), F, view(M, 2 : l, l + 1))
-        yl[l + 1] = -one(T)
+            yl[1] = zero(T)
+            A_ldiv_B!(view(yl, 2 : l), F, view(M, 2 : l, l + 1))
+            yl[l + 1] = -one(T)
 
-        κ0 = √(y0' * M * y0)
-        κl = √(yl' * M * yl)
-        ϱ = yl' * M * y0 / (κ0 * κl)
-        γ̂ = ϱ / abs(ϱ) * max(abs(ϱ), 0.7)
-        y0 -= γ̂ * (κ0 / κl) * yl
-        ω = y0[l + 1]
+            κ0 = √(y0' * M * y0)
+            κl = √(yl' * M * yl)
+            ϱ = yl' * M * y0 / (κ0 * κl)
+            γ̂ = ϱ / abs(ϱ) * max(abs(ϱ), 0.7)
+            y0 -= γ̂ * (κ0 / κl) * yl
+            ω = y0[l + 1]
 
-        # This could even be BLAS 3 when combined.
-        # Also: views don't change during the iterations.
-        BLAS.gemv!('N', -one(T), view(us, :, L), view(y0, L), one(T), u)
-        BLAS.gemv!('N', one(T), view(rs, :, 1 : l), view(y0, L), one(T), x)
-        BLAS.gemv!('N', -one(T), view(rs, :, L), view(y0, L), one(T), residual)
+            nrm = √(y0' * M * y0)
 
-        nrm = √(y0' * M * y0)
+            # This could even be BLAS 3 when combined.
+            # Also: views don't change during the iterations.
+            BLAS.gemv!('N', -one(T), view(us, :, L), view(y0, L), one(T), u)
+            BLAS.gemv!('N', one(T), view(rs, :, 1 : l), view(y0, L), one(T), x)
+            BLAS.gemv!('N', -one(T), view(rs, :, L), view(y0, L), one(T), residual)
+        else
+            # γ = M[L, L] \ M[L, 1] 
+            F = lufact!(view(M, L, L))
+            A_ldiv_B!(γ, F, view(M, L, 1))
+
+            # This could even be BLAS 3 when combined.
+            BLAS.gemv!('N', -one(T), view(us, :, L), γ, one(T), u)
+            BLAS.gemv!('N', one(T), view(rs, :, 1 : l), γ, one(T), x)
+            BLAS.gemv!('N', -one(T), view(rs, :, L), γ, one(T), residual)
+
+            nrm = norm(residual)
+        end
         
         visitor(nrm, mv_products)
     end
