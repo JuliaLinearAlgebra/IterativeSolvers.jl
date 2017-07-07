@@ -5,6 +5,8 @@ import Base.A_ldiv_B!, Base.\
 using BenchmarkTools
 using IterativeSolvers
 
+include("../test/advection_diffusion.jl")
+
 # A DiagonalMatrix that doesn't check whether it is singular in the \ op.
 immutable DiagonalPreconditioner{T}
     diag::Vector{T}
@@ -62,6 +64,17 @@ function gmres(; n = 100_000, tol = 1e-5, restart::Int = 15, maxiter::Int = 210)
     old = @benchmark IterativeSolvers.gmres($A, $b, tol = $tol, restart = $restart, maxiter = $maxiter, log = false)
 
     impr, old
+end
+
+function bicgstabl()
+    A, b = advection_dominated()
+
+    b1 = @benchmark IterativeSolvers.bicgstabl($A, $b, 2, max_mv_products = 1000, convex_combination = false) setup = (srand(1))
+    b2 = @benchmark IterativeSolvers.bicgstabl($A, $b, 2, max_mv_products = 1000, convex_combination = true) setup = (srand(1))
+    b3 = @benchmark IterativeSolvers.bicgstabl($A, $b, 4, max_mv_products = 1000, convex_combination = false) setup = (srand(1))
+    b4 = @benchmark IterativeSolvers.bicgstabl($A, $b, 4, max_mv_products = 1000, convex_combination = true) setup = (srand(1))
+
+    b1, b2, b3, b4
 end
 
 end
