@@ -40,22 +40,25 @@ function bicgstabl!(x, A, b, l::Int = 2;
     r_shadow = rand(T, n)
 
     γ = zeros(T, l)
-    γ[l] = σ = one(T)
+    y0 = zeros(T, l + 1)
+    yl = zeros(T, l + 1)
+    ω = σ = one(T)
 
     nrm = norm(residual)
     iter = 1
 
     # For the least-squares problem
     M = zeros(T, l + 1, l + 1)
+    Z = zeros(T, l - 1, l - 1)
     L = 2 : l + 1
 
     # Stopping condition based on relative tolerance.
     reltol = nrm * tol
 
     while nrm > reltol && mv_products < max_mv_products
-        σ = -γ[l] * σ
+        σ = -ω * σ
         
-        # BiCG part
+        ## BiCG part
         for j = 1 : l
             ρ = dot(r_shadow, view(rs, :, j))
             β = ρ / σ
@@ -88,22 +91,38 @@ function bicgstabl!(x, A, b, l::Int = 2;
             @blas! x += α * u
         end
 
-        # MR part: M = rs' * rs
+        ## MR part (convex combination)
+        
+        # M = rs' * rs
         Ac_mul_B!(M, rs, rs)
         
-        # For l = 2 this would be an LU decomp of a 2 x 2 matrix
+        # For l = 2 this would be an LU decomp of a 1 x 1 matrix
         # Maybe a bit overkill
-        
-        # γ = M[L, L] \ M[L, 1] 
-        F = lufact!(view(M, L, L))
-        A_ldiv_B!(γ, F, view(M, L, 1))
+        copy!(Z, view(M, 2 : l, 2 : l))
+        F = lufact!(Z)
+
+        y0[1] = -one(T)
+        A_ldiv_B!(view(y0, 2 : l), F, view(M, 2 : l, 1))
+        y0[l + 1] = zero(T)
+
+        yl[1] = zero(T)
+        A_ldiv_B!(view(yl, 2 : l), F, view(M, 2 : l, l + 1))
+        yl[l + 1] = -one(T)
+
+        κ0 = √(y0' * M * y0)
+        κl = √(yl' * M * yl)
+        ϱ = yl' * M * y0 / (κ0 * κl)
+        γ̂ = ϱ / abs(ϱ) * max(abs(ϱ), 0.7)
+        y0 -= γ̂ * (κ0 / κl) * yl
+        ω = y0[l + 1]
 
         # This could even be BLAS 3 when combined.
-        BLAS.gemv!('N', -one(T), view(us, :, L), γ, one(T), u)
-        BLAS.gemv!('N', one(T), view(rs, :, 1 : l), γ, one(T), x)
-        BLAS.gemv!('N', -one(T), view(rs, :, L), γ, one(T), residual)
-        
-        nrm = norm(residual)
+        # Also: views don't change during the iterations.
+        BLAS.gemv!('N', -one(T), view(us, :, L), view(y0, L), one(T), u)
+        BLAS.gemv!('N', one(T), view(rs, :, 1 : l), view(y0, L), one(T), x)
+        BLAS.gemv!('N', -one(T), view(rs, :, L), view(y0, L), one(T), residual)
+
+        nrm = √(y0' * M * y0)
         
         visitor(nrm, mv_products)
     end
