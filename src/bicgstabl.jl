@@ -1,26 +1,47 @@
-export bicgstabl, bicgstabl!
+export bicgstabl, bicgstabl!, bicgstabl_iterator, bicgstabl_iterator!, BiCGStabIterable
 
-bicgstabl(A, b, l::Int = 2; kwargs...) = bicgstabl!(zeros(b), A, b, l; initial_zero = true, kwargs...)
+import Base: start, next, done
 
-function bicgstabl!(x, A, b, l::Int = 2;
+mutable struct BiCGStabIterable{matT <: AbstractMatrix, vecT <: DenseVector, smallMatT <: DenseMatrix, realT <: Real, scalarT <: Number}
+    A::matT
+    b::vecT
+    l::Int
+
+    x::vecT
+    r_shadow::vecT
+    rs::smallMatT
+    us::smallMatT
+
+    max_mv_products::Int
+    mv_products::Int
+    reltol::realT
+    norm::realT
+
+    Pl
+
+    γ::vecT
+    ω::scalarT
+    σ::scalarT
+    M::smallMatT
+end
+
+bicgstabl_iterator(A, b, l; kwargs...) = bicgstabl_iterator!(zeros(b), A, b, l; kwargs...)
+
+function bicgstabl_iterator!(x, A, b, l::Int = 2;
     Pl = Identity(),
     max_mv_products = min(30, size(A, 1)),
     initial_zero = false,
-    tol = sqrt(eps(real(eltype(b)))),
-    convex_combination = true,
-    visitor = (a...) -> nothing
+    tol = sqrt(eps(real(eltype(b))))
 )
     T = eltype(b)
     n = size(A, 1)
-
     mv_products = 0
 
     # Large vectors.
-    rs = zeros(T, n, l + 1)
+    r_shadow = rand(T, n)
+    rs = Matrix{T}(n, l + 1)
     us = zeros(T, n, l + 1)
 
-    # Views of the first columns for ease of reference
-    u = view(us, :, 1)
     residual = view(rs, :, 1)
     
     # Compute the initial residual rs[:, 1] = b - A * x
@@ -37,112 +58,99 @@ function bicgstabl!(x, A, b, l::Int = 2;
     # Apply the left preconditioner
     A_ldiv_B!(Pl, residual)
 
-    # Random shadow residual
-    r_shadow = rand(T, n)
-
     γ = zeros(T, l)
-    y0 = zeros(T, l + 1)
-    yl = zeros(T, l + 1)
     ω = σ = one(T)
 
     nrm = norm(residual)
-    iter = 1
 
     # For the least-squares problem
     M = zeros(T, l + 1, l + 1)
-    Z = zeros(T, l - 1, l - 1)
-    L = 2 : l + 1
 
     # Stopping condition based on relative tolerance.
     reltol = nrm * tol
 
-    while nrm > reltol && mv_products < max_mv_products
-        σ = -ω * σ
+    BiCGStabIterable(A, b, l, x, r_shadow, rs, us,
+        max_mv_products, mv_products, reltol, nrm,
+        Pl,
+        γ, ω, σ, M
+    )
+end
+
+@inline start(::BiCGStabIterable) = 0
+@inline done(it::BiCGStabIterable, iteration::Int) = it.norm ≤ it.reltol || it.mv_products ≥ it.max_mv_products
+
+function next(it::BiCGStabIterable, iteration::Int)
+    T = eltype(it.b)
+    L = 2 : it.l + 1
+
+    it.σ = -it.ω * it.σ
+    
+    ## BiCG part
+    for j = 1 : it.l
+        ρ = dot(it.r_shadow, view(it.rs, :, j))
+        β = ρ / it.σ
         
-        ## BiCG part
-        for j = 1 : l
-            ρ = dot(r_shadow, view(rs, :, j))
-            β = ρ / σ
-            
-            # us[:, 1 : j] .= rs[:, 1 : j] - β * us[:, 1 : j]
-            for i = 1 : j
-                @blas! view(us, :, i) *= -β
-                @blas! view(us, :, i) += one(T) * view(rs, :, i)
-            end
-
-            # us[:, j + 1] = Pl \ (A * us[:, j])            
-            A_mul_B!(view(us, :, j + 1), A , view(us, :, j))
-            A_ldiv_B!(Pl, view(us, :, j + 1))
-            mv_products += 1
-
-            σ = dot(r_shadow, view(us, :, j + 1))
-            α = ρ / σ
-
-            # rs[:, 1 : j] .= rs[:, 1 : j] - α * us[:, 2 : j + 1]
-            for i = 1 : j
-                @blas! view(rs, :, i) -= α * view(us, :, i + 1)
-            end
-            
-            # rs[:, j + 1] = Pl \ (A * rs[:, j])
-            A_mul_B!(view(rs, :, j + 1), A , view(rs, :, j))
-            A_ldiv_B!(Pl, view(rs, :, j + 1))
-            mv_products += 1
-            
-            # x = x + α * us[:, 1]
-            @blas! x += α * u
+        # us[:, 1 : j] .= rs[:, 1 : j] - β * us[:, 1 : j]
+        for i = 1 : j
+            @blas! view(it.us, :, i) *= -β
+            @blas! view(it.us, :, i) += one(T) * view(it.rs, :, i)
         end
 
-        ## MR part (convex combination)
-        
-        # M = rs' * rs
-        Ac_mul_B!(M, rs, rs)
-        
-        if convex_combination
-            # For l = 2 this would be an LU decomp of a 1 x 1 matrix
-            # Maybe a bit overkill
-            copy!(Z, view(M, 2 : l, 2 : l))
-            F = lufact!(Z)
+        # us[:, j + 1] = Pl \ (A * us[:, j])
+        next_u = view(it.us, :, j + 1)
+        A_mul_B!(next_u, it.A, view(it.us, :, j))
+        A_ldiv_B!(it.Pl, next_u)
 
-            y0[1] = -one(T)
-            A_ldiv_B!(view(y0, 2 : l), F, view(M, 2 : l, 1))
-            y0[l + 1] = zero(T)
+        it.σ = dot(it.r_shadow, next_u)
+        α = ρ / it.σ
 
-            yl[1] = zero(T)
-            A_ldiv_B!(view(yl, 2 : l), F, view(M, 2 : l, l + 1))
-            yl[l + 1] = -one(T)
-
-            κ0 = √(y0' * M * y0)
-            κl = √(yl' * M * yl)
-            ϱ = yl' * M * y0 / (κ0 * κl)
-            γ̂ = ϱ / abs(ϱ) * max(abs(ϱ), real(T)(0.7))
-            y0 -= γ̂ * (κ0 / κl) * yl
-
-            ω = y0[l + 1]
-            nrm = √abs(y0' * M * y0)
-
-            # This could even be BLAS 3 when combined.
-            # Also: views don't change during the iterations.
-            BLAS.gemv!('N', -one(T), view(us, :, L), view(y0, L), one(T), u)
-            BLAS.gemv!('N', one(T), view(rs, :, 1 : l), view(y0, L), one(T), x)
-            BLAS.gemv!('N', -one(T), view(rs, :, L), view(y0, L), one(T), residual)
-        else
-            # γ = M[L, L] \ M[L, 1] 
-            F = lufact!(view(M, L, L))
-            A_ldiv_B!(γ, F, view(M, L, 1))
-
-            # This could even be BLAS 3 when combined.
-            BLAS.gemv!('N', -one(T), view(us, :, L), γ, one(T), u)
-            BLAS.gemv!('N', one(T), view(rs, :, 1 : l), γ, one(T), x)
-            BLAS.gemv!('N', -one(T), view(rs, :, L), γ, one(T), residual)
-
-            ω = γ[l]
-            nrm = norm(residual)
+        # rs[:, 1 : j] .= rs[:, 1 : j] - α * us[:, 2 : j + 1]
+        for i = 1 : j
+            @blas! view(it.rs, :, i) -= α * view(it.us, :, i + 1)
         end
         
-        visitor(nrm, mv_products)
+        # rs[:, j + 1] = Pl \ (A * rs[:, j])
+        next_r = view(it.rs, :, j + 1)
+        A_mul_B!(next_r, it.A , view(it.rs, :, j))
+        A_ldiv_B!(it.Pl, next_r)
+        
+        # x = x + α * us[:, 1]
+        @blas! it.x += α * view(it.us, :, 1)
     end
 
-    x, nrm
+    # Bookkeeping
+    it.mv_products += 2 * it.l
+
+    ## MR part
+    
+    # M = rs' * rs
+    Ac_mul_B!(it.M, it.rs, it.rs)
+
+    # γ = M[L, L] \ M[L, 1] 
+    F = lufact!(view(it.M, L, L))
+    A_ldiv_B!(it.γ, F, view(it.M, L, 1))
+
+    # This could even be BLAS 3 when combined.
+    BLAS.gemv!('N', -one(T), view(it.us, :, L), it.γ, one(T), view(it.us, :, 1))
+    BLAS.gemv!('N', one(T), view(it.rs, :, 1 : it.l), it.γ, one(T), it.x)
+    BLAS.gemv!('N', -one(T), view(it.rs, :, L), it.γ, one(T), view(it.rs, :, 1))
+
+    it.ω = it.γ[it.l]
+    it.norm = norm(view(it.rs, :, 1))
+
+    it.norm, iteration + 1
+end
+
+# Classical API
+
+bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zeros(b), A, b, l; initial_zero = true, kwargs...)
+
+function bicgstabl!(x, A, b, l = 2; kwargs...)
+    it = bicgstabl_iterator!(x, A, b, l; kwargs...)
+
+    for item = it end
+
+    it.x
 end
 
 #################
