@@ -2,7 +2,7 @@ export bicgstabl, bicgstabl!, bicgstabl_iterator, bicgstabl_iterator!, BiCGStabI
 
 import Base: start, next, done
 
-mutable struct BiCGStabIterable{matT <: AbstractMatrix, vecT <: DenseVector, smallMatT <: DenseMatrix, realT <: Real, scalarT <: Number}
+type BiCGStabIterable{precT, matT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
     A::matT
     b::vecT
     l::Int
@@ -15,9 +15,9 @@ mutable struct BiCGStabIterable{matT <: AbstractMatrix, vecT <: DenseVector, sma
     max_mv_products::Int
     mv_products::Int
     reltol::realT
-    norm::realT
+    residual::realT
 
-    Pl
+    Pl::precT
 
     γ::vecT
     ω::scalarT
@@ -25,7 +25,7 @@ mutable struct BiCGStabIterable{matT <: AbstractMatrix, vecT <: DenseVector, sma
     M::smallMatT
 end
 
-bicgstabl_iterator(A, b, l; kwargs...) = bicgstabl_iterator!(zeros(b), A, b, l; kwargs...)
+bicgstabl_iterator(A, b, l; kwargs...) = bicgstabl_iterator!(zerox(A, b), A, b, l; initial_zero = true, kwargs...)
 
 function bicgstabl_iterator!(x, A, b, l::Int = 2;
     Pl = Identity(),
@@ -76,8 +76,9 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
     )
 end
 
+@inline converged(it::BiCGStabIterable) = it.residual ≤ it.reltol
 @inline start(::BiCGStabIterable) = 0
-@inline done(it::BiCGStabIterable, iteration::Int) = it.norm ≤ it.reltol || it.mv_products ≥ it.max_mv_products
+@inline done(it::BiCGStabIterable, iteration::Int) = it.mv_products ≥ it.max_mv_products || converged(it)
 
 function next(it::BiCGStabIterable, iteration::Int)
     T = eltype(it.b)
@@ -136,21 +137,50 @@ function next(it::BiCGStabIterable, iteration::Int)
     BLAS.gemv!('N', -one(T), view(it.rs, :, L), it.γ, one(T), view(it.rs, :, 1))
 
     it.ω = it.γ[it.l]
-    it.norm = norm(view(it.rs, :, 1))
+    it.residual = norm(view(it.rs, :, 1))
 
-    it.norm, iteration + 1
+    it.residual, iteration + 1
 end
 
 # Classical API
 
-bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zeros(b), A, b, l; initial_zero = true, kwargs...)
+bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zerox(A, b), A, b, l; initial_zero = true, kwargs...)
 
-function bicgstabl!(x, A, b, l = 2; kwargs...)
-    it = bicgstabl_iterator!(x, A, b, l; kwargs...)
+function bicgstabl!(x, A, b, l = 2;
+    tol = sqrt(eps(real(eltype(b)))),
+    max_mv_products::Int = min(20, size(A, 1)),
+    log::Bool = false,
+    verbose::Bool = false,
+    Pl = Identity(),
+    kwargs...
+)
+    history = ConvergenceHistory(partial = !log)
+    history[:tol] = tol
 
-    for item = it end
+    # This doesn't yet make sense: the number of iters is smaller.
+    log && reserve!(history, :resnorm, max_mv_products)
+    
+    # Actually perform CG
+    iterable = bicgstabl_iterator!(x, A, b, l; Pl = Pl, tol = tol, max_mv_products = max_mv_products, kwargs...)
+    
+    if log
+        history.mvps = iterable.mv_products
+    end
 
-    it.x
+    for (iteration, item) = enumerate(iterable)
+        if log
+            nextiter!(history)
+            history.mvps = iterable.mv_products
+            push!(history, :resnorm, iterable.residual)
+        end
+        verbose && @printf("%3d\t%1.2e\n", iteration, iterable.residual)
+    end
+    
+    verbose && println()
+    log && setconv(history, converged(iterable))
+    log && shrink!(history)
+    
+    log ? (iterable.x, history) : iterable.x
 end
 
 #################
@@ -205,14 +235,6 @@ approximate residual is used.
 `max_mv_products::Int = min(30, size(A, 1))`: maximum number of matrix
 vector products. For BiCGStab this is a less dubious criterion than maximum
 number of iterations.
-
-`visitor`: a callback that get's called after each outer iteration, with arguments
-`visitor(nrm, mv_products)`. For example use
-
-```julia
-logger(nrm, mv_products) = println(mv_products, " ", nrm)
-x, residual = bicgstab(A, b, visitor = logger)
-```
 
 # Output
 
