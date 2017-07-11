@@ -60,13 +60,13 @@ end
 
 function powm_iterable(A; kwargs...)
     x0 = rand(Complex{real(eltype(A))}, size(A, 1))
-    scale!(x0, 1.0 / norm(x0))
+    scale!(x0, one(eltype(A)) / norm(x0))
     powm_iterable!(A, x0; kwargs...)
 end
 
 function powm(A; kwargs...)
     x0 = rand(Complex{real(eltype(A))}, size(A, 1))
-    scale!(x0, 1.0 / norm(x0))
+    scale!(x0, one(eltype(A)) / norm(x0))
     powm!(A, x0; kwargs...)
 end
 
@@ -92,7 +92,7 @@ function powm!(A, x;
 
     setconv(history, converged(iterable))
 
-    println()
+    verbose && println()
 
     log && shrink!(history)
 
@@ -105,7 +105,7 @@ end
 
 function invpowm(A; kwargs...)
     x0 = rand(Complex{real(eltype(A))}, size(A, 1))
-    scale!(x0, 1.0 / norm(x0))
+    scale!(x0, one(eltype(A)) / norm(x0))
     invpowm!(A, x0; kwargs...)
 end
 
@@ -121,10 +121,10 @@ doc1_call = """    powm(A)
 """
 doc2_call = """    invpowm(A)
 """
-doc1_msg = """Find biggest eigenvalue of `A` and its associated eigenvector
+doc1_msg = """Find the largest eigenvalue `λ` (in absolute value) of `A` and its associated eigenvector `x`
 using the power method.
 """
-doc2_msg = """Find closest eigenvalue of `A` to `shift` and its associated eigenvector
+doc2_msg = """Find the closest eigenvalue `λ` of `A` to `shift` and its associated eigenvector `x`
 using the inverse power iteration method.
 """
 doc1_karg = ""
@@ -144,8 +144,8 @@ $call
 
 $msg
 
-If `log` is set to `true` is given, method will output a tuple `eig, v, ch`. Where
-`ch` is a `ConvergenceHistory` object. Otherwise it will only return `eig, v`.
+If `log` is set to `true` is given, method will output a tuple `λ, x, ch`. Where
+`ch` is a `ConvergenceHistory` object. Otherwise it will only return `λ, x`.
 
 # Arguments
 
@@ -172,15 +172,15 @@ containing extra information of the method execution.
 
 **if `log` is `false`**
 
-`eig::Real`: eigen value
+`λ::Number`: eigenvalue
 
-`v::Vector`: eigen vector
+`x::Vector`: eigenvector
 
 **if `log` is `true`**
 
-`eig::Real`: eigen value
+`eig::Real`: eigenvalue
 
-`v::Vector`: eigen vector
+`x::Vector`: eigenvector
 
 `ch`: convergence history.
 
