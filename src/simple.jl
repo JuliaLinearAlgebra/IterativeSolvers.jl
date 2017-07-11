@@ -3,10 +3,6 @@ import Base: start, next, done
 #Simple methods
 export powm, invpowm
 
-####################
-# API method calls #
-####################
-
 type PowerMethodIterable{matT, vecT <: AbstractVector, numT <: Number, eigvalT <: Number}
     A::matT
     x::vecT
@@ -23,7 +19,7 @@ end
 ## Iterators
 ##
 
-@inline converged(p::PowerMethodIterable) = p.residual < p.tol
+@inline converged(p::PowerMethodIterable) = p.residual ≤ p.tol
 
 @inline start(p::PowerMethodIterable) = 0
 
@@ -64,6 +60,10 @@ function powm_iterable(A; kwargs...)
     powm_iterable!(A, x0; kwargs...)
 end
 
+####################
+# API method calls #
+####################
+
 function powm(A; kwargs...)
     x0 = rand(Complex{real(eltype(A))}, size(A, 1))
     scale!(x0, one(eltype(A)) / norm(x0))
@@ -102,14 +102,13 @@ function powm!(A, x;
     log ? (λ, x, history) : (λ, x)
 end
 
-
-function invpowm(A; kwargs...)
-    x0 = rand(Complex{real(eltype(A))}, size(A, 1))
-    scale!(x0, one(eltype(A)) / norm(x0))
-    invpowm!(A, x0; kwargs...)
+function invpowm(B; kwargs...)
+    x0 = rand(Complex{real(eltype(B))}, size(B, 1))
+    scale!(x0, one(eltype(B)) / norm(x0))
+    invpowm!(B, x0; kwargs...)
 end
 
-invpowm!(A, x0; kwargs...) = powm!(A, x0; inverse = true, kwargs...)
+invpowm!(B, x0; kwargs...) = powm!(B, x0; inverse = true, kwargs...)
 
 #################
 # Documentation #
@@ -119,13 +118,25 @@ let
 #Initialize parameters
 doc1_call = """    powm(A)
 """
-doc2_call = """    invpowm(A)
+doc2_call = """    invpowm(B)
 """
 doc1_msg = """Find the largest eigenvalue `λ` (in absolute value) of `A` and its associated eigenvector `x`
 using the power method.
 """
-doc2_msg = """Find the closest eigenvalue `λ` of `A` to `shift` and its associated eigenvector `x`
-using the inverse power iteration method.
+doc2_msg = """For an eigenvalue problem Ax = λx, find the closest eigenvalue in the complex plane to `shift`
+together with its associated eigenvector `x`. The first argument `B` should be a mapping that has
+the effect of B * x = inv(A - shift * I) * x and should support the `A_mul_B!` operation.
+
+# Examples
+
+```julia
+using LinearMaps
+σ = 1.0 + 1.3im
+A = rand(Complex128, 50, 50)
+F = lufact(A - UniformScaling(σ))
+Fmap = LinearMap((y, x) -> A_ldiv_B!(y, F, x), 50, Complex128, ismutating = true)
+λ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)
+```
 """
 doc1_karg = ""
 doc2_karg = "`shift::Number=0`: shift to be applied to matrix A."
@@ -148,8 +159,6 @@ If `log` is set to `true` is given, method will output a tuple `λ, x, ch`. Wher
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `λ, x`.
 
 # Arguments
-
-`K::KrylovSubspace`: krylov subspace.
 
 `A`: linear operator.
 
