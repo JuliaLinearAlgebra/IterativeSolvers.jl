@@ -7,18 +7,16 @@ export powm, invpowm
 
 function powm(A;
     x=nothing, tol::Real=eps(real(eltype(A)))*size(A,2)^3, maxiter::Int=size(A,2),
-    plot::Bool=false, log::Bool=false, kwargs...
+    log::Bool=false, kwargs...
     )
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
 
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     eig, v = powm_method!(history, K; tol=tol, maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (eig, v, history) : (eig, v)
 end
 
@@ -53,18 +51,16 @@ end
 
 function invpowm(A;
     x=nothing, shift::Number=0, tol::Real=eps(real(eltype(A)))*size(A,2)^3,
-    maxiter::Int=size(A,2), plot::Bool=false, log::Bool=false, kwargs...
+    maxiter::Int=size(A,2), log::Bool=false, kwargs...
     )
     K = KrylovSubspace(A, 1)
     x==nothing ? initrand!(K) : init!(K, x/norm(x))
 
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     eig, v = invpowm_method!(history, K, shift; tol=tol, maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (eig, v, history) : (eig, v)
 end
 
@@ -131,8 +127,6 @@ $msg
 If `log` is set to `true` is given, method will output a tuple `eig, v, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `eig, v`.
 
-The `plot` attribute can only be used when `log` is set version.
-
 # Arguments
 
 `K::KrylovSubspace`: krylov subspace.
@@ -153,8 +147,6 @@ $karg
 
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only when `log` is set)
 
 # Output
 

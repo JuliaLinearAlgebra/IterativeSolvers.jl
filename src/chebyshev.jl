@@ -9,18 +9,15 @@ chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
 
 function chebyshev!(x, A, b, λmin::Real, λmax::Real;
     n::Int=size(A,2), tol::Real = sqrt(eps(typeof(real(b[1])))),
-    maxiter::Int = n^3, plot::Bool=false, log::Bool=false, kwargs...
+    maxiter::Int = n^3, log::Bool=false, kwargs...
     )
 	K = KrylovSubspace(A, n, 1, Adivtype(A, b))
 	init!(K, x)
-
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm,maxiter)
     chebyshev_method!(history, x, K, b, λmin, λmax; tol=tol, maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 
@@ -101,8 +98,6 @@ $msg
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when `log` is set version.
-
 # Arguments
 
 $arg
@@ -123,8 +118,6 @@ $arg
 
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only with `Master` version)
 
 # Output
 
