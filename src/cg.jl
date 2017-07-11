@@ -1,6 +1,8 @@
 import Base: start, next, done
 
-mutable struct CGIterable{matT <: AbstractMatrix, vecT <: AbstractVector, numT <: Real}
+export cg, cg!, CGIterable, PCGIterable, cg_iterator, cg_iterator!
+
+mutable struct CGIterable{matT, vecT <: AbstractVector, numT <: Real}
     A::matT
     x::vecT
     b::vecT
@@ -14,7 +16,7 @@ mutable struct CGIterable{matT <: AbstractMatrix, vecT <: AbstractVector, numT <
     mv_products::Int
 end
 
-mutable struct PCGIterable{precT, matT <: AbstractMatrix, vecT <: AbstractVector, numT <: Real, paramT <: Number}
+mutable struct PCGIterable{precT, matT, vecT <: AbstractVector, numT <: Real, paramT <: Number}
     Pl::precT
     A::matT
     x::vecT
@@ -66,7 +68,7 @@ end
 #####################
 
 function next(it::PCGIterable, iteration::Int)
-    A_ldiv_B!(it.c, it.Pl, it.r)
+    solve!(it.c, it.Pl, it.r)
 
     ρ_prev = it.ρ
     it.ρ = dot(it.c, it.r)
@@ -106,16 +108,18 @@ function cg_iterator!(x, A, b, Pl = Identity();
     if initially_zero
         mv_products = 0
         c = similar(x)
+        residual = norm(b)
+        reltol = residual * tol # Save one dot product
     else
         mv_products = 1
         c = A * x
         @blas! r -= one(eltype(x)) * c
+        residual = norm(r)
+        reltol = norm(b) * tol
     end
 
     # Stopping criterion
-    residual = norm(r)
     ρ = one(residual)
-    reltol = residual * tol
 
     # Return the iterable
     if isa(Pl, Identity)
@@ -133,7 +137,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
     end
 end
 
-cg(A, b, Pl = Identity(); kwargs...) = cg!(zerox(A, b), A, b, Pl; initially_zero = true, kwargs...)
+cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
 function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
