@@ -37,12 +37,6 @@ for T in (Float32, Float64, Complex64, Complex128)
     @fact norm(eval_rand-eval_ii) --> less_than(tol)
     end
 
-    #context("Rayleigh quotient iteration") do
-    #XXX broken?
-    #l = eigvals_rqi(A, eigvals_rand, 2000, √eps())[2]
-    #@fact norm(eigvals_rand-l) --> less_than(tol)
-    #end
-
     end
 end
 end
