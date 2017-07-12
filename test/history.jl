@@ -31,9 +31,6 @@ facts("ConvergenceHistory") do
         plot(invpowm(A; log=true)[2])
         @fact true --> true
 
-		plot(rqi(A; log=true)[2])
-        @fact true --> true
-
         plot(svdl(A; log=true)[3])
         @fact true --> true
     end
