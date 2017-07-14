@@ -13,6 +13,9 @@ include("stationary.jl")
 #Conjugate gradients
 include("cg.jl")
 
+#BiCGStab(l)
+include("bicgstabl.jl")
+
 #GMRES
 include("gmres.jl")
 
