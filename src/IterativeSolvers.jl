@@ -28,7 +28,6 @@ include("idrs.jl")
 
 #Eigensolvers
 include("simple.jl")
-include("lanczos.jl")
 
 #SVD solvers
 include("svdl.jl")
