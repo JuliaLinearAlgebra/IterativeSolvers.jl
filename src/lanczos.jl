@@ -7,16 +7,14 @@ export eiglancz
 ####################
 
 function eiglancz(A;
-    maxiter::Integer=size(A,1), plot::Bool=false,
+    maxiter::Integer=size(A,1),
     tol::Real = size(A,1)^3*eps(real(eltype(A))), log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     e1 = eiglancz_method(history, A; maxiter=maxiter, tol=tol, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (e1, history) : e1
 end
 
@@ -89,8 +87,6 @@ $msg
 If `log` is set to `true` is given, method will output a tuple `eigs, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `eigs`.
 
-The `plot` attribute can only be used when `log` is set version.
-
 # Arguments
 
 $arg
@@ -109,8 +105,6 @@ $arg
 
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only when `log` is set)
 
 # Output
 

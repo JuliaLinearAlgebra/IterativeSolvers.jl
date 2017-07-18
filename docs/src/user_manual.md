@@ -79,8 +79,6 @@ etc.
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
 
-`plot`: plot information relevant to the method. (Only for `Master` version)
-
 ### `log` keyword
 
 All solvers contain the `log` keyword. This is to be used when obtaining
@@ -88,12 +86,10 @@ more information is required, to use it place the set `log` to `true`.
 
 ```julia
 x, ch = cg(Master, rand(10, 10), rand(10) log=true)
-svd, L, ch = svdl(Master, rand(100, 100), plot=true, log=true)
+svd, L, ch = svdl(Master, rand(100, 100), log=true)
 ```
 
 The function will now return one more parameter of type `ConvergenceHistory`.
-
-*`Note:`*  Keyword argument `plot` is only available when `log` is set.
 
 ## ConvergenceHistory
 

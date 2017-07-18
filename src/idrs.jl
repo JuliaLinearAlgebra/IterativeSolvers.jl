@@ -9,15 +9,13 @@ idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
 
 function idrs!(x, A, b;
     s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
-    plot::Bool=false, log::Bool=false, kwargs...
+    log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     idrs_method!(history, x, linsys_op, (A,), b, s, tol, maxiter; kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 
@@ -228,8 +226,6 @@ $msg
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when `log` is set version.
-
 # Arguments
 
 $arg
@@ -254,8 +250,6 @@ $arg
 
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only when `log` is set)
 
 # Output
 

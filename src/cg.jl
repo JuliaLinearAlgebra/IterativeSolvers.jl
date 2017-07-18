@@ -5,18 +5,15 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; kwargs...)
 function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Integer = min(20, size(A, 1)),
-    plot = false,
     log::Bool = false,
     Pl = Identity(),
     kwargs...
 )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter + 1)
     cg_method!(history, x, A, b, Pl; tol = tol, log = log, maxiter = maxiter, kwargs...)
     log && shrink!(history)
-    plot && showplot(history)
     log ? (x, history) : x
 end
 
@@ -193,7 +190,6 @@ $msg
 
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
-The `plot` attribute can only be used when `log` is set version.
 
 # Arguments
 
@@ -215,8 +211,6 @@ $arg
 
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only when `log` is set)
 
 # Output
 

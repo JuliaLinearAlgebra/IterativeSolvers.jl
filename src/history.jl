@@ -265,7 +265,6 @@ plotable(::Any)::Bool = false
     showplot(ch)
 
 Print all plotable information inside `ConvergenceHistory` `ch`.
-*Note:* This is what is called when the `plot` keyword is set.
 """
 function showplot(ch::ConvergenceHistory)
     candidates = collect(values(ch.data))

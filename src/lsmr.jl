@@ -9,10 +9,9 @@ using Base.LinAlg
 lsmr(A, b; kwargs...) = lsmr!(zerox(A, b), A, b; kwargs...)
 
 function lsmr!(x, A, b;
-    plot::Bool=false, maxiter::Integer = max(size(A,1), size(A,2)),
+    maxiter::Integer = max(size(A,1), size(A,2)),
     log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     reserve!(history,[:anorm,:rnorm,:cnorm],maxiter)
 
@@ -22,8 +21,7 @@ function lsmr!(x, A, b;
     copy!(btmp, b)
     v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
     lsmr_method!(history, x, A, btmp, v, h, hbar; maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 
@@ -273,8 +271,6 @@ but has better numerical properties, especially if A is ill-conditioned.
 If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
 
-The `plot` attribute can only be used when `log` is set version.
-
 # Arguments
 
 $arg
@@ -306,8 +302,6 @@ may then be excessive.
 
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only when `log` is set)
 
 # Output
 

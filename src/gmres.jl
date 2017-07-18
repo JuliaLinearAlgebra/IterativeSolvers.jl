@@ -8,17 +8,14 @@ function gmres!(x, A, b;
   tol = sqrt(eps(real(eltype(b)))),
   restart::Int = min(20, length(b)),
   maxiter::Int = restart,
-  plot::Bool = false,
   log::Bool = false,
   kwargs...
 )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial = !log, restart = restart)
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter)
     gmres_method!(history, x, A, b; Pl = Pl, Pr = Pr, tol = tol, maxiter = maxiter, restart = restart, log = log, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 

@@ -10,15 +10,13 @@ jacobi(A::AbstractMatrix, b; kwargs...) = jacobi!(zerox(A, b), A, b; kwargs...)
 
 function jacobi!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    plot::Bool=false, log::Bool=false, kwargs...
+    log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     jacobi_method!(history, x, A, b; tol=tol, maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 
@@ -66,15 +64,13 @@ gauss_seidel(A::AbstractMatrix, b; kwargs...) =
 
 function gauss_seidel!(x, A::AbstractMatrix, b;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    plot::Bool=false, log::Bool=false, kwargs...
+    log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     gauss_seidel_method!(history, x, A, b; tol=tol, maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 
@@ -125,15 +121,13 @@ sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
 
 function sor!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    plot::Bool=false, log::Bool=false, kwargs...
+    log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     sor_method!(history, x, A, b, ω; tol=tol, maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 
@@ -187,15 +181,13 @@ ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
 
 function ssor!(x, A::AbstractMatrix, b, ω::Real;
     tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
-    plot::Bool=false, log::Bool=false, kwargs...
+    log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
     ssor_method!(history, x, A, b, ω; tol=tol, maxiter=maxiter, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (x, history) : x
 end
 
@@ -314,8 +306,7 @@ $call
 $msg
 
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
-If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-The `plot` attribute can only be used when `log` is set version.
+If `log` is set to `true` is given, method will output a tuple `x, ch`.
 
 # Arguments
 
@@ -333,8 +324,6 @@ $arg
 
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
-
-`plot::Bool = false`: plot data. (Only when `log` is set)
 
 # Output
 

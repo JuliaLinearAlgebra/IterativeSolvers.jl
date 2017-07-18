@@ -88,8 +88,6 @@ bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
 If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `X, L`.
 
-The `plot` attribute can only be used when `log` is set version.
-
 # Arguments
 
 `A` : The matrix or matrix-like object whose singular values are desired.
@@ -133,8 +131,6 @@ from the Krylov subspace being searched in the next macroiteration.
 `log::Bool = false`: output an extra element of type `ConvergenceHistory`
 containing extra information of the method execution.
 
-`plot::Bool = false`: plot data. (Only when `log` is set)
-
 # Output
 
 **if `log` is `false`**
@@ -165,10 +161,9 @@ otherwise returns an `SVD` object with the desired singular vectors filled in.
 
 """
 function svdl(A;
-    nsv::Int=6, k::Int=2nsv, plot::Bool=false, tol::Real=√eps(),
+    nsv::Int=6, k::Int=2nsv, tol::Real=√eps(),
     maxiter::Int=minimum(size(A)), method::Symbol=:ritz, log::Bool=false, kwargs...
     )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(BitArray, history,:conv, maxiter)
@@ -177,8 +172,7 @@ function svdl(A;
     reserve!(Bs_type, history,:Bs, maxiter)
     reserve!(history,:betas, maxiter)
     X, L = svdl_method!(history, A, nsv; k=k, tol=tol, maxiter=maxiter, method=method, kwargs...)
-    (plot || log) && shrink!(history)
-    plot && showplot(history)
+    log && shrink!(history)
     log ? (X, L, history) : (X, L)
 end
 
@@ -189,7 +183,7 @@ end
 function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::Int=2l,
     j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
-    verbose::Bool=false, method::Symbol=:ritz, doplot::Bool=false, vecs=:none, dolock::Bool=false)
+    verbose::Bool=false, method::Symbol=:ritz, vecs=:none, dolock::Bool=false)
 
     T0 = time_ns()
     @assert k>1
