@@ -4,7 +4,7 @@ import Base.LinAlg: BLAS.axpy!, givensAlgorithm
 import Base: start, next, done
 
 """
-MINRES is full GMRES for Hermetian matrices, finding
+MINRES is full GMRES for Hermitian matrices, finding
 xₖ := x₀ + Vₖyₖ, where Vₖ is an orthonormal basis for
 the Krylov subspace K(A, b - Ax₀). Since
 |rₖ| = |b - Axₖ| = |r₀ - Vₖ₊₁Hₖyₖ| = | |r₀|e₁ - Hₖyₖ|, we solve
@@ -17,10 +17,12 @@ is the placement of the brackets. MINRES computes Wₖ = Vₖ inv(Rₖ) via 3-te
 recurrences using only the last column of R, and computes last 
 two terms of Qₖ'|r₀|e₁ as well.
 The active column of the Hessenberg matrix H is updated in place to form the
-active column of R. 
+active column of R. Note that for Hermitian matrices the H matrix is purely
+real, while for skew-Hermitian matrices its diagonal is purely imaginary.
 """
-type MINRESIterable{matT, vecT, realVecT, realT}
+type MINRESIterable{matT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}
     A::matT
+    skew_hermitian::Bool
     x::vecT
 
     # Krylov basis vectors
@@ -35,17 +37,14 @@ type MINRESIterable{matT, vecT, realVecT, realT}
 
     # Vector of size 4, holding the active column of the Hessenberg matrix
     # rhs is just two active values of the right-hand side.
-    H::realVecT
-    rhs::realVecT
+    H::smallVecT
+    rhs::smallVecT
 
     # Some Givens rotations
-    c_prev::realT
-    s_prev::realT
-    c_curr::realT
-    s_curr::realT
-
-    # The normalization constant of v_prev
-    prev_norm::realT
+    c_prev::rotT
+    s_prev::rotT
+    c_curr::rotT
+    s_curr::rotT
 
     # Bookkeeping
     mv_products::Int
@@ -56,8 +55,14 @@ end
 
 minres_iterable(A, b; kwargs...) = minres_iterable!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
-function minres_iterable!(x, A, b; initially_zero = false, tol = sqrt(eps(real(eltype(b)))), maxiter = size(A, 1))
-    T = real(eltype(b))
+function minres_iterable!(x, A, b; 
+    initially_zero::Bool = false, 
+    skew_hermitian::Bool = false, 
+    tol = sqrt(eps(real(eltype(b)))), 
+    maxiter = size(A, 1)
+)
+    T = eltype(b)
+    HessenbergT = skew_hermitian ? T : real(T)
 
     v_prev = similar(b)
     v_curr = copy(b)
@@ -76,31 +81,27 @@ function minres_iterable!(x, A, b; initially_zero = false, tol = sqrt(eps(real(e
         mv_products = 1
     end
 
-    # Last active column of the Hessenberg matrix
-    H = zeros(T, 4)
-
     resnorm = norm(v_curr)
     reltol = resnorm * tol
 
-    # Last two entries of the right-hand side
-    rhs = [resnorm; zero(T)]
+    # Last active column of the Hessenberg matrix 
+    # and last two entries of the right-hand side
+    H = zeros(HessenbergT, 4)
+    rhs = [resnorm; zero(HessenbergT)]
 
     # Normalize the first Krylov basis vector
     scale!(v_curr, inv(resnorm))
-
-    # The normalization constant of v_prev (initially zero)
-    prev_norm = zero(T)
 
     # Givens rotations
     c_prev, s_prev = one(T), zero(T)
     c_curr, s_curr = one(T), zero(T)
 
     MINRESIterable(
-        A, x,
+        A, skew_hermitian, x,
         v_prev, v_curr, v_next,
         w_prev, w_curr, w_next,
         H, rhs,
-        c_prev, s_prev, c_curr, s_curr, prev_norm,
+        c_prev, s_prev, c_curr, s_curr,
         mv_products, maxiter, reltol, resnorm
     )
 end
@@ -112,19 +113,19 @@ start(::MINRESIterable) = 1
 done(m::MINRESIterable, iteration::Int) = iteration > m.maxiter || converged(m)
 
 function next(m::MINRESIterable, iteration::Int)
-    # v_next = A * v_curr - prev_norm * v_prev
+    # v_next = A * v_curr - H[2] * v_prev
     A_mul_B!(m.v_next, m.A, m.v_curr)
 
-    iteration > 1 && axpy!(-m.prev_norm, m.v_prev, m.v_next)
+    iteration > 1 && axpy!(-m.H[2], m.v_prev, m.v_next)
     
-    # Orthogonalize w.r.t. v_curr. The tridiagonal Hessenberg
-    # matrix is real, so let's enforce real arithmetic
-    m.H[3] = real(dot(m.v_curr, m.v_next))
-    axpy!(-m.H[3], m.v_curr, m.v_next)
+    # Orthogonalize w.r.t. v_curr
+    proj = dot(m.v_curr, m.v_next)
+    m.H[3] = m.skew_hermitian ? proj : real(proj)
+    axpy!(-proj, m.v_curr, m.v_next)
 
     # Normalize
-    m.H[4] = m.prev_norm = norm(m.v_next)
-    scale!(m.v_next, inv(m.prev_norm))
+    m.H[4] = norm(m.v_next)
+    scale!(m.v_next, inv(m.H[4]))
 
     # Rotation on H[1] and H[2]. Note that H[1] = 0 initially
     if iteration > 2
@@ -134,7 +135,7 @@ function next(m::MINRESIterable, iteration::Int)
 
     # Rotation on H[2] and H[3]
     if iteration > 1
-        tmp = -m.s_curr * m.H[2] + m.c_curr * m.H[3]
+        tmp = -conj(m.s_curr) * m.H[2] + m.c_curr * m.H[3]
         m.H[2] = m.c_curr * m.H[2] + m.s_curr * m.H[3]
         m.H[3] = tmp
     end
@@ -143,7 +144,7 @@ function next(m::MINRESIterable, iteration::Int)
     c, s, m.H[3] = givensAlgorithm(m.H[3], m.H[4])
 
     # Apply as well to the right-hand side
-    m.rhs[2] = -s * m.rhs[1]
+    m.rhs[2] = -conj(s) * m.rhs[1]
     m.rhs[1] = c * m.rhs[1]
 
     # Update W = V * inv(R). Two axpy's can maybe be one MV.
@@ -162,7 +163,7 @@ function next(m::MINRESIterable, iteration::Int)
     m.rhs[1] = m.rhs[2]
 
     # Due to symmetry of the tri-diagonal matrix
-    m.H[2] = m.prev_norm
+    m.H[2] = m.skew_hermitian ? -m.H[4] : m.H[4]
 
     # The approximate residual is cheaply available
     m.resnorm = abs(m.rhs[2])
@@ -171,17 +172,23 @@ function next(m::MINRESIterable, iteration::Int)
 end
 
 function minres!(x, A, b; 
+    skew_hermitian::Bool = false,
     verbose::Bool = false,
     log::Bool = false,
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = min(30, size(A, 1)),
-    kwargs...
+    initially_zero::Bool = false
 )
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter)
     
-    iterable = minres_iterable!(x, A, b; tol = tol, maxiter = maxiter, kwargs...)
+    iterable = minres_iterable!(x, A, b; 
+        skew_hermitian = skew_hermitian, 
+        tol = tol, 
+        maxiter = maxiter,
+        initially_zero = initially_zero
+    )
     
     if log
         history.mvps = iterable.mv_products
@@ -229,7 +236,7 @@ for (call, msg, arg) in (doc_version, doc!_version) #Start
 """
 $call
 
-Solve A*x = b for Hermetian matrices A using MINRES. The method is mathematically 
+Solve A*x = b for (skew-)Hermitian matrices A using MINRES. The method is mathematically 
 equivalent to unrestarted GMRES, but exploits symmetry of A, resulting in short
 recurrences requiring only 6 vectors of storage. MINRES might be slightly less
 stable than full GMRES.

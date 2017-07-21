@@ -3,25 +3,43 @@ using FactCheck
 using Base.Test
 using LinearMaps
 
-srand(1234321)
+srand(123)
 
 facts("MINRES") do
 
-n = 15
+function hermitian_problem(T, n)
+    B = rand(T, n, n) + n * eye(n)
+    A = B + B'
+    x = ones(T, n)
+    b = B * x
+    A, x, b
+end
+
+function skew_hermitian_problem(T, n)
+    B = rand(T, n, n) + n * eye(n)
+    A = B - B'
+    x = ones(T, n)
+    b = A * x
+    A, x, b
+end
 
 for T in (Float32, Float64, Complex64, Complex128)
-    context("Matrix{$T}") do
-        # Some well-conditioned symmetric matrix for testing
-        A = let 
-            B = rand(T, n, n) + n * eye(n)
-            B + B'
-        end
+    n = 15
 
-        x = ones(T, n)
-        b = A * x
+    context("Hermitian Matrix{$T}") do
+        A, x, b = hermitian_problem(T, n)
         tol = sqrt(eps(real(T)))
 
-        x_approx, hist = minres(A, b, maxiter = n + 1, tol = tol, log = true)
+        x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
+
+        @fact norm(b - A * x_approx) / norm(b) --> less_than_or_equal(tol)
+        @fact hist.isconverged --> true
+    end
+
+    context("Skew-Hermitian Matrix{$T}") do
+        A, x, b = skew_hermitian_problem(T, n)
+        tol = sqrt(eps(real(T)))
+        x_approx, hist = minres(A, b, skew_hermitian = true, maxiter = 10n, tol = tol, log = true)
 
         @fact norm(b - A * x_approx) / norm(b) --> less_than_or_equal(tol)
         @fact hist.isconverged --> true
@@ -37,7 +55,7 @@ for T in (Float32, Float64, Complex64, Complex128)
         b = A * x
         tol = sqrt(eps(real(T)))
 
-        x_approx, hist = minres(A, b, maxiter = n + 1, tol = tol, log = true)
+        x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
 
         @fact norm(b - A * x_approx) / norm(b) --> less_than_or_equal(tol)
         @fact hist.isconverged --> true
