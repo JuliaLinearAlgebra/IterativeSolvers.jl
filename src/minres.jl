@@ -14,10 +14,12 @@ easily obtained with Givens rotations. The least-squares problem is
 solved as Hₖ'Hₖyₖ = Hₖ'|r₀|e₁ => yₖ = inv(Rₖ) Qₖ'|r₀|e₁, so
 xₖ := x₀ + [Vₖ inv(Rₖ)] [Qₖ'|r₀|e₁]. Now the main difference with GMRES
 is the placement of the brackets. MINRES computes Wₖ = Vₖ inv(Rₖ) via 3-term
-recurrences, and computes last two terms of Qₖ'|r₀|e₁ as well. That is
-enough to update xₖ each iteration.
+recurrences using only the last column of R, and computes last 
+two terms of Qₖ'|r₀|e₁ as well.
+The active column of the Hessenberg matrix H is updated in place to form the
+active column of R. 
 """
-type MINRESIterable{matT, vecT, realT}
+type MINRESIterable{matT, vecT, realVecT, realT}
     A::matT
     x::vecT
 
@@ -33,8 +35,8 @@ type MINRESIterable{matT, vecT, realT}
 
     # Vector of size 4, holding the active column of the Hessenberg matrix
     # rhs is just two active values of the right-hand side.
-    R::vecT
-    rhs::vecT
+    H::realVecT
+    rhs::realVecT
 
     # Some Givens rotations
     c_prev::realT
@@ -46,12 +48,13 @@ type MINRESIterable{matT, vecT, realT}
     prev_norm::realT
 
     # Bookkeeping
+    mv_products::Int
     maxiter::Int
     tolerance::realT
     resnorm::realT
 end
 
-minres_iterable(A, b; kwargs...) = minres_iterable!(zeros(b), A, b; initially_zero = true, kwargs...)
+minres_iterable(A, b; kwargs...) = minres_iterable!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
 function minres_iterable!(x, A, b; initially_zero = false, tol = sqrt(eps(real(eltype(b)))), maxiter = size(A, 1))
     T = real(eltype(b))
@@ -63,16 +66,18 @@ function minres_iterable!(x, A, b; initially_zero = false, tol = sqrt(eps(real(e
     w_curr = similar(b)
     w_next = similar(b)
 
+    mv_products = 0
+
     # For nonzero x's, we must do an MV for the initial residual vec
     if !initially_zero
         # Use v_next to store Ax; v_next will soon be overwritten.
         A_mul_B!(v_next, A, x)
         axpy!(-one(T), v_next, v_curr)
+        mv_products = 1
     end
 
-    # Last column of the R matrix: QR = H where H is 
-    # the tridiagonal Lanczos matrix.
-    R = zeros(T, 4)
+    # Last active column of the Hessenberg matrix
+    H = zeros(T, 4)
 
     resnorm = norm(v_curr)
     reltol = resnorm * tol
@@ -94,9 +99,9 @@ function minres_iterable!(x, A, b; initially_zero = false, tol = sqrt(eps(real(e
         A, x,
         v_prev, v_curr, v_next,
         w_prev, w_curr, w_next,
-        R, rhs,
+        H, rhs,
         c_prev, s_prev, c_curr, s_curr, prev_norm,
-        maxiter, reltol, resnorm
+        mv_products, maxiter, reltol, resnorm
     )
 end
 
@@ -112,29 +117,30 @@ function next(m::MINRESIterable, iteration::Int)
 
     iteration > 1 && axpy!(-m.prev_norm, m.v_prev, m.v_next)
     
-    # Orthogonalize w.r.t. v_curr
-    m.R[3] = dot(m.v_curr, m.v_next)
-    axpy!(-m.R[3], m.v_curr, m.v_next)
+    # Orthogonalize w.r.t. v_curr. The tridiagonal Hessenberg
+    # matrix is real, so let's enforce real arithmetic
+    m.H[3] = real(dot(m.v_curr, m.v_next))
+    axpy!(-m.H[3], m.v_curr, m.v_next)
 
     # Normalize
-    m.R[4] = m.prev_norm = norm(m.v_next)
+    m.H[4] = m.prev_norm = norm(m.v_next)
     scale!(m.v_next, inv(m.prev_norm))
 
-    # Rotation on R[1] and R[2]. Note that R[1] = 0 initially
+    # Rotation on H[1] and H[2]. Note that H[1] = 0 initially
     if iteration > 2
-        m.R[1] = m.s_prev * m.R[2]
-        m.R[2] = m.c_prev * m.R[2]
+        m.H[1] = m.s_prev * m.H[2]
+        m.H[2] = m.c_prev * m.H[2]
     end
 
-    # Rotation on R[2] and R[3]
+    # Rotation on H[2] and H[3]
     if iteration > 1
-        tmp = -m.s_curr * m.R[2] + m.c_curr * m.R[3]
-        m.R[2] = m.c_curr * m.R[2] + m.s_curr * m.R[3]
-        m.R[3] = tmp
+        tmp = -m.s_curr * m.H[2] + m.c_curr * m.H[3]
+        m.H[2] = m.c_curr * m.H[2] + m.s_curr * m.H[3]
+        m.H[3] = tmp
     end
 
     # Next rotation
-    c, s, m.R[3] = givensAlgorithm(m.R[3], m.R[4])
+    c, s, m.H[3] = givensAlgorithm(m.H[3], m.H[4])
 
     # Apply as well to the right-hand side
     m.rhs[2] = -s * m.rhs[1]
@@ -142,9 +148,9 @@ function next(m::MINRESIterable, iteration::Int)
 
     # Update W = V * inv(R). Two axpy's can maybe be one MV.
     copy!(m.w_next, m.v_curr)
-    iteration > 1 && axpy!(-m.R[2], m.w_curr, m.w_next)
-    iteration > 2 && axpy!(-m.R[1], m.w_prev, m.w_next)
-    scale!(m.w_next, inv(m.R[3]))
+    iteration > 1 && axpy!(-m.H[2], m.w_curr, m.w_next)
+    iteration > 2 && axpy!(-m.H[1], m.w_prev, m.w_next)
+    scale!(m.w_next, inv(m.H[3]))
 
     # Update solution x
     axpy!(m.rhs[1], m.w_next, m.x)
@@ -156,7 +162,7 @@ function next(m::MINRESIterable, iteration::Int)
     m.rhs[1] = m.rhs[2]
 
     # Due to symmetry of the tri-diagonal matrix
-    m.R[2] = m.prev_norm
+    m.H[2] = m.prev_norm
 
     # The approximate residual is cheaply available
     m.resnorm = abs(m.rhs[2])
@@ -164,12 +170,36 @@ function next(m::MINRESIterable, iteration::Int)
     m.resnorm, iteration + 1
 end
 
-function minres!(x, A, b; kwargs...)
-    iterable = minres_iterable!(x, A, b; kwargs...)
+function minres!(x, A, b; 
+    verbose::Bool = false,
+    log::Bool = false,
+    tol = sqrt(eps(real(eltype(b)))),
+    maxiter::Int = min(20, size(A, 1)),
+    kwargs...
+)
+    history = ConvergenceHistory(partial = !log)
+    history[:tol] = tol
+    log && reserve!(history, :resnorm, maxiter)
+    
+    iterable = minres_iterable!(x, A, b; tol = tol, maxiter = maxiter, kwargs...)
+    
+    if log
+        history.mvps = iterable.mv_products
+    end
 
-    for resnorm = iterable end
-
-    iterable.x, iterable.resnorm
+    for (iteration, resnorm) = enumerate(iterable)
+        if log
+            nextiter!(history, mvps = 1)
+            push!(history, :resnorm, resnorm)
+        end
+        verbose && @printf("%3d\t%1.2e\n", iteration, resnorm)
+    end
+    
+    verbose && println()
+    log && setconv(history, converged(iterable))
+    log && shrink!(history)
+    
+    log ? (iterable.x, history) : iterable.x
 end
 
-minres(A, b; kwargs...) = minres!(zeros(b), A, b; initially_zero = true, kwargs...)
+minres(A, b; kwargs...) = minres!(zerox(A, b), A, b; initially_zero = true, kwargs...)
