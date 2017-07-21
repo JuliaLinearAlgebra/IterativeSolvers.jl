@@ -174,7 +174,7 @@ function minres!(x, A, b;
     verbose::Bool = false,
     log::Bool = false,
     tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Int = min(20, size(A, 1)),
+    maxiter::Int = min(30, size(A, 1)),
     kwargs...
 )
     history = ConvergenceHistory(partial = !log)
@@ -203,3 +203,73 @@ function minres!(x, A, b;
 end
 
 minres(A, b; kwargs...) = minres!(zerox(A, b), A, b; initially_zero = true, kwargs...)
+
+#################
+# Documentation #
+#################
+
+let
+doc_call = "minres(A, b)"
+doc!_call = "minres!(x, A, b)"
+
+doc_msg = "Using initial guess zeros(b)."
+doc!_msg = "Overwrites `x`."
+
+doc_arg = ""
+doc!_arg = """`x`: initial guess, overwrite final approximation."""
+
+doc_version = (doc_call, doc_msg, doc_arg)
+doc!_version = (doc!_call, doc!_msg, doc!_arg)
+
+docstring = String[]
+
+#Build docs
+for (call, msg, arg) in (doc_version, doc!_version) #Start
+    push!(docstring, 
+"""
+$call
+
+Solve A*x = b for Hermetian matrices A using MINRES. The method is mathematically 
+equivalent to unrestarted GMRES, but exploits symmetry of A, resulting in short
+recurrences requiring only 6 vectors of storage. MINRES might be slightly less
+stable than full GMRES.
+
+$msg
+
+# Arguments
+
+$arg
+
+`A`: linear operator.
+
+`b`: right hand side (vector).
+
+## Keywords
+
+`tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition 
+`|r_k| / |r_0| ≤ tol`. Note that the residual is computed only approximately.
+
+`maxiter::Int = min(30, size(A, 1))`: maximum number of iterations.
+
+`verbose::Bool = false` output during the iterations
+
+`log::Bool = false` enables logging, see **Output**.
+
+# Output
+
+**if `log` is `false`**
+
+`x`: approximated solution.
+
+**if `log` is `true`**
+
+`x`: approximated solution.
+
+`ch`: convergence history.
+"""
+    )
+end
+
+@doc docstring[1] -> minres
+@doc docstring[2] -> minres!
+end
