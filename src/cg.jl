@@ -1,161 +1,178 @@
-export cg, cg!
+import Base: start, next, done
 
-cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; kwargs...)
+export cg, cg!, CGIterable, PCGIterable, cg_iterator, cg_iterator!
+
+type CGIterable{matT, vecT <: AbstractVector, numT <: Real}
+    A::matT
+    x::vecT
+    b::vecT
+    r::vecT
+    c::vecT
+    u::vecT
+    reltol::numT
+    residual::numT
+    prev_residual::numT
+    maxiter::Int
+    mv_products::Int
+end
+
+type PCGIterable{precT, matT, vecT <: AbstractVector, numT <: Real, paramT <: Number}
+    Pl::precT
+    A::matT
+    x::vecT
+    b::vecT
+    r::vecT
+    c::vecT
+    u::vecT
+    reltol::numT
+    residual::numT
+    ρ::paramT
+    maxiter::Int
+    mv_products::Int
+end
+
+@inline converged(it::Union{CGIterable, PCGIterable}) = it.residual ≤ it.reltol
+
+@inline start(it::Union{CGIterable, PCGIterable}) = 0
+
+@inline done(it::Union{CGIterable, PCGIterable}, iteration::Int) = iteration ≥ it.maxiter || converged(it)
+
+
+###############
+# Ordinary CG #
+###############
+
+function next(it::CGIterable, iteration::Int)
+    # u := r + βu (almost an axpy)
+    β = it.residual^2 / it.prev_residual^2
+    @blas! it.u *= β
+    @blas! it.u += one(eltype(it.b)) * it.r
+
+    # c = A * u
+    A_mul_B!(it.c, it.A, it.u)
+    α = it.residual^2 / dot(it.u, it.c)
+
+    # Improve solution and residual
+    @blas! it.x += α * it.u
+    @blas! it.r -= α * it.c
+
+    it.prev_residual = it.residual
+    it.residual = norm(it.r)
+
+    # Return the residual at item and iteration number as state
+    it.residual, iteration + 1
+end
+
+#####################
+# Preconditioned CG #
+#####################
+
+function next(it::PCGIterable, iteration::Int)
+    solve!(it.c, it.Pl, it.r)
+
+    ρ_prev = it.ρ
+    it.ρ = dot(it.c, it.r)
+    
+    # u := c + βu (almost an axpy)
+    β = it.ρ / ρ_prev
+    @blas! it.u *= β
+    @blas! it.u += one(eltype(it.b)) * it.c
+
+    # c = A * u
+    A_mul_B!(it.c, it.A, it.u)
+    α = it.ρ / dot(it.u, it.c)
+
+    # Improve solution and residual
+    @blas! it.x += α * it.u
+    @blas! it.r -= α * it.c
+
+    it.residual = norm(it.r)
+
+    # Return the residual at item and iteration number as state
+    it.residual, iteration + 1
+end
+
+# Utility functions
+
+@inline cg_iterator(A, b, Pl = Identity(); kwargs...) = cg_iterator!(zerox(A, b), A, b, Pl; initially_zero = true, kwargs...)
+
+function cg_iterator!(x, A, b, Pl = Identity();
+    tol = sqrt(eps(real(eltype(b)))),
+    maxiter = min(20, length(b)),
+    initially_zero::Bool = false
+)
+    u = zeros(x)
+    r = copy(b)
+
+    # Compute r with an MV-product or not.
+    if initially_zero
+        mv_products = 0
+        c = similar(x)
+        residual = norm(b)
+        reltol = residual * tol # Save one dot product
+    else
+        mv_products = 1
+        c = A * x
+        @blas! r -= one(eltype(x)) * c
+        residual = norm(r)
+        reltol = norm(b) * tol
+    end
+
+    # Stopping criterion
+    ρ = one(residual)
+
+    # Return the iterable
+    if isa(Pl, Identity)
+        return CGIterable(A, x, b,
+            r, c, u,
+            reltol, residual, ρ,
+            maxiter, mv_products
+        )
+    else
+        return PCGIterable(Pl, A, x, b,
+            r, c, u,
+            reltol, residual, ρ,
+            maxiter, mv_products
+        )
+    end
+end
+
+cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
 function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Integer = min(20, size(A, 1)),
+    plot = false,
     log::Bool = false,
+    verbose::Bool = false,
     Pl = Identity(),
     kwargs...
 )
+    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter + 1)
-    cg_method!(history, x, A, b, Pl; tol = tol, log = log, maxiter = maxiter, kwargs...)
+
+    # Actually perform CG
+    iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, kwargs...)
+    if log
+        history.mvps = iterable.mv_products
+    end
+    for (iteration, item) = enumerate(iterable)
+        if log
+            nextiter!(history, mvps = 1)
+            push!(history, :resnorm, iterable.residual)
+        end
+        verbose && @printf("%3d\t%1.2e\n", iteration, iterable.residual)
+    end
+
+    verbose && println()
+    log && setconv(history, converged(iterable))
     log && shrink!(history)
-    log ? (x, history) : x
+    plot && showplot(history)
+
+    log ? (iterable.x, history) : iterable.x
 end
-
-function cg_method!(history::ConvergenceHistory, x, A, b, Pl;
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Integer = min(20, size(A, 1)),
-    verbose::Bool = false,
-    log = false
-)
-    # Preconditioned CG
-    T = eltype(b)
-    n = size(A, 1)
-
-    # Initial residual vector
-    r = copy(b)
-    c = A * x
-    @blas! r -= one(T) * c
-    u = zeros(T, n)
-    ρ = one(T)
-
-    if log
-        history.mvps += 1
-    end
-    
-    iter = 1
-
-    # Here you could save one inner product if norm(r) is used rather than norm(b)
-    reltol = norm(b) * tol
-    last_residual = zero(T)
-
-    while true
-
-        last_residual = norm(r)
-
-        verbose && @printf("%3d\t%1.2e\n", iter, last_residual)
-
-        if last_residual ≤ reltol || iter > maxiter
-            break
-        end
-
-        # Log progress        
-        if log
-            nextiter!(history, mvps = 1)
-            push!(history, :resnorm, last_residual)
-        end
-
-        # Preconditioner: c = Pl \ r
-        solve!(c, Pl, r)
-
-        ρ_prev = ρ
-        ρ = dot(c, r)
-        β = ρ / ρ_prev
-
-        # u := c + βu (almost an axpy)
-        @blas! u *= β
-        @blas! u += one(T) * c
-
-        # c = A * u
-        A_mul_B!(c, A, u)
-        α = ρ / dot(u, c)
-    
-        # Improve solution and residual
-        @blas! x += α * u
-        @blas! r -= α * c
-
-        iter += 1
-    end
-
-    verbose && @printf("\n")
-    log && setconv(history, last_residual < reltol)
-
-    x
-end
-
-function cg_method!(history::ConvergenceHistory, x, A, b, Pl::Identity;
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Integer = min(20, size(A, 1)),
-    verbose::Bool = false,
-    log = false
-)
-    # Unpreconditioned CG
-    T = eltype(b)
-    n = size(A, 1)
-
-    # Initial residual vector
-    r = copy(b)
-    c = A * x
-    @blas! r -= one(T) * c
-    u = zeros(T, n)
-    ρ = one(T)
-
-    if log
-        history.mvps += 1
-    end
-
-    iter = 1
-
-    reltol = norm(b) * tol
-    last_residual = zero(T)
-
-    while true
-
-        ρ_prev = ρ
-        ρ = dot(r, r)
-        β = ρ / ρ_prev
-
-        last_residual = sqrt(ρ)
-
-        # Log progress
-        if log
-            nextiter!(history, mvps = 1)
-            push!(history, :resnorm, last_residual)
-        end
-
-        verbose && @printf("%3d\t%1.2e\n", iter, last_residual)
-
-        # Stopping condition
-        if last_residual ≤ reltol || iter > maxiter
-            break
-        end
-
-        # u := r + βu (almost an axpy)
-        @blas! u *= β
-        @blas! u += one(T) * r
-
-        # c = A * u
-        A_mul_B!(c, A, u)
-        α = ρ / dot(u, c)
-    
-        # Improve solution and residual
-        @blas! x += α * u
-        @blas! r -= α * c
-
-        iter += 1
-    end
-
-    verbose && @printf("\n")
-    log && setconv(history, last_residual < reltol)
-
-    x
-end
-
 
 #################
 # Documentation #

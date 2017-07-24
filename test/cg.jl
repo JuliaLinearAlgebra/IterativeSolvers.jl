@@ -43,6 +43,7 @@ context("Sparse Laplacian") do
     L = tril(A)
     D = diag(A)
     U = triu(A)
+
     JAC(x) = D .\ x
     SGS(x) = L \ (D .* (U \ x))
 
@@ -72,7 +73,7 @@ context("Sparse Laplacian") do
     context("function with specified starting guess") do
         tol = 1e-4
         x0 = randn(size(rhs))
-        xCG, hCG = cg!(copy(x0), Af, rhs; Pl=identity, tol=tol, maxiter=100, log=true)
+        xCG, hCG = cg!(copy(x0), Af, rhs; tol=tol, maxiter=100, log=true)
         xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=JAC, tol=tol, maxiter=100, log=true)
         xSGS, hSGS = cg!(copy(x0), Af, rhs; Pl=SGS, tol=tol, maxiter=100, log=true)
         @fact norm(A * xCG - rhs) --> less_than_or_equal(tol)
