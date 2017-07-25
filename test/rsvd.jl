@@ -1,62 +1,60 @@
 using IterativeSolvers
-using FactCheck
+using Base.Test
+
+@testset "rsvd" begin
 
 srand(1234321)
 
-for rsvd in [IterativeSolvers.rsvdfact]
-    facts(rsvd) do
+@testset "Small wide rectangular" begin
+    A = [1. 2 3 4; 5 6 7 8]
+    S1 = svdfact(A)
+    S2 = rsvdfact(A, 2, 0)
 
-        context("Small wide rectangular") do
-            A = [1. 2 3 4; 5 6 7 8]
-            S1 = svdfact(A)
-            S2 = rsvd(A, 2, 0)
+    @test vecnorm(abs.(S1[:U]) - abs.(S2[:U])) ≤ √(eps())
+    @test vecnorm(abs.(S1[:Vt]) - abs.(S2[:Vt])) ≤ √(eps())
+    @test norm(S1[:S] - S2[:S]) ≤ √(eps())
+end
 
-            @fact vecnorm(abs(S1[:U]) - abs(S2[:U])) --> less_than( √(eps()))
-            @fact vecnorm(abs(S1[:Vt]) - abs(S2[:Vt])) --> less_than(√(eps()))
-            @fact norm(S1[:S] - S2[:S]) --> less_than(√(eps()))
-        end
+@testset "Small tall rectangular" begin
+    A = [1. 2; 3 4; 5 6; 7 8]
+    S1 = svdfact(A)
+    S2 = rsvdfact(A, 2, 0)
 
-        context("Small tall rectangular") do
-            A = [1. 2; 3 4; 5 6; 7 8]
-            S1 = svdfact(A)
-            S2 = rsvd(A, 2, 0)
+    @test vecnorm(abs.(S1[:U]) - abs.(S2[:U])) ≤ √(eps())
+    @test vecnorm(abs.(S1[:Vt]) - abs.(S2[:Vt])) ≤ √(eps())
+    @test norm(S1[:S] - S2[:S]) ≤ √(eps())
+end
 
-            @fact vecnorm(abs(S1[:U]) - abs(S2[:U])) --> less_than(√(eps()))
-            @fact vecnorm(abs(S1[:Vt]) - abs(S2[:Vt])) --> less_than(√(eps()))
-            @fact norm(S1[:S] - S2[:S]) --> less_than(√(eps()))
-        end
+@testset "Small square" begin
+    A = [1. 2 3; 4 5 6; 7 8 9]
+    S1 = svdfact(A)
+    S2 = rsvdfact(A, 3, 0)
 
-        context("Small square") do
-            A = [1. 2 3; 4 5 6; 7 8 9]
-            S1 = svdfact(A)
-            S2 = rsvd(A, 3, 0)
+    @test vecnorm(abs.(S1[:U]) - abs.(S2[:U])) ≤ √(eps())
+    @test vecnorm(abs.(S1[:Vt]) - abs.(S2[:Vt])) ≤ √(eps())
+    @test norm(S1[:S] - S2[:S]) ≤ √(eps())
+end
 
-            @fact vecnorm(abs(S1[:U]) - abs(S2[:U]))  --> less_than(√(eps()))
-            @fact vecnorm(abs(S1[:Vt]) - abs(S2[:Vt]))  --> less_than(√(eps()))
-            @fact norm(S1[:S] - S2[:S])  --> less_than(√(eps()))
-        end
-
-        context("Low rank") do #Issue #42
-            n = 10
-            r = 2
-            A = randn(n, r)*randn(r, n)
-            S = svdvals(A)
-            for nvals = 1:r
-                S1= IterativeSolvers.rsvdvals(A, nvals, r-nvals)
-                for i = 1:nvals
-                    @fact abs(S[i] - S1[i]) --> less_than(n^2*r*eps())
-                end
-            end
-        end
-
-        context("rrange_adaptive") do
-            A = [1. 2 3; 4 5 6; 7 8 9]
-            @fact size(IterativeSolvers.rrange_adaptive(A, 3, 1e-3)) --> (3,2)
-        end
-
-        context("rrange") do
-            A = [1. 2 3; 4 5 6; 7 8 9]
-            @fact_throws ArgumentError IterativeSolvers.rrange(A, 20)
+@testset "Low rank" begin #Issue #42
+    n = 10
+    r = 2
+    A = randn(n, r) * randn(r, n)
+    S = svdvals(A)
+    for nvals = 1 : r
+        S1 = IterativeSolvers.rsvdvals(A, nvals, r - nvals)
+        for i = 1 : nvals
+            @test abs(S[i] - S1[i]) ≤ n^2 * r * eps()
         end
     end
+end
+
+@testset "rrange_adaptive" begin
+    A = [1. 2 3; 4 5 6; 7 8 9]
+    @test size(IterativeSolvers.rrange_adaptive(A, 3, 1e-3)) == (3,2)
+end
+
+@testset "rrange" begin
+    A = [1. 2 3; 4 5 6; 7 8 9]
+    @test_throws ArgumentError IterativeSolvers.rrange(A, 20)
+end
 end
