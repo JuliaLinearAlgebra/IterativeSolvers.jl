@@ -28,9 +28,6 @@ include("chebyshev.jl")
 #Simple Eigensolvers
 include("simple_eigensolvers.jl")
 
-#Lanczos methods
-include("lanczos.jl");
-
 #Golub-Kahan-Lanczos singular values computation
 include("svdl.jl")
 
