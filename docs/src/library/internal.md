@@ -34,19 +34,6 @@ IterativeSolvers.setconv
 IterativeSolvers.showplot
 ```
 
-## KrylovSubspace Internals
-
-**`Functions`**
-
-```@docs
-IterativeSolvers.lastvec
-IterativeSolvers.nextvec
-IterativeSolvers.init!
-IterativeSolvers.initrand!(::KrylovSubspace)
-IterativeSolvers.appendunit!
-IterativeSolvers.orthogonalize
-```
-
 ## Other Functions
 
 

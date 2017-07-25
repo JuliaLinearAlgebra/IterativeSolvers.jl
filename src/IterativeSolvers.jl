@@ -11,7 +11,6 @@ using Compat
 
 include("common.jl")
 include("orthogonalize.jl")
-include("krylov.jl")
 include("history.jl")
 
 #Specialized factorizations
