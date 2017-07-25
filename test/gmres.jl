@@ -1,82 +1,55 @@
 using IterativeSolvers
-using FactCheck
 using Base.Test
 using LinearMaps
 
 srand(1234321)
 
 #GMRES
-facts("gmres") do
+@testset "GMRES" begin
 
 n = 10
 
-for T in (Float32, Float64, Complex64, Complex128)
-    context("Matrix{$T}") do
-
-    A = convert(Matrix{T}, randn(n,n))
-    L = convert(Matrix{T}, randn(n,n))
-    R = convert(Matrix{T}, randn(n,n))
-    b = convert(Vector{T}, randn(n))
-    if T <: Complex
-        A += im*convert(Matrix{T}, randn(n,n))
-        L += im*convert(Matrix{T}, randn(n,n))
-        R += im*convert(Matrix{T}, randn(n,n))
-        b += im*convert(Vector{T}, randn(n))
-    end
+@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+    A = rand(T, n, n)
+    b = rand(T, n)
     F = lufact(A)
-    b = b/norm(b)
+    tol = √eps(real(T))
 
     # Test optimality condition: residual should be non-increasing
-    x_gmres, c_gmres = gmres(A, b, log = true, restart = 3, maxiter = 10);
-    @fact all(diff(c_gmres[:resnorm]) .<= 0.0) --> true
+    x, history = gmres(A, b, log = true, restart = 3, maxiter = 10, tol = tol);
+    @test all(diff(history[:resnorm]) .<= 0.0)
 
-    # Disable this test temporarily as there is no in-place A_ldiv_B!() for standard matrices
-    # x_gmres, c_gmres = gmres(A, b, Pl=L, Pr=R, log=true)
-    # @fact c_gmres.isconverged --> true
-    # @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
+    # Left exact preconditioner
+    x, history = gmres(A, b, Pl=F, maxiter=1, restart=1, tol=tol, log=true)
+    @test history.isconverged
+    @test norm(F \ (A * x - b)) / norm(b) ≤ tol
 
-    x_gmres, c_gmres = gmres(A, b, Pl=F, maxiter=1, restart=1, log=true)
-    @fact c_gmres.isconverged --> true
-    @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
-
-    x_gmres, c_gmres = gmres(A, b, Pl=Identity(), Pr=F, maxiter=1, restart=1, log=true)
-    @fact c_gmres.isconverged --> true
-    @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
-    end
+    # Right exact preconditioner
+    x, history = gmres(A, b, Pl=Identity(), Pr=F, maxiter=1, restart=1, tol=tol, log=true)
+    @test history.isconverged
+    @test norm(A * x - b) / norm(b) ≤ tol
 end
 
-for T in (Float64, Complex128)
-    context("SparseMatrixCSC{$T}") do
-    A = sprandn(n,n,0.5)+0.001*eye(T,n,n)
-    L = sprandn(n,n,0.5)
-    R = sprandn(n,n,0.5)
-    b = convert(Vector{T}, randn(n))
-    if T <: Complex
-        A += im*sprandn(n,n,0.5)
-        L += im*sprandn(n,n,0.5)
-        R += im*sprandn(n,n,0.5)
-        b += im*randn(n)
-    end
+@testset "SparseMatrixCSC{$T}" for T in (Float64, Complex128)
+    A = sprand(T, n, n, 0.5) + speye(T, n, n)
+    b = rand(T, n)
     F = lufact(A)
-    b = b / norm(b)
+    tol = √eps(real(T))
 
     # Test optimality condition: residual should be non-increasing
-    x_gmres, c_gmres = gmres(A, b, log = true, restart = 3, maxiter = 10);
-    @fact all(diff(c_gmres[:resnorm]) .<= 0.0) --> true
+    x, history = gmres(A, b, log = true, restart = 3, maxiter = 10);
+    @test all(diff(history[:resnorm]) .<= 0.0)
 
-    # Disable this test temporarily as there is no in-place A_ldiv_B!() for standard matrices
-    # x_gmres, c_gmres= gmres(A, b, Pl=L, Pr=R, log=true)
-    # @fact c_gmres.isconverged --> true
-    # @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
+    # Left exact preconditioner
+    x, history = gmres(A, b, Pl=F, maxiter=1, restart=1, log=true)
+    @test history.isconverged
+    @test norm(F \ (A * x - b)) / norm(b) ≤ tol
 
-    x_gmres, c_gmres = gmres(A, b, Pl=F, maxiter=1, restart=1, log=true)
-    @fact c_gmres.isconverged --> true
-    @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
-
-    x_gmres, c_gmres = gmres(A, b, Pl = Identity(), Pr=F, maxiter=1, restart=1, log=true)
-    @fact c_gmres.isconverged --> true
-    @fact norm(A*x_gmres - b) --> less_than(√eps(real(one(T))))
-    end
+    # Right exact preconditioner
+    x, history = gmres(A, b, Pl = Identity(), Pr=F, maxiter=1, restart=1, log=true)
+    @test history.isconverged
+    @test norm(A * x - b) / norm(b) ≤ tol
+end
 
     context("Linear operator defined as a function") do
         A = LinearMap(cumsum!, 100, 100, Float64; ismutating=true)
