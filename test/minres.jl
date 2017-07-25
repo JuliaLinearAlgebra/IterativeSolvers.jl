@@ -1,11 +1,8 @@
 using IterativeSolvers
-using FactCheck
 using Base.Test
 using LinearMaps
 
-srand(123)
-
-facts("MINRES") do
+@testset "MINRES" begin
 
 function hermitian_problem(T, n)
     B = rand(T, n, n) + n * eye(n)
@@ -23,43 +20,43 @@ function skew_hermitian_problem(T, n)
     A, x, b
 end
 
-for T in (Float32, Float64, Complex64, Complex128)
-    n = 15
+srand(123)
+n = 15
 
-    context("Hermitian Matrix{$T}") do
-        A, x, b = hermitian_problem(T, n)
-        tol = sqrt(eps(real(T)))
 
-        x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
+@testset "Hermitian Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+    A, x, b = hermitian_problem(T, n)
+    tol = sqrt(eps(real(T)))
 
-        @fact norm(b - A * x_approx) / norm(b) --> less_than_or_equal(tol)
-        @fact hist.isconverged --> true
+    x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
+
+    @test norm(b - A * x_approx) / norm(b) ≤ tol
+    @test hist.isconverged
+end
+
+@testset "Skew-Hermitian Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+    A, x, b = skew_hermitian_problem(T, n)
+    tol = sqrt(eps(real(T)))
+    x_approx, hist = minres(A, b, skew_hermitian = true, maxiter = 10n, tol = tol, log = true)
+
+    @test norm(b - A * x_approx) / norm(b) ≤ tol
+    @test hist.isconverged
+end
+
+@testset "SparseMatrixCSC{$T}" for T in (Float32, Float64, Complex64, Complex128)
+    A = let
+        B = sprand(n, n, 2 / n)
+        B + B' + speye(n)
     end
 
-    context("Skew-Hermitian Matrix{$T}") do
-        A, x, b = skew_hermitian_problem(T, n)
-        tol = sqrt(eps(real(T)))
-        x_approx, hist = minres(A, b, skew_hermitian = true, maxiter = 10n, tol = tol, log = true)
+    x = ones(T, n)
+    b = A * x
+    tol = sqrt(eps(real(T)))
 
-        @fact norm(b - A * x_approx) / norm(b) --> less_than_or_equal(tol)
-        @fact hist.isconverged --> true
-    end
+    x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
 
-    context("SparseMatrixCSC{$T}") do
-        A = let
-            B = sprand(n, n, 2 / n)
-            B + B' + speye(n)
-        end
-
-        x = ones(T, n)
-        b = A * x
-        tol = sqrt(eps(real(T)))
-
-        x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
-
-        @fact norm(b - A * x_approx) / norm(b) --> less_than_or_equal(tol)
-        @fact hist.isconverged --> true
-    end
+    @test norm(b - A * x_approx) / norm(b) ≤ tol
+    @test hist.isconverged
 end
 
 end
