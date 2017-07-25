@@ -21,12 +21,6 @@ Pages = ["public.md"]
 ConvergenceHistory
 ```
 
-### `KrylovSubspace`
-
-```@docs
-KrylovSubspace
-```
-
 ## Linear Solvers
 
 ### `Jacobi`
