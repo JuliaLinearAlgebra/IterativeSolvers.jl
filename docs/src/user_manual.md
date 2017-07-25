@@ -18,18 +18,21 @@ julia> Pkg.checkout("IterativeSolvers")
 ## Interface
 
 All linear-algebraic routines will take as input a linear operator `A` that maps
-vectors to vectors. `A` is not explicitly typed, but must support multiplication `*` or function composition (apply)
-that behave as necessary to produce the correct mapping on the vector space.
+vectors to vectors. Typically `A` is a `Matrix` or a `SparseMatrixCSC`, but since
+`A` is not explicitly typed, any linear operator that supports matrix operations
+can be used as well. This makes it possible to apply solvers *matrix-free*. In 
+IterativeSolvers.jl we strongly recommend [LinearMaps.jl](https://github.com/Jutho/LinearMaps.jl) 
+for non-matrix types of `A`.
 
-A custom type for `A` may be specified. The following interface is expected to
-be defined on `A`:
+For matrix-free types of `A` the following interface is expected to be defined:
 
-`A*v` is defined and computes the matrix-vector product on a `v::Vector`.
+`A*v` computes the matrix-vector product on a `v::AbstractVector`.
 
-`eltype(A)` is defined and returns the element type implicit in the equivalent
-matrix representation of `A`.
+`A_mul_B!(y, A, v)` computes the matrix-vector product on a `v::AbstractVector` in-place.
 
-`size(A, d)` is defined and returns the nominal dimensions along the dth axis
+`eltype(A)` returns the element type implicit in the equivalent matrix representation of `A`.
+
+`size(A, d)` is defined and returns the nominal dimensions along the `d`th axis
 in the equivalent matrix representation of `A`.
 
 ### Solvers
@@ -157,7 +160,3 @@ plot(ch, :resnorm, sep = :blue)
 *Plot additional keywords*
 
 `sep::Symbol = :white`: color of the line separator in restarted methods.
-
-## Define function as matrix
-
-This package supports the use of [LinearMaps.jl](https://github.com/Jutho/LinearMaps.jl) for creating matrices using custom functions.
