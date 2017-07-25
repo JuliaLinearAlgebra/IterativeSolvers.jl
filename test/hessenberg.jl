@@ -1,12 +1,11 @@
 using IterativeSolvers
-using FactCheck
+using Base.Test
 using LinearMaps
 
 import IterativeSolvers: Hessenberg, solve!
 
-facts("hessenberg") do
+@testset "Hessenberg" begin
 
-context("Solve") do
     # Some well-conditioned Hessenberg matrix
     H1 = [
         1.19789 1.42354 -0.0371401  0.0118481 -0.0362113  0.00269463;
@@ -38,11 +37,9 @@ context("Solve") do
         solution = H \ rhs
 
         # First part is the solution
-        @fact solution_with_residual[1 : size(H, 2)] --> roughly(H \ rhs)
+        @test solution_with_residual[1 : size(H, 2)] ≈ H \ rhs
 
         # Last element is the residual
-        @fact abs(last(solution_with_residual)) --> roughly(norm(H * solution - rhs))
+        @test abs(last(solution_with_residual)) ≈ norm(H * solution - rhs)
     end
-end
-
 end
