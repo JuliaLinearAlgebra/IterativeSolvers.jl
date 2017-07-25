@@ -1,21 +1,13 @@
 using IterativeSolvers
-using FactCheck
 using Base.Test
 using LinearMaps
 
+@testset "Simple Eigensolvers" begin
+
 srand(1234321)
-
-#######################
-# Eigensystem solvers #
-#######################
-
-facts("Simple eigensolvers") do
-
 n = 10
 
-for T in (Float32, Float64, Complex64, Complex128)
-
-    context("Matrix{$T}") do
+@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
 
     A = rand(T, n, n)
     A = A' * A
@@ -25,13 +17,13 @@ for T in (Float32, Float64, Complex64, Complex128)
 
     ## Simple methods
 
-    context("Power iteration") do
+    @testset "Power iteration" begin
         λ, x = powm(A; tol = tol, maxiter = 10n)
-        @fact λs[end] --> roughly(λ)
-        @fact norm(A * x - λ * x) --> less_than(tol)
+        @test λs[end] ≈ λ
+        @test norm(A * x - λ * x) ≤ tol
     end
 
-    context("Inverse iteration") do
+    @testset "Inverse iteration" begin
         # Set a target near the middle eigenvalue
         idx = div(n, 2)
         σ = T(0.75 * λs[idx] + 0.25 * λs[idx + 1])
@@ -40,14 +32,12 @@ for T in (Float32, Float64, Complex64, Complex128)
         # Make sure we use complex arithmetic everywhere,
         # because of the follow bug in base: https://github.com/JuliaLang/julia/issues/22683
         F = lufact(complex(A) - UniformScaling(σ))
-        Fmap = LinearMap((y, x) -> A_ldiv_B!(y, F, x), size(A, 1), complex(T), ismutating = true)
+        Fmap = LinearMap{complex(T)}((y, x) -> A_ldiv_B!(y, F, x), size(A, 1), ismutating = true)
 
         λ, x = invpowm(Fmap; shift = σ, tol = tol, maxiter = 10n)
 
-        @fact norm(A * x - λ * x) --> less_than(tol)
-        @fact λ --> roughly(λs[idx])
-
-    end
+        @test norm(A * x - λ * x) ≤ tol
+        @test λ ≈ λs[idx]
 
     end
 end
