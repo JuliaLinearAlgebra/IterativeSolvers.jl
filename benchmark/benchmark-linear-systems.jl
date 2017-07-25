@@ -76,4 +76,12 @@ function bicgstabl()
     b1, b2, b3, b4
 end
 
+function minres(n = 100_000)
+    A = SymTridiagonal(fill(2.1, n), fill(-1.0, n))
+    x = ones(n)
+    b = A * x
+
+    @benchmark IterativeSolvers.minres($A, $b, maxiter = 100)
+end
+
 end

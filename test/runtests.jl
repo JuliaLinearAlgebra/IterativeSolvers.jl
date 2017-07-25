@@ -16,6 +16,9 @@ include("cg.jl")
 #BiCGStab(l)
 include("bicgstabl.jl")
 
+#MINRES
+include("minres.jl")
+
 #GMRES
 include("gmres.jl")
 
