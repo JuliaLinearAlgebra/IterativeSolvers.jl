@@ -346,7 +346,7 @@ function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::R
     @assert tol ≥ 0
 
     σ = F[:S][1:k]
-    Δσ= L.β*abs(F[:U][end, 1:k])
+    Δσ= L.β * abs.(F[:U][end, 1 : k])
 
     #Best available eigenvalue bounds
     δσ = copy(Δσ)
