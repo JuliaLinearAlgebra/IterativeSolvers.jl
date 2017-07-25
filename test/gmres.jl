@@ -2,11 +2,11 @@ using IterativeSolvers
 using Base.Test
 using LinearMaps
 
-srand(1234321)
 
 #GMRES
 @testset "GMRES" begin
 
+srand(1234321)
 n = 10
 
 @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
