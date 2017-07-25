@@ -51,14 +51,12 @@ end
     @test norm(A * x - b) / norm(b) ≤ tol
 end
 
-    context("Linear operator defined as a function") do
-        A = LinearMap(cumsum!, 100, 100, Float64; ismutating=true)
-        rhs = randn(size(A,2))
-        rhs/= norm(rhs)
-        tol = 1e-5
+@testset "Linear operator defined as a function" begin
+    A = LinearMap(cumsum!, 100; ismutating=true)
+    b = rand(100)
+    tol = 1e-5
 
-        x = gmres(A,rhs;tol=tol,maxiter=2000)
-        @fact norm(A*x - rhs) --> less_than_or_equal(tol)
-    end
+    x = gmres(A, b; tol=tol, maxiter=2000)
+    @test norm(A * x - b) / norm(b) ≤ tol
 end
 end
