@@ -78,12 +78,8 @@ end
         @test norm(A * xCG - rhs) ≤ tol
         @test norm(A * xSGS - rhs) ≤ tol
         @test norm(A * xJAC - rhs) ≤ tol
-
-        iterCG = niters(hCG)
-        iterJAC = niters(hJAC)
-        iterSGS = niters(hSGS)
-        @test iterJAC == iterCG
-        @test iterSGS ≤ iterJAC
+        @test niters(hJAC) == niters(hCG)
+        @test niters(hSGS) ≤ niters(hJAC)
     end
 end
 
