@@ -4,45 +4,6 @@ using Base.Test
 import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, scale!, copy!, fill!, length
 import Base.LinAlg: norm
 
-srand(1234321)
-
-# Type used in SOL test
-type Wrapper
-    m::Int
-    n::Int
-end
-
-size(op::Wrapper, dim::Integer) = (dim == 1) ? op.m : (dim == 2) ? op.n : 1
-size(op::Wrapper) = op.m, op.n
-eltype(op::Wrapper) = Int
-
-function A_mul_B!(α, A::Wrapper, x, β, y)
-    m, n = size(A)
-    scale!(y, β)
-    y[1] = y[1] + α * x[1]
-    for i = 2:n
-        y[i] = y[i] + i * α * x[i] + (i-1) * α * x[i-1]
-    end
-    for i = n+1:m
-        y[i] = y[i]
-    end
-    return y
-end
-
-function Ac_mul_B!(α, A::Wrapper, x, β, y)
-    m, n = size(A)
-    mn = min(m, n)
-    scale!(y, β)
-    for i = 1 : mn - 1
-        y[i] = y[i] + α * i * (x[i] + x[i + 1])
-    end
-    y[mn] = y[mn] + α * mn * x[mn]
-    for i = m + 1 : n
-        y[i] = y[i]
-    end
-    return y
-end
-
 # Type used in Dampenedtest
 # solve (A'A + diag(v).^2 ) x = b
 # using LSMR in the augmented space A' = [A ; diag(v)] b' = [b; zeros(size(A, 2)]
@@ -76,7 +37,6 @@ end
 
 similar(a::DampenedVector, T) = DampenedVector(similar(a.y, T), similar(a.x, T))
 length(a::DampenedVector) = length(a.y) + length(a.x)
-
 
 type DampenedMatrix{TA, Tx}
     A::TA
@@ -120,13 +80,29 @@ function Ac_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::Dampen
     return b
 end
 
-@testset "LSMR" begin
+"""
+Produces the m × n submatrix from
+A = [ 1
+      1 2
+        2 3
+          3 4
+            ...
+              n ]
+suitably padded by zeros.
+"""
+function sol_matrix(m, n)
+    mn = min(m, n)
+    spdiagm((1.0 : mn - 1, 1.0 : mn), (-1, 0), m, n)
+end
 
-    @testset "Small dense matrix" begin
-        A = rand(10, 5)
-        b = rand(10)
+@testset "LSMR" begin
+    srand(1234321)
+
+    @testset "Small dense matrix" for T = (Float32, Float64)
+        A = rand(T, 10, 5)
+        b = rand(T, 10)
         x = lsmr(A, b)
-        @test norm(x - A\b) ≤ √eps()
+        @test norm(x - A\b) ≤ √eps(T)
     end
 
     @testset "SOL test" for (m, n, damp) = ((10, 10, 0), (20, 10, 0), (20, 10, 0.1))
@@ -135,33 +111,18 @@ end
         #              Michael Saunders, Systems Optimization Laboratory,
         #              Dept of MS&E, Stanford University.
         #-----------------------------------------------------------------------
-
-        # This is a simple example for testing  LSMR.
-        # It uses the leading m*n submatrix from
-        # A = [ 1
-        #       1 2
-        #         2 3
-        #           3 4
-        #             ...
-        #               n ]
-        # suitably padded by zeros.
-        #
         # 11 Apr 1996: First version for distribution with lsqr.m.
         #              Michael Saunders, Dept of EESOR, Stanford University.
 
-        A = Wrapper(m, n)
-        xtrue = n : -1 : 1
-        b = Vector{Float64}(m)
-        A_mul_B!(1.0, A, xtrue, 0.0, b)
-        x = lsmr(A, b, atol = 1e-7, btol = 1e-7, conlim = 1e10, maxiter = 10n)
-        r = A_mul_B!(-1, A, x, 1, b)
-        @test norm(r) ≤ 1e-4
+        A = sol_matrix(m, n)
+        x = float(n : -1 : 1)
+        b = A * x
+        x_lsmr = lsmr(A, b, atol = 1e-7, btol = 1e-7, conlim = 1e10, maxiter = 10n)
+        @test norm(b - A * x) ≤ 1e-4
     end
 
     @testset "Dampened test" for (m, n) = ((10, 10), (20, 10))
         # Test used to make sure A, b can be generic matrix / vector
-        srand(1234)
-        
         b = rand(m)
         A = rand(m, n)
         v = rand(n)
