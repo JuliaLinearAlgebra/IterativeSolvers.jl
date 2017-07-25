@@ -1,45 +1,44 @@
 using IterativeSolvers
-using FactCheck
 using LinearMaps
+using Base.Test
 
 srand(1234321)
-
 include("poisson_matrix.jl")
 
-facts("cg") do
+@testset "Conjugate Gradients" begin
 
-context("Small full system") do
-    N = 10
-    A = randn(N, N)
-    A = A' * A
-    rhs = randn(N)
-    tol = 1e-12
+@testset "Small full system" begin
+    n = 10
 
-    x = cg(A, rhs; tol=tol, maxiter=2N)
-    @fact norm(A*x - rhs) --> less_than(cond(A) * √tol)
+    @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+        A = rand(T, n, n)
+        A = A' * A + eye(T, n)
+        b = rand(T, n)
+        tol = √eps(real(T))
 
-    x,ch = cg(A, rhs; tol=tol, maxiter=2N, log=true)
-    @fact norm(A * x - rhs) --> less_than(cond(A) * √tol)
-    @fact ch.isconverged --> true
+        x,ch = cg(A, b; tol=tol, maxiter=2n, log=true)
+        @test norm(A*x - b) / norm(b) ≤ tol
+        @test ch.isconverged
 
-    # If you start from the exact solution, you should converge immediately
-    x2, ch2 = cg!(A \ rhs, A, rhs; tol=10tol, log=true)
-    @fact niters(ch2) --> less_than_or_equal(1)
-    @fact nprods(ch2) --> less_than_or_equal(2)
+        # If you start from the exact solution, you should converge immediately
+        x,ch = cg!(A \ b, A, b; tol=10tol, log=true)
+        @test niters(ch) ≤ 1
+        @test nprods(ch) ≤ 2
 
-    # Test with cholfact should converge immediately
-    F = cholfact(A)
-    x2, ch2 = cg(A, rhs; Pl=F, log=true)
-    @fact niters(ch2) --> less_than_or_equal(2)
-    @fact nprods(ch2) --> less_than_or_equal(2)
+        # Test with cholfact should converge immediately
+        F = cholfact(A)
+        x,ch = cg(A, b; Pl=F, log=true)
+        @test niters(ch) ≤ 2
+        @test nprods(ch) ≤ 2
 
-    # All-zeros rhs should give all-zeros lhs
-    x0 = cg(A, zeros(N))
-    @fact x0 --> zeros(N)
+        # All-zeros rhs should give all-zeros lhs
+        x0 = cg(A, zeros(T, n))
+        @test x0 == zeros(T, n)
+    end
 end
 
-context("Sparse Laplacian") do
-    A = poisson_matrix(Float64, 32, 3)
+@testset "Sparse Laplacian" begin
+    A = poisson_matrix(Float64, 10, 3)
     L = tril(A)
     D = diag(A)
     U = triu(A)
@@ -51,40 +50,40 @@ context("Sparse Laplacian") do
     rhs /= norm(rhs)
     tol = 1e-5
 
-    context("matrix") do
+    @testset "Matrix" begin
         xCG = cg(A, rhs; tol=tol, maxiter=100)
         xJAC = cg(A, rhs; Pl=JAC, tol=tol, maxiter=100)
         xSGS = cg(A, rhs; Pl=SGS, tol=tol, maxiter=100)
-        @fact norm(A * xCG - rhs) --> less_than_or_equal(tol)
-        @fact norm(A * xSGS - rhs) --> less_than_or_equal(tol)
-        @fact norm(A * xJAC - rhs) --> less_than_or_equal(tol)
+        @test norm(A * xCG - rhs) ≤ tol
+        @test norm(A * xSGS - rhs) ≤ tol
+        @test norm(A * xJAC - rhs) ≤ tol
     end
 
     Af = LinearMap(A)
-    context("function") do
+    @testset "Function" begin
         xCG = cg(Af, rhs; tol=tol, maxiter=100)
         xJAC = cg(Af, rhs; Pl=JAC, tol=tol, maxiter=100)
         xSGS = cg(Af, rhs; Pl=SGS, tol=tol, maxiter=100)
-        @fact norm(A * xCG - rhs) --> less_than_or_equal(tol)
-        @fact norm(A * xSGS - rhs) --> less_than_or_equal(tol)
-        @fact norm(A * xJAC - rhs) --> less_than_or_equal(tol)
+        @test norm(A * xCG - rhs) ≤ tol
+        @test norm(A * xSGS - rhs) ≤ tol
+        @test norm(A * xJAC - rhs) ≤ tol
     end
 
-    context("function with specified starting guess") do
+    @testset "Function with specified starting guess" begin
         tol = 1e-4
         x0 = randn(size(rhs))
         xCG, hCG = cg!(copy(x0), Af, rhs; tol=tol, maxiter=100, log=true)
         xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=JAC, tol=tol, maxiter=100, log=true)
         xSGS, hSGS = cg!(copy(x0), Af, rhs; Pl=SGS, tol=tol, maxiter=100, log=true)
-        @fact norm(A * xCG - rhs) --> less_than_or_equal(tol)
-        @fact norm(A * xSGS - rhs) --> less_than_or_equal(tol)
-        @fact norm(A * xJAC - rhs) --> less_than_or_equal(tol)
+        @test norm(A * xCG - rhs) ≤ tol
+        @test norm(A * xSGS - rhs) ≤ tol
+        @test norm(A * xJAC - rhs) ≤ tol
 
         iterCG = niters(hCG)
         iterJAC = niters(hJAC)
         iterSGS = niters(hSGS)
-        @fact iterJAC --> iterCG
-        @fact iterSGS --> less_than_or_equal(iterJAC) "Preconditioner increased the number of iterations"
+        @test iterJAC == iterCG
+        @test iterSGS ≤ iterJAC
     end
 end
 
