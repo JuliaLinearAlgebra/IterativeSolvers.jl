@@ -577,7 +577,7 @@ which case it will be necessary to orthogonalize both sets of vectors. See
 
 ```bibtex
 @book{Bjorck2015,
-    author = {Bj{\"{o}}rck, {\AA}ke},
+    author = {Bj{\\"{o}}rck, {\\AA}ke},
     doi = {10.1007/978-3-319-05089-8},
     publisher = {Springer},
     series = {Texts in Applied Mathematics},

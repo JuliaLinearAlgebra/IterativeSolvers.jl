@@ -113,7 +113,7 @@ bound on the true norm by a factor
 
 	ρ ≤ α ‖A‖
 
-with probability greater than `1 - p`, where `p = 4\sqrt(n/(iters-1)) α^(-2iters)`.
+with probability greater than `1 - p`, where `p = 4\\sqrt(n/(iters-1)) α^(-2iters)`.
 
 # Arguments
 
@@ -175,7 +175,7 @@ Estimate matrix condition number randomly.
 # Arguments
 
 `A`: matrix whose condition number to estimate. Must be square and
-support premultiply (`A*⋅`) and solve (`A\⋅`).
+support premultiply (`A*⋅`) and solve (`A\\⋅`).
 
 `iters::Int = 1`: number of power iterations to run.
 
@@ -345,7 +345,7 @@ Apply a subsampled random Fourier transform to the columns of `A`.
 
 # References
 
-\[Equation 4.6]{Halko2011}
+\\[Equation 4.6]{Halko2011}
 """
 #Define two methods here to avoid method ambiguity with f::Function*b::Any
 *(A::Function, Ω::srft) = function *(A, Ω::srft)
