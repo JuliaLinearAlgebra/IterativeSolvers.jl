@@ -32,7 +32,7 @@ n = 10
         # Make sure we use complex arithmetic everywhere,
         # because of the follow bug in base: https://github.com/JuliaLang/julia/issues/22683
         F = lufact(complex(A) - UniformScaling(σ))
-        Fmap = LinearMap{complex(T)}((y, x) -> A_ldiv_B!(y, F, x), size(A, 1), ismutating = true)
+        Fmap = LinearMap((y, x) -> A_ldiv_B!(y, F, x), size(A, 1), complex(T), ismutating = true)
 
         λ, x = invpowm(Fmap; shift = σ, tol = tol, maxiter = 10n)
 
