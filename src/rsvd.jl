@@ -40,9 +40,9 @@ largest.
 
 This function calls `rrange`, which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
-\cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
+\\cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
 exact SVD factorization on the restriction of `A` to this randomly selected
-subspace (Algorithm 5.1 of \cite{Halko2011}).
+subspace (Algorithm 5.1 of \\cite{Halko2011}).
 
 Alternatively, you can mix and match your own randomized algorithm using
 any of the randomized range finding algorithms to find a suitable subspace
@@ -100,9 +100,9 @@ largest.
 
 This function calls `rrange`, which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
-\cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
+\\cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
 exact SVD factorization on the restriction of `A` to this randomly selected
-subspace (Algorithm 5.1 of \cite{Halko2011}).
+subspace (Algorithm 5.1 of \\cite{Halko2011}).
 
 Alternatively, you can mix and match your own randomized algorithm using
 any of the randomized range finding algorithms to find a suitable subspace
@@ -153,7 +153,7 @@ The Reference explicitly discourages using this algorithm.
 
 # Implementation note
 
-Whereas \cite{Halko2011} recommends classical Gram-Schmidt with double
+Whereas \\cite{Halko2011} recommends classical Gram-Schmidt with double
 reorthogonalization, we instead compute the basis with `qrfact()`, which
 for dense `A` computes the QR factorization using Householder reflectors.
 """
@@ -198,7 +198,7 @@ vectors of the computed subspace of `A`.
 
 # References
 
-Algorithm 4.2 of \cite{Halko2011}
+Algorithm 4.2 of \\cite{Halko2011}
 """
 function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
     m, n = size(A)
@@ -265,7 +265,7 @@ for dense A computes the QR factorization using Householder reflectors.
 
 # References
 
-Algorithm 4.4 of \cite{Halko2011}
+Algorithm 4.4 of \\cite{Halko2011}
 """
 function rrange_si(A, l::Int; At=A', q::Int=0)
     basis=x->full(qrfact(x)[:Q])
@@ -312,7 +312,7 @@ for dense `A` computes the QR factorization using Householder reflectors.
 
 # References
 
-Algorithm 4.5 of \cite{Halko2011}
+Algorithm 4.5 of \\cite{Halko2011}
 """
 function rrange_f(A, l::Int)
     n = size(A, 2)
@@ -340,7 +340,7 @@ desired.
 
 # References
 
-Algorithm 5.1 of \cite{Halko2011}
+Algorithm 5.1 of \\cite{Halko2011}
 """
 function svdfact_restricted(A, Q, n::Int)
     B=Q'A
@@ -367,7 +367,7 @@ desired.
 
 # References
 
-Algorithm 5.1 of \cite{Halko2011}
+Algorithm 5.1 of \\cite{Halko2011}
 """
 function svdvals_restricted(A, Q, n::Int)
     B=Q'A
@@ -380,7 +380,7 @@ end
 Compute the SVD factorization of `A` restricted to the subspace spanned by `Q`
 using row extraction.
 
-*Note:* \cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
+*Note:* \\cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
 where `Ω` is a sample computed by `randn(n,l)` or even `srft(l)`.
 
 # Arguments
@@ -401,7 +401,7 @@ interpolative decomposition `idfact`.
 
 # References
 
-Algorithm 5.2 of \cite{Halko2011}
+Algorithm 5.2 of \\cite{Halko2011}
 """
 function svdfact_re(A, Q)
     F = idfact(Q)
@@ -431,7 +431,7 @@ restriction to is desired.
 
 # References
 
-Algorithm 5.3 of \cite{Halko2011}
+Algorithm 5.3 of \\cite{Halko2011}
 """
 function eigfact_restricted(A::Hermitian, Q)
     B = Q'A*Q
@@ -445,7 +445,7 @@ end
 Compute the spectral (`Eigen`) factorization of `A` restricted to the subspace
 spanned by `Q` using row extraction.
 
-*Note:* \cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
+*Note:* \\cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
 where `Ω` is a sample computed by `randn(n,l)` or even `srft(l)`.
 
 # Arguments
@@ -466,7 +466,7 @@ interpolative decomposition `idfact()`.
 
 # References
 
-Algorithm 5.4 of \cite{Halko2011}
+Algorithm 5.4 of \\cite{Halko2011}
 """
 function eigfact_re(A::Hermitian, Q)
     X, J = idfact(Q)
@@ -501,7 +501,7 @@ that can be Cholesky decomposed.
 
 # References
 
-Algorithm 5.5 of \cite{Halko2011}
+Algorithm 5.5 of \\cite{Halko2011}
 """
 function eigfact_nystrom(A, Q)
     B₁=A*Q
@@ -534,7 +534,7 @@ product involving `A`.
 
 # References
 
-Algorithm 5.6 of \cite{Halko2011}
+Algorithm 5.6 of \\cite{Halko2011}
 """
 function eigfact_onepass(A::Hermitian, Ω)
     Y=A*Ω; Q = full(qrfact!(Y)[:Q])

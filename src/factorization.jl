@@ -12,7 +12,7 @@ and `P` computed by `idfact()`. See the documentation of `idfact()` for details.
 
 # References
 
-\cite{Cheng2005, Liberty2007}
+\\cite{Cheng2005, Liberty2007}
 """
 immutable Interpolative{T} <: Factorization{T}
     B :: AbstractMatrix{T}
@@ -43,13 +43,13 @@ Where:
 
 # Implementation note
 
-This is a hacky version of the algorithms described in \cite{Liberty2007}
-and \cite{Cheng2005}. The former refers to the factorization (3.1) of the
+This is a hacky version of the algorithms described in \\cite{Liberty2007}
+and \\cite{Cheng2005}. The former refers to the factorization (3.1) of the
 latter.  However, it is not actually necessary to compute this
 factorization in its entirely to compute an interpolative decomposition.
 
 Instead, it suffices to find some permutation of the first k columns of Y =
-R * A, extract the subset of A into B, then compute the P matrix as B\A
+R * A, extract the subset of A into B, then compute the P matrix as B\\A
 which will automatically compute P using a suitable least-squares
 algorithm.
 
@@ -59,7 +59,7 @@ pivoted QR process.
 
 # References
 
-\cite[Algorithm I]{Liberty2007}
+\\cite[Algorithm I]{Liberty2007}
 
 ```bibtex
 @article{Cheng2005,

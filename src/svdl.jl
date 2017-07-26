@@ -83,7 +83,7 @@ end
     svdl(A)
 
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
-bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
+bidiagonalization \\cite{Golub1965} with thick restarting \\cite{Wu2000}.
 
 If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `X, L`.
