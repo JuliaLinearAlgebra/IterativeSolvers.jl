@@ -41,17 +41,14 @@ end
     @test all(diff(history[:resnorm]) .<= 0.0)
 
     # Left exact preconditioner
-    # Only Julia 0.6+ supports A_ldiv_B!(::UmfpackLU, x) where x is a column view.
-    if VERSION ≥ v"0.6"
-        x, history = gmres(A, b, Pl=F, maxiter=1, restart=1, log=true)
-        @test history.isconverged
-        @test norm(F \ (A * x - b)) / norm(b) ≤ tol
+    x, history = gmres(A, b, Pl=F, maxiter=1, restart=1, log=true)
+    @test history.isconverged
+    @test norm(F \ (A * x - b)) / norm(b) ≤ tol
 
-        # Right exact preconditioner
-        x, history = gmres(A, b, Pl = Identity(), Pr=F, maxiter=1, restart=1, log=true)
-        @test history.isconverged
-        @test norm(A * x - b) / norm(b) ≤ tol
-    end
+    # Right exact preconditioner
+    x, history = gmres(A, b, Pl = Identity(), Pr=F, maxiter=1, restart=1, log=true)
+    @test history.isconverged
+    @test norm(A * x - b) / norm(b) ≤ tol
 end
 
 @testset "Linear operator defined as a function" begin
