@@ -1,4 +1,4 @@
-function poisson_matrix{T}(::Type{T}, n, dims)
+function laplace_matrix{T}(::Type{T}, n, dims)
     D = second_order_central_diff(T, n);
     A = copy(D);
 
