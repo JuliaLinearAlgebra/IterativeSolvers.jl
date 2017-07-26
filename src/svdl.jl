@@ -480,11 +480,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
 
 
     #Construct broken arrow matrix
-    if VERSION < v"0.5.0-"
-        BA = [diagm(F0[:S]) ρ']
-    else #slicing behavior changed in 0.5
-        BA = [diagm(F0[:S]) ρ]
-    end
+    BA = [diagm(F0[:S]) ρ]
     F2 = svdfact!(BA, thin=false)
 
     #Take k largest triplets
@@ -520,11 +516,7 @@ function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
     Q = L.Q*Q
     P = L.P*view(U,:,1:k)
 
-    if VERSION < v"0.5.0-"
-        R = view(R,1:k+1,1:k) + view(R,:,k+1)*Mend
-    else
-        R = view(R,1:k+1,1:k) + view(R,:,k+1)*Mend'
-    end
+    R = view(R,1:k+1,1:k) + view(R,:,k+1)*Mend'
 
     f = A*view(Q,:,k+1)
     f -= P*(P'f)

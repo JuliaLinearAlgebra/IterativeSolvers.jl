@@ -3,8 +3,6 @@
 #Benchmark iterative methods against matrices from the University of Florida
 #sparse collection
 
-VERSION ≥ v"0.4" || error("Julia 0.4 required")
-
 #Root URL to the matrix collection
 UFL_URL_ROOT = "http://www.cise.ufl.edu/research/sparse/matrices"
 #Plain text file containing list of matrices
