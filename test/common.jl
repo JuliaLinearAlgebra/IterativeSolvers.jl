@@ -1,5 +1,4 @@
 using IterativeSolvers
-using LinearMaps
 using Base.Test
 
 srand(1234321)

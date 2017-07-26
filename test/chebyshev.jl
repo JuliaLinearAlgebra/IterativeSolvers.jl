@@ -1,6 +1,5 @@
 using IterativeSolvers
 using Base.Test
-using LinearMaps
 
 function randSPD(T, n)
     A = rand(T, n, n) + n * eye(T, n)

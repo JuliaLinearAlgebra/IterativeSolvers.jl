@@ -1,6 +1,5 @@
 using IterativeSolvers
 using Base.Test
-using LinearMaps
 
 import IterativeSolvers: Hessenberg, solve!
 

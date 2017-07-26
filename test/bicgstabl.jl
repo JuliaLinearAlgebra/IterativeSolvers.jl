@@ -1,5 +1,4 @@
 using IterativeSolvers
-using LinearMaps
 using Base.Test
 
 include("advection_diffusion.jl")

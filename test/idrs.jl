@@ -1,6 +1,5 @@
 using IterativeSolvers
 using Base.Test
-using LinearMaps
 
 @testset "IDR(s)" begin
 
