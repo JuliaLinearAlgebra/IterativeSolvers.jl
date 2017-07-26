@@ -31,7 +31,7 @@ n = 10
 end
 
 @testset "SparseMatrixCSC{$T}" for T in (Float64, Complex128)
-    A = sprand(T, n, n, 0.5) + speye(T, n, n)
+    A = sprand(T, n, n, 0.5) + I
     b = rand(T, n)
     F = lufact(A)
     tol = √eps(real(T))

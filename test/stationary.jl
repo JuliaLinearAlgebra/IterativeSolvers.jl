@@ -10,7 +10,7 @@ srand(1234321)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
     # Diagonally dominant matrix.
-    A = rand(T, n, n) + 2n * eye(T, n)
+    A = rand(T, n, n) + 2n * I
     b = rand(T, n)
     x0 = rand(T, n)
     x = A \ b

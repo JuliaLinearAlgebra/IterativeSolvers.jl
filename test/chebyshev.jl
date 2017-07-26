@@ -2,7 +2,7 @@ using IterativeSolvers
 using Base.Test
 
 function randSPD(T, n)
-    A = rand(T, n, n) + n * eye(T, n)
+    A = rand(T, n, n) + n * I
     A' * A
 end
 

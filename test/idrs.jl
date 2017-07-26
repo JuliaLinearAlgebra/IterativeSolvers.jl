@@ -8,7 +8,7 @@ m = 6
 srand(1234567)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
-    A = rand(T, n, n) + n * eye(T, n)
+    A = rand(T, n, n) + n * I
     b = rand(T, n)
     tol = √eps(real(T))
 
@@ -27,7 +27,7 @@ srand(1234567)
 end
 
 @testset "SparseMatrixCSC{$T}" for T in (Float64, Complex128)
-    A = sprand(T, n, n, 0.5) + speye(T, n)
+    A = sprand(T, n, n, 0.5) + I
     b = rand(T, n)
     tol = √eps(real(T))
 

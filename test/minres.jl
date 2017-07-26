@@ -5,7 +5,7 @@ using LinearMaps
 @testset "MINRES" begin
 
 function hermitian_problem(T, n)
-    B = rand(T, n, n) + n * eye(n)
+    B = rand(T, n, n) + n * I
     A = B + B'
     x = ones(T, n)
     b = B * x
@@ -13,7 +13,7 @@ function hermitian_problem(T, n)
 end
 
 function skew_hermitian_problem(T, n)
-    B = rand(T, n, n) + n * eye(n)
+    B = rand(T, n, n) + n * I
     A = B - B'
     x = ones(T, n)
     b = A * x
@@ -46,7 +46,7 @@ end
 @testset "SparseMatrixCSC{$T}" for T in (Float32, Float64, Complex64, Complex128)
     A = let
         B = sprand(n, n, 2 / n)
-        B + B' + speye(n)
+        B + B' + I
     end
 
     x = ones(T, n)

@@ -12,7 +12,7 @@ include("poisson_matrix.jl")
 
     @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
         A = rand(T, n, n)
-        A = A' * A + eye(T, n)
+        A = A' * A + I
         b = rand(T, n)
         tol = √eps(real(T))
 

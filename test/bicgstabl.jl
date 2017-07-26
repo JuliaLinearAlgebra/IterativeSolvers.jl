@@ -9,7 +9,7 @@ srand(1234321)
 n = 20
 
 @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
-    A = rand(T, n, n) + 15 * eye(T, n)
+    A = rand(T, n, n) + 15I
     x = ones(T, n)
     b = A * x
 
