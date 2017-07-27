@@ -3,6 +3,8 @@ using Base.Test
 
 @testset "Stationary solvers" begin
 
+import Base.LinAlg.SingularException
+
 n = 10
 m = 6
 ω = 0.5
@@ -38,6 +40,18 @@ srand(1234321)
         xi, history = solver(copy(x0), A, b, ω, maxiter=100, tol=tol, log=true)
         @test history.isconverged
         @test norm(b - A * xi) / norm(b) ≤ tol
+    end
+
+    # Check whether the methods throw when the diagonal has zeros
+    A = [0.0 1.0; 1.0 0.0]
+    b = rand(3, 3)
+
+    for solver in (jacobi, gauss_seidel)
+        @fact_throws Base.LinAlg.SingularException solver(A, b)
+    end
+
+    for solver in (sor, ssor)
+        @fact_throws Base.LinAlg.SingularException solver(A, b, 0.5)
     end
 end
 end
