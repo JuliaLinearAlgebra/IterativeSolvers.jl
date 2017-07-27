@@ -1,9 +1,8 @@
-import  Base: eltype, length, ndims, real, size, *,
-        A_mul_B!, Ac_mul_B, Ac_mul_B!
+import Base: A_ldiv_B!, \
 
-using   LinearMaps, Compat
+using LinearMaps, Compat
 
-export  A_mul_B, Identity
+export Identity
 
 #### Type-handling
 """
@@ -67,17 +66,9 @@ end
 _randn!(v::Array{Float64}) = randn!(v)
 _randn!(v) = copy!(v, randn(length(v)))
 
-#### Errors
-export PosSemidefException
-
-type PosSemidefException <: Exception
-    msg :: AbstractString
-    PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
-end
-
 # Identity preconditioner
 struct Identity end
 
-Base.:\(::Identity, x) = copy(x)
-Base.A_ldiv_B!(::Identity, x) = x
-Base.A_ldiv_B!(y, ::Identity, x) = copy!(y, x)
+\(::Identity, x) = copy(x)
+A_ldiv_B!(::Identity, x) = x
+A_ldiv_B!(y, ::Identity, x) = copy!(y, x)

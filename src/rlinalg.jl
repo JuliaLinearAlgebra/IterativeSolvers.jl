@@ -4,6 +4,8 @@
 
 export rcond, reigmax, reigmin, rnorm, rnorms
 
+import Base: *
+
 
 """
     randnn(el, m)

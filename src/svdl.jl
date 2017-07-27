@@ -1,5 +1,7 @@
 export svdl
 
+import Base: size, getindex, full, svdfact
+
 """
 Matrix of the form
 ```
@@ -18,8 +20,9 @@ mutable struct BrokenArrowBidiagonal{T} <: AbstractMatrix{T}
     ev::Vector{T}
 end
 
-Base.size(B::BrokenArrowBidiagonal) = (n=length(B.dv); (n, n))
-function Base.size(B::BrokenArrowBidiagonal, n::Int)
+size(B::BrokenArrowBidiagonal) = (n=length(B.dv); (n, n))
+
+function size(B::BrokenArrowBidiagonal, n::Int)
     if n==1 || n==2
         return length(B.dv)
     else
@@ -27,7 +30,7 @@ function Base.size(B::BrokenArrowBidiagonal, n::Int)
     end
 end
 
-function Base.getindex{T}(B::BrokenArrowBidiagonal{T}, i::Int, j::Int)
+function getindex(B::BrokenArrowBidiagonal{T}, i::Int, j::Int) where {T}
     n = size(B, 1)
     k = length(B.av)
     if !(1 ≤ i ≤ n && 1 ≤ j ≤ n)
@@ -45,7 +48,7 @@ function Base.getindex{T}(B::BrokenArrowBidiagonal{T}, i::Int, j::Int)
     end
 end
 
-function Base.full{T}(B::BrokenArrowBidiagonal{T})
+function full(B::BrokenArrowBidiagonal{T}) where {T}
     n = size(B, 1)
     k = length(B.av)
     M = zeros(T, n, n)
@@ -61,7 +64,7 @@ function Base.full{T}(B::BrokenArrowBidiagonal{T})
     M
 end
 
-Base.svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B)) #XXX This can be much faster
+svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B)) #XXX This can be much faster
 
 """
 Partial factorization object which is an approximation of a matrix
