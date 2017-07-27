@@ -28,7 +28,7 @@ m = 3
         @test norm(w) ≈ one(real(T))
 
         # Orthogonality
-        @test norm(V' * w) ≈ zero(real(T)) atol = 10 * eps(real(T))
+        @test norm(V'w) ≈ zero(real(T)) atol = 10eps(real(T))
 
         # Denormalizing and adding the components in V should give back the original
         @test nrm * w + V * h ≈ w_original
