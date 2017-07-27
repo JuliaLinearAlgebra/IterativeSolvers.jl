@@ -1,6 +1,6 @@
 import Base: A_ldiv_B!, \
 
-using LinearMaps, Compat
+using LinearMaps
 
 export Identity
 
