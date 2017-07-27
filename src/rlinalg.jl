@@ -322,7 +322,7 @@ A subsampled random Fourier transform.
 
 `Base`: `*`
 """
-immutable srft{T<:Integer}
+struct srft{T<:Integer}
     l :: T
 end
 

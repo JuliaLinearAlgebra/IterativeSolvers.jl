@@ -51,7 +51,7 @@ ploted as series and matrices as scatterplots.
 `Base`: `getindex`, `setindex!`, `push!`
 
 """
-type ConvergenceHistory{T,K}
+mutable struct ConvergenceHistory{T,K}
     mvps::Int
     mtvps::Int
     iters::Int
@@ -68,22 +68,22 @@ end
 """
 Stores information of the current iteration.
 """
-@compat const PartialHistory = ConvergenceHistory{false}
+const PartialHistory = ConvergenceHistory{false}
 
 """
 Stores the information of all the iterations.
 """
-@compat const CompleteHistory = ConvergenceHistory{true}
+const CompleteHistory = ConvergenceHistory{true}
 
 """
 History without resets.
 """
-@compat const UnrestartedHistory{T} = ConvergenceHistory{T, Void}
+const UnrestartedHistory{T} = ConvergenceHistory{T, Void}
 
 """
 History with resets.
 """
-@compat const RestartedHistory{T} = ConvergenceHistory{T, Int}
+const RestartedHistory{T} = ConvergenceHistory{T, Int}
 
 
 #############
@@ -256,8 +256,8 @@ nrests(ch::RestartedHistory) = Int(ceil(ch.iters/ch.restart))
 Determine whether a collection `x` is plotable. Only vectors and matrices are
 such objects.
 """
-plotable{T<:Real}(::VecOrMat{T})::Bool = true
-plotable(::Any)::Bool = false
+plotable(::VecOrMat{T}) where {T <: Real} = true
+plotable(::Any) = false
 
 # inner plots
 
@@ -286,10 +286,10 @@ Build a `UnicodePlot.Plot` object from the plotable collection `x`.
 If `x` is a vector, a series will be made. In case of being a matrix an scatterplot
 will be returned.
 """
-function plot_collection{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
+function plot_collection(vals::Vector{T}, iters::Int, gap::Int;
     restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
-    )
+    ) where {T <: Real}
     maxy = round(maximum(vals),2)
     miny = round(minimum(vals),2)
     plot = lineplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
@@ -303,10 +303,10 @@ function plot_collection{T<:Real}(vals::Vector{T}, iters::Int, gap::Int;
     end
     plot
 end
-function plot_collection{T<:Real}(vals::Matrix{T}, iters::Int, gap::Int;
+function plot_collection(vals::Matrix{T}, iters::Int, gap::Int;
     restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
     title::AbstractString="", left::Int=1
-    )
+    ) where {T <: Real}
     n = size(vals,2)
     maxy = round(maximum(vals),2)
     miny = round(minimum(vals),2)

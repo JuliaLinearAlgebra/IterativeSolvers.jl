@@ -47,10 +47,10 @@ solve(A::Function,b) = A(b)
 
 solve(A,b) = A\b
 
-solve!{T}(out::AbstractArray{T},A::Int,b::AbstractArray{T}) = scale!(out,b, 1/A)
+solve!(out::AbstractArray{T},A::Int,b::AbstractArray{T}) where {T} = scale!(out,b, 1/A)
 
-solve!{T}(out::AbstractArray{T},A,b::AbstractArray{T}) = A_ldiv_B!(out,A,b)
-solve!{T}(out::AbstractArray{T},A::Function,b::AbstractArray{T}) = copy!(out,A(b))
+solve!(out::AbstractArray{T},A,b::AbstractArray{T}) where {T} = A_ldiv_B!(out,A,b)
+solve!(out::AbstractArray{T},A::Function,b::AbstractArray{T}) where {T} = copy!(out,A(b))
 
 """
     initrand!(v)
@@ -76,7 +76,7 @@ type PosSemidefException <: Exception
 end
 
 # Identity preconditioner
-immutable Identity end
+struct Identity end
 
 Base.:\(::Identity, x) = copy(x)
 Base.A_ldiv_B!(::Identity, x) = x

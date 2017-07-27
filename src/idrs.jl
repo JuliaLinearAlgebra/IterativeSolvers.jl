@@ -44,9 +44,9 @@ subspace algorithms for solving large nonsymmetric linear systems. The idea
 behind the IDR(s) variant is to generate residuals that are in the nested
 subspaces of shrinking dimensions.
 """
-function idrs_method!{T}(log::ConvergenceHistory, X, op, args, C::T,
+function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
     s::Number, tol::Number, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
-    )
+    ) where {T}
 
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - op(X, args...)::T

@@ -2,7 +2,7 @@ export bicgstabl, bicgstabl!, bicgstabl_iterator, bicgstabl_iterator!, BiCGStabI
 
 import Base: start, next, done
 
-type BiCGStabIterable{precT, matT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
+mutable struct BiCGStabIterable{precT, matT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
     A::matT
     b::vecT
     l::Int

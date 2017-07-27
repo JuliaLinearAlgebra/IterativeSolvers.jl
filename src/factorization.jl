@@ -14,7 +14,7 @@ and `P` computed by `idfact()`. See the documentation of `idfact()` for details.
 
 \\cite{Cheng2005, Liberty2007}
 """
-immutable Interpolative{T} <: Factorization{T}
+struct Interpolative{T} <: Factorization{T}
     B :: AbstractMatrix{T}
     P :: AbstractMatrix{T}
 end

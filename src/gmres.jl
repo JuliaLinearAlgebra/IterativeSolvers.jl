@@ -2,19 +2,19 @@ import Base: start, next, done
 
 export gmres, gmres!
 
-type ArnoldiDecomp{T, matT}
+mutable struct ArnoldiDecomp{T, matT}
     A::matT
     V::Matrix{T} # Orthonormal basis vectors
     H::Matrix{T} # Hessenberg matrix
 end
 
-ArnoldiDecomp{matT}(A::matT, order::Int, T::Type) = ArnoldiDecomp{T, matT}(
+ArnoldiDecomp(A::matT, order::Int, T::Type) where {matT} = ArnoldiDecomp{T, matT}(
     A,
     zeros(T, size(A, 1), order + 1),
     zeros(T, order + 1, order)
 )
 
-type Residual{numT, resT}
+mutable struct Residual{numT, resT}
     current::resT # Current, absolute, preconditioned residual
     accumulator::resT # Used to compute the residual on the go
     nullvec::Vector{numT} # Vector in the null space of H to compute residuals
@@ -28,7 +28,7 @@ Residual(order, T::Type) = Residual{T, real(T)}(
     one(real(T))
 )
 
-type GMRESIterable{preclT, precrT, vecT <: AbstractVector, arnoldiT <: ArnoldiDecomp, residualT <: Residual, resT <: Real}
+mutable struct GMRESIterable{preclT, precrT, vecT <: AbstractVector, arnoldiT <: ArnoldiDecomp, residualT <: Residual, resT <: Real}
     Pl::preclT
     Pr::precrT
     x::vecT
@@ -172,7 +172,7 @@ function update_residual!(r::Residual, arnoldi::ArnoldiDecomp, k::Int)
     r.current = r.β / √r.accumulator
 end
 
-function init!{T}(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool = false)
+function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool = false) where {T}
     # Initialize the Krylov subspace with the initial residual vector
     # This basically does V[1] = Pl \ (b - A * x) and then normalize
     
@@ -194,12 +194,12 @@ function init!{T}(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool 
     β
 end
 
-@inline function init_residual!{numT,resT}(r::Residual{numT, resT}, β)
+@inline function init_residual!(r::Residual{numT, resT}, β) where {numT,resT}
     r.accumulator = one(resT)
     r.β = β
 end
 
-function solve_least_squares!{T}(arnoldi::ArnoldiDecomp{T}, β, k::Int)
+function solve_least_squares!(arnoldi::ArnoldiDecomp{T}, β, k::Int) where {T}
     # Compute the least-squares solution to Hy = β e1 via Given's rotations
     rhs = zeros(T, k)
     rhs[1] = β
@@ -210,14 +210,14 @@ function solve_least_squares!{T}(arnoldi::ArnoldiDecomp{T}, β, k::Int)
     rhs
 end
 
-function update_solution!{T}(x, y, arnoldi::ArnoldiDecomp{T}, Pr::Identity, k::Int, Ax)
+function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr::Identity, k::Int, Ax) where {T}
     # Update x ← x + V * y
 
     # TODO: find the SugarBLAS alternative
     BLAS.gemv!('N', one(T), view(arnoldi.V, :, 1 : k - 1), y, one(T), x)
 end
 
-function update_solution!{T}(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int, Ax)
+function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int, Ax) where {T}
     # Computing x ← x + Pr \ (V * y) and use Ax as a work space
     A_mul_B!(Ax, view(arnoldi.V, :, 1 : k - 1), y)
     A_ldiv_B!(Pr, Ax)
