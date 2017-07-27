@@ -2,6 +2,7 @@ using IterativeSolvers
 
 #Common functions and data structures
 include("common.jl")
+include("orthogonalize.jl")
 
 # Hessenberg problem solver
 include("hessenberg.jl")
