@@ -122,7 +122,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
     if isa(Pl, Identity)
         return CGIterable(A, x, b,
             r, c, u,
-            reltol, residual, residual,
+            reltol, residual, one(residual),
             maxiter, mv_products
         )
     else
