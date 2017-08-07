@@ -43,7 +43,7 @@ function jacobi_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
 			for j=[1:i-1;i+1:n]
 				xi += A[i,j]*xold[j]
 			end
-			A[i,i]==0 && throw(SingularException(1))
+			A[i,i]==0 && throw(SingularException(i))
 			x[i]=(b[i]-xi)/A[i,i]
 		end
 		#check convergence
@@ -100,7 +100,7 @@ function gauss_seidel_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
 			for j=i+1:n
 				σ+=A[i,j]*xold[j]
 			end
-			A[i,i]==0 && throw(SingularException(1))
+			A[i,i]==0 && throw(SingularException(i))
 			x[i]=(b[i]-σ)/A[i,i]
 		end
 		#check convergence
@@ -159,7 +159,7 @@ function sor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real;
 			for j=i+1:n
 				σ+=A[i,j]*xold[j]
 			end
-			A[i,i]==0 && throw(SingularException(1))
+			A[i,i]==0 && throw(SingularException(i))
 			σ=(b[i]-σ)/A[i,i]
 			x[i]=xold[i]+ω*(σ-xold[i])
 		end
@@ -219,7 +219,7 @@ function ssor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real
 			for j=i+1:n
 				σ+=A[i,j]*xold[j]
 			end
-			A[i,i]==0 && throw(SingularException(1))
+			A[i,i]==0 && throw(SingularException(i))
 			σ=(b[i]-σ)/A[i,i]
 			x[i]=xold[i]+ω*(σ-xold[i])
 		end
@@ -232,7 +232,7 @@ function ssor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real
 			for j=i+1:n
 				σ+=A[i,j]*x[j]
 			end
-			A[i,i]==0 && throw(SingularException(1))
+			A[i,i]==0 && throw(SingularException(i))
 			σ=(b[i]-σ)/A[i,i] #This line is missing in the Templates reference
 			x[i]=xold[i]+ω*(σ-xold[i])
 		end
