@@ -20,7 +20,7 @@ The active column of the Hessenberg matrix H is updated in place to form the
 active column of R. Note that for Hermitian matrices the H matrix is purely
 real, while for skew-Hermitian matrices its diagonal is purely imaginary.
 """
-type MINRESIterable{matT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}
+mutable struct MINRESIterable{matT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}
     A::matT
     skew_hermitian::Bool
     x::vecT

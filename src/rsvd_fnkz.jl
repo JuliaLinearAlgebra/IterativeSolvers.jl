@@ -1,7 +1,7 @@
 
 export rsvd_fnkz
 
-immutable OuterProduct{T}
+struct OuterProduct{T}
     X :: Matrix{T}
     Y :: Matrix{T}
 end

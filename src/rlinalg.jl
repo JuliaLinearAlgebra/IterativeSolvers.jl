@@ -4,6 +4,8 @@
 
 export rcond, reigmax, reigmin, rnorm, rnorms
 
+import Base: *
+
 
 """
     randnn(el, m)
@@ -322,7 +324,7 @@ A subsampled random Fourier transform.
 
 `Base`: `*`
 """
-immutable srft{T<:Integer}
+struct srft{T<:Integer}
     l :: T
 end
 

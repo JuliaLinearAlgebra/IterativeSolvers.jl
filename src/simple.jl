@@ -3,7 +3,7 @@ import Base: start, next, done
 #Simple methods
 export powm, invpowm
 
-type PowerMethodIterable{matT, vecT <: AbstractVector, numT <: Number, eigvalT <: Number}
+mutable struct PowerMethodIterable{matT, vecT <: AbstractVector, numT <: Number, eigvalT <: Number}
     A::matT
     x::vecT
     tol::numT
@@ -134,7 +134,7 @@ using LinearMaps
 σ = 1.0 + 1.3im
 A = rand(Complex128, 50, 50)
 F = lufact(A - UniformScaling(σ))
-Fmap = LinearMap((y, x) -> A_ldiv_B!(y, F, x), 50, Complex128, ismutating = true)
+Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
 λ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """

@@ -2,7 +2,7 @@ import Base: start, next, done
 
 export cg, cg!, CGIterable, PCGIterable, cg_iterator, cg_iterator!
 
-type CGIterable{matT, vecT <: AbstractVector, numT <: Real}
+mutable struct CGIterable{matT, vecT <: AbstractVector, numT <: Real}
     A::matT
     x::vecT
     b::vecT
@@ -16,7 +16,7 @@ type CGIterable{matT, vecT <: AbstractVector, numT <: Real}
     mv_products::Int
 end
 
-type PCGIterable{precT, matT, vecT <: AbstractVector, numT <: Real, paramT <: Number}
+mutable struct PCGIterable{precT, matT, vecT <: AbstractVector, numT <: Real, paramT <: Number}
     Pl::precT
     A::matT
     x::vecT

@@ -7,8 +7,6 @@ module IterativeSolvers
 
 using SugarBLAS
 
-using Compat
-
 include("common.jl")
 include("orthogonalize.jl")
 include("history.jl")

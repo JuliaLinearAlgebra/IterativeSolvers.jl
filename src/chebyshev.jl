@@ -2,7 +2,7 @@ import Base: next, start, done
 
 export chebyshev, chebyshev!
 
-type ChebyshevIterable{precT, matT, vecT, realT <: Real}
+mutable struct ChebyshevIterable{precT, matT, vecT, realT <: Real}
     Pl::precT
     A::matT
     b::vecT

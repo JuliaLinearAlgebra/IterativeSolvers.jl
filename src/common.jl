@@ -1,9 +1,8 @@
-import  Base: eltype, length, ndims, real, size, *,
-        A_mul_B!, Ac_mul_B, Ac_mul_B!
+import Base: A_ldiv_B!, \
 
-using   LinearMaps, Compat
+using LinearMaps
 
-export  A_mul_B, Identity
+export Identity
 
 #### Type-handling
 """
@@ -47,10 +46,10 @@ solve(A::Function,b) = A(b)
 
 solve(A,b) = A\b
 
-solve!{T}(out::AbstractArray{T},A::Int,b::AbstractArray{T}) = scale!(out,b, 1/A)
+solve!(out::AbstractArray{T},A::Int,b::AbstractArray{T}) where {T} = scale!(out,b, 1/A)
 
-solve!{T}(out::AbstractArray{T},A,b::AbstractArray{T}) = A_ldiv_B!(out,A,b)
-solve!{T}(out::AbstractArray{T},A::Function,b::AbstractArray{T}) = copy!(out,A(b))
+solve!(out::AbstractArray{T},A,b::AbstractArray{T}) where {T} = A_ldiv_B!(out,A,b)
+solve!(out::AbstractArray{T},A::Function,b::AbstractArray{T}) where {T} = copy!(out,A(b))
 
 """
     initrand!(v)
@@ -67,17 +66,9 @@ end
 _randn!(v::Array{Float64}) = randn!(v)
 _randn!(v) = copy!(v, randn(length(v)))
 
-#### Errors
-export PosSemidefException
-
-type PosSemidefException <: Exception
-    msg :: AbstractString
-    PosSemidefException(msg::AbstractString="Matrix was not positive semidefinite") = new(msg)
-end
-
 # Identity preconditioner
-immutable Identity end
+struct Identity end
 
-Base.:\(::Identity, x) = copy(x)
-Base.A_ldiv_B!(::Identity, x) = x
-Base.A_ldiv_B!(y, ::Identity, x) = copy!(y, x)
+\(::Identity, x) = copy(x)
+A_ldiv_B!(::Identity, x) = x
+A_ldiv_B!(y, ::Identity, x) = copy!(y, x)

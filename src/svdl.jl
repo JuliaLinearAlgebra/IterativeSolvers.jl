@@ -1,5 +1,7 @@
 export svdl
 
+import Base: size, getindex, full, svdfact
+
 """
 Matrix of the form
 ```
@@ -12,14 +14,15 @@ Matrix of the form
                         d_k
 ```
 """
-type BrokenArrowBidiagonal{T} <: AbstractMatrix{T}
+mutable struct BrokenArrowBidiagonal{T} <: AbstractMatrix{T}
     dv::Vector{T}
     av::Vector{T}
     ev::Vector{T}
 end
 
-Base.size(B::BrokenArrowBidiagonal) = (n=length(B.dv); (n, n))
-function Base.size(B::BrokenArrowBidiagonal, n::Int)
+size(B::BrokenArrowBidiagonal) = (n=length(B.dv); (n, n))
+
+function size(B::BrokenArrowBidiagonal, n::Int)
     if n==1 || n==2
         return length(B.dv)
     else
@@ -27,7 +30,7 @@ function Base.size(B::BrokenArrowBidiagonal, n::Int)
     end
 end
 
-function Base.getindex{T}(B::BrokenArrowBidiagonal{T}, i::Int, j::Int)
+function getindex(B::BrokenArrowBidiagonal{T}, i::Int, j::Int) where {T}
     n = size(B, 1)
     k = length(B.av)
     if !(1 ≤ i ≤ n && 1 ≤ j ≤ n)
@@ -45,7 +48,7 @@ function Base.getindex{T}(B::BrokenArrowBidiagonal{T}, i::Int, j::Int)
     end
 end
 
-function Base.full{T}(B::BrokenArrowBidiagonal{T})
+function full(B::BrokenArrowBidiagonal{T}) where {T}
     n = size(B, 1)
     k = length(B.av)
     M = zeros(T, n, n)
@@ -61,14 +64,14 @@ function Base.full{T}(B::BrokenArrowBidiagonal{T})
     M
 end
 
-Base.svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B)) #XXX This can be much faster
+svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B)) #XXX This can be much faster
 
 """
 Partial factorization object which is an approximation of a matrix
 
     A ≈ P * [B 0; 0 β] * Q
 """
-type PartialFactorization{T, Tr} <: Factorization{T}
+mutable struct PartialFactorization{T, Tr} <: Factorization{T}
     P :: Matrix{T}
     Q :: Matrix{T}
     B :: AbstractMatrix{Tr}
@@ -402,7 +405,7 @@ function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::R
 end
 
 #Hernandez2008
-function build{T}(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int)
+function build(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int) where {T}
     m, n = size(A)
     Tr = typeof(real(one(T)))
     β = norm(q)
@@ -427,8 +430,8 @@ Thick restart (with ordinary Ritz values)
 
 """
 #Hernandez2008
-function thickrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, l::Int)
+function thickrestart!(A, L::PartialFactorization{T,Tr},
+        F::Base.LinAlg.SVD{Tr,Tr}, l::Int) where {T,Tr}
 
     k = size(F[:V], 1)
     m, n = size(A)
@@ -469,8 +472,8 @@ Thick restart with harmonic Ritz values.
 which follows that of [Hernandez2008]
 
 """
-function harmonicrestart!{T,Tr}(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, k::Int)
+function harmonicrestart!(A, L::PartialFactorization{T,Tr},
+        F::Base.LinAlg.SVD{Tr,Tr}, k::Int) where {T,Tr}
 
     m = size(L.B, 1)::Int
     #@assert size(L.P,2)==m==size(L.Q,2)-1
@@ -606,10 +609,10 @@ which case it will be necessary to orthogonalize both sets of vectors. See
 }
 ```
 """
-function extend!{T,Tr}(
+function extend!(
     log::ConvergenceHistory, A, L::PartialFactorization{T, Tr}, k::Int,
     orthleft::Bool=false, orthright::Bool=true, α::Real = 1/√2
-    )
+    ) where {T,Tr}
 
     l = size(L.B, 2)::Int-1
     p = L.P[:,l+1]
