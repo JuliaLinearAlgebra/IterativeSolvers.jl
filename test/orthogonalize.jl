@@ -1,42 +1,37 @@
 using IterativeSolvers
-using FactCheck
+using Base.Test
+
+@testset "Orthogonalization" begin
 
 srand(1234321)
+n = 10
+m = 3
 
-facts("Orthogonalization") do
-    n = 10
-    m = 3
+@testset "Eltype $T" for T = (Complex64, Float64)
 
-    for T = [Complex64, Float64]
-        context("$T") do
-    
-        # Create an orthonormal matrix V
-        V, = qr(rand(T, n, m))
+    # Create an orthonormal matrix V
+    V, = qr(rand(T, n, m))
 
-        # And a random vector to be orth. to V.
-        w_original = rand(T, n)
+    # And a random vector to be orth. to V.
+    w_original = rand(T, n)
 
-        for method = [DGKS, ClassicalGramSchmidt, ModifiedGramSchmidt]
+    @testset "Using $method" for method = (DGKS, ClassicalGramSchmidt, ModifiedGramSchmidt)
 
-            context("$method") do
-            # Projection size
-            h = zeros(T, m)
+        # Projection size
+        h = zeros(T, m)
 
-            # Orthogonalize w in-place
-            w = copy(w_original)
-            nrm = orthogonalize_and_normalize!(V, w, h, method)
+        # Orthogonalize w in-place
+        w = copy(w_original)
+        nrm = orthogonalize_and_normalize!(V, w, h, method)
 
-            # Normality
-            @fact norm(w) --> roughly(one(real(T)))
+        # Normality
+        @test norm(w) ≈ one(real(T))
 
-            # Orthogonality
-            @fact norm(V' * w) --> roughly(zero(real(T)), atol = 10 * eps(real(T)))
+        # Orthogonality
+        @test norm(V'w) ≈ zero(real(T)) atol = 10eps(real(T))
 
-            # Denormalizing and adding the components in V should give back the original
-            @fact nrm * w + V * h --> roughly(w_original)
-
-            end
-        end
-        end
+        # Denormalizing and adding the components in V should give back the original
+        @test nrm * w + V * h ≈ w_original
     end
+end
 end

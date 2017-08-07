@@ -83,7 +83,7 @@ end
     svdl(A)
 
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
-bidiagonalization \cite{Golub1965} with thick restarting \cite{Wu2000}.
+bidiagonalization \\cite{Golub1965} with thick restarting \\cite{Wu2000}.
 
 If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `X, L`.
@@ -346,7 +346,7 @@ function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::R
     @assert tol ≥ 0
 
     σ = F[:S][1:k]
-    Δσ= L.β*abs(F[:U][end, 1:k])
+    Δσ= L.β * abs.(F[:U][end, 1 : k])
 
     #Best available eigenvalue bounds
     δσ = copy(Δσ)
@@ -577,7 +577,7 @@ which case it will be necessary to orthogonalize both sets of vectors. See
 
 ```bibtex
 @book{Bjorck2015,
-    author = {Bj{\"{o}}rck, {\AA}ke},
+    author = {Bj{\\"{o}}rck, {\\AA}ke},
     doi = {10.1007/978-3-319-05089-8},
     publisher = {Springer},
     series = {Texts in Applied Mathematics},

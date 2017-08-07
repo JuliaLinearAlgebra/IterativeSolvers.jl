@@ -1,34 +1,29 @@
 using IterativeSolvers
-using FactCheck
-using LinearMaps
-
-srand(1234321)
+using Base.Test
 
 include("advection_diffusion.jl")
 
-facts("bicgstab(l)") do
+@testset ("BiCGStab(l)") begin
 
-for T in (Float32, Float64, Complex64, Complex128)
-    context("Matrix{$T}") do
+srand(1234321)
+n = 20
 
-        n = 20
-        A = rand(T, n, n) + 15 * eye(T, n)
-        x = ones(T, n)
-        b = A * x
+@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+    A = rand(T, n, n) + 15I
+    x = ones(T, n)
+    b = A * x
 
-        for l = (2, 4)
-            context("BiCGStab($l)") do
+    tol = √eps(real(T))
 
-            # Solve without preconditioner
-            x1, his1 = bicgstabl(A, b, l, max_mv_products = 100, log = true)
-            @fact norm(A * x1 - b) / norm(b) --> less_than(√eps(real(one(T))))
+    @testset "BiCGStab($l)" for l = (2, 4)
+        # Solve without preconditioner
+        x1, his1 = bicgstabl(A, b, l, max_mv_products = 100, log = true, tol = tol)
+        @test norm(A * x1 - b) / norm(b) ≤ tol
 
-            # Do an exact LU decomp of a nearby matrix
-            F = lufact(A + rand(T, n, n))
-            x2, his2 = bicgstabl(A, b, Pl = F, l, max_mv_products = 100, log = true)
-            @fact norm(A * x2 - b) / norm(b) --> less_than(√eps(real(one(T))))
-            end
-        end
+        # Do an exact LU decomp of a nearby matrix
+        F = lufact(A + rand(T, n, n))
+        x2, his2 = bicgstabl(A, b, Pl = F, l, max_mv_products = 100, log = true, tol = tol)
+        @test norm(A * x2 - b) / norm(b) ≤ tol
     end
 end
 end

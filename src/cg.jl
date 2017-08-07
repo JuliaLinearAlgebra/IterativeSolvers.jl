@@ -118,17 +118,15 @@ function cg_iterator!(x, A, b, Pl = Identity();
         reltol = norm(b) * tol
     end
 
-    # Stopping criterion
-    ρ = one(residual)
-
     # Return the iterable
     if isa(Pl, Identity)
         return CGIterable(A, x, b,
             r, c, u,
-            reltol, residual, ρ,
+            reltol, residual, one(residual),
             maxiter, mv_products
         )
     else
+        ρ = one(eltype(r))
         return PCGIterable(Pl, A, x, b,
             r, c, u,
             reltol, residual, ρ,

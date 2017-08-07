@@ -1,8 +1,8 @@
 using IterativeSolvers
-using FactCheck
 
 #Common functions and data structures
 include("common.jl")
+include("orthogonalize.jl")
 
 # Hessenberg problem solver
 include("hessenberg.jl")
@@ -49,4 +49,3 @@ include("history.jl")
 #include("matrixmarket.jl")
 #include("matrixcollection.jl")
 
-exitstatus()

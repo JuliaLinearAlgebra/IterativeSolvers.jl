@@ -86,7 +86,7 @@ see [`rnorms`](@ref) for a different estimator that uses premultiplying by both
 
 # References
 
-\cite[Lemma 4.1]{Halko2011}
+\\cite[Lemma 4.1]{Halko2011}
 """
 function rnorm(A, r::Int, p::Real=0.05)
     @assert 0<p≤1
@@ -113,7 +113,7 @@ bound on the true norm by a factor
 
 	ρ ≤ α ‖A‖
 
-with probability greater than `1 - p`, where `p = 4\sqrt(n/(iters-1)) α^(-2iters)`.
+with probability greater than `1 - p`, where `p = 4\\sqrt(n/(iters-1)) α^(-2iters)`.
 
 # Arguments
 
@@ -138,7 +138,7 @@ premultiplying by `A'`
 
 # References
 
-Appendix of \cite{Liberty2007}.
+Appendix of \\cite{Liberty2007}.
 
 ```bibtex
 @article{Liberty2007,
@@ -175,7 +175,7 @@ Estimate matrix condition number randomly.
 # Arguments
 
 `A`: matrix whose condition number to estimate. Must be square and
-support premultiply (`A*⋅`) and solve (`A\⋅`).
+support premultiply (`A*⋅`) and solve (`A\\⋅`).
 
 `iters::Int = 1`: number of power iterations to run.
 
@@ -189,7 +189,7 @@ Interval `(x, y)` which contains `κ(A)` with probability `1 - p`.
 
 # Implementation note
 
-\cite{Dixon1983} originally describes this as a computation that
+\\cite{Dixon1983} originally describes this as a computation that
 can be done by computing the necessary number of power iterations given p
 and the desired accuracy parameter `θ=y/x`. However, these bounds were only
 derived under the assumptions of exact arithmetic. Empirically, `iters≥4` has
@@ -200,7 +200,7 @@ parameter and hence the interval containing `κ(A)`.
 
 # References
 
-\cite[Theorem 2]{Dixon1983}
+\\cite[Theorem 2]{Dixon1983}
 
 ```bibtex
 @article{Dixon1983,
@@ -256,7 +256,7 @@ probability `1 - p`.
 
 # References
 
-\cite[Corollary of Theorem 1]{Dixon1983}.
+\\cite[Corollary of Theorem 1]{Dixon1983}.
 """
 function reigmax(A, k::Int=1, p::Real=0.05)
     @assert 0<p≤1
@@ -294,7 +294,7 @@ probability `1 - p`.
 
 # References
 
-\cite[Corollary of Theorem 1]{Dixon1983}.
+\\cite[Corollary of Theorem 1]{Dixon1983}.
 """
 function reigmin(A, k::Int=1, p::Real=0.05)
     @assert 0<p≤1
@@ -345,7 +345,7 @@ Apply a subsampled random Fourier transform to the columns of `A`.
 
 # References
 
-\[Equation 4.6]{Halko2011}
+\\[Equation 4.6]{Halko2011}
 """
 #Define two methods here to avoid method ambiguity with f::Function*b::Any
 *(A::Function, Ω::srft) = function *(A, Ω::srft)

@@ -75,7 +75,7 @@ function rsvd_fnkz(A, k::Int;
         A[π, :]
     end
     X, RRR = qr(B₀)
-    X = X[:, abs(diag(RRR)) .> ϵ] #Remove linear dependent columns
+    X = X[:, abs.(diag(RRR)) .> ϵ] #Remove linear dependent columns
     B = tallandskinny ? X ⊗ A'X : X ⊗ X'A
 
     oldnrmB = 0.0
@@ -86,7 +86,7 @@ function rsvd_fnkz(A, k::Int;
         π = randperm(k)[1:l]
         #Update B using Theorem 2.4
         X, RRR = qr([B.X A[:, π]]) #We are doing more work than needed here
-        X = X[:, abs(diag(RRR)) .> ϵ] #Remove linearly dependent columns
+        X = X[:, abs.(diag(RRR)) .> ϵ] #Remove linearly dependent columns
         Y = A'X
         if dosvd
             S = svdfact!(Y)
@@ -111,5 +111,5 @@ function rsvd_fnkz(A, k::Int;
     for i=1:size(B.Y, 2)
         scale!(view(B.Y, :, i), 1/√Λ[i])
     end
-    Base.LinAlg.SVD(B.X, √Λ, B.Y')
+    Base.LinAlg.SVD(B.X, sqrt.(Λ), B.Y')
 end

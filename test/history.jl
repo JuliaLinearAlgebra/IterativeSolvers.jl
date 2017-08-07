@@ -1,37 +1,28 @@
 using IterativeSolvers
-using FactCheck
 using Plots
+
+#Just check it doesn't crash
+@testset "ConvergenceHistory" begin
 
 srand(1234321)
 
-unicodeplots() 	#Use UnicodePlots backend because it is the lightest
+#Use UnicodePlots backend because it is the lightest
+unicodeplots()
 
-facts("ConvergenceHistory") do
-    #Just check it doesn't crash
-    context("Recipe") do
-        A = lu(rand(10, 10))[1]
-        b = rand(10)
+A = lu(rand(10, 10))[1]
+b = rand(10)
 
-        for solver in [cg, gmres, lsqr, lsmr, idrs, jacobi, gauss_seidel]
-            plot(solver(A,b; log=true)[2])
-            @fact true --> true
-        end
+for solver in (cg, gmres, minres, lsqr, lsmr, idrs, jacobi, gauss_seidel)
+    plot(solver(A, b; log=true)[2])
+end
 
-        for solver in [sor, ssor]
-            plot(solver(A,b,1; log=true)[2])
-            @fact true --> true
-        end
+for solver in (sor, ssor)
+    plot(solver(A, b, 1.0; log=true)[2])
+end
 
-        plot(chebyshev(A,b,1,2; log=true)[2])
-        @fact true --> true
-
-        plot(powm(A; log=true)[2])
-        @fact true --> true
-
-        plot(invpowm(A; log=true)[2])
-        @fact true --> true
-
-        plot(svdl(A; log=true)[3])
-        @fact true --> true
-    end
+plot(bicgstabl(A, b, 2, log=true)[2])
+plot(chebyshev(A, b, 0.5, 1.5; log=true)[2])
+plot(powm(A; log=true)[2])
+plot(invpowm(A; log=true)[2])
+plot(svdl(A; log=true)[3])
 end

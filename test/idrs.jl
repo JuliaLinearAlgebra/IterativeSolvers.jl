@@ -1,62 +1,38 @@
 using IterativeSolvers
-using FactCheck
 using Base.Test
-using LinearMaps
+
+@testset "IDR(s)" begin
 
 n = 10
 m = 6
 srand(1234567)
 
-#IDRs
-facts("idrs") do
+@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+    A = rand(T, n, n) + n * I
+    b = rand(T, n)
+    tol = √eps(real(T))
 
-for T in (Float32, Float64, Complex64, Complex128)
-    # without smoothing
-    context("Matrix{$T}, without residual smoothing") do
-
-    A = convert(Matrix{T}, randn(n,n))
-    b = convert(Vector{T}, randn(n))
-    if T <: Complex
-        A += im*convert(Matrix{T}, randn(n,n))
-        b += im*convert(Vector{T}, randn(n))
-    end
-    b = b/norm(b)
-
-    x_idrs, c_idrs = idrs(A, b, log=true)
-    @fact c_idrs.isconverged --> true
-    @fact norm(A*x_idrs - b) --> less_than(√eps(real(one(T))))
+    @testset "Without residual smoothing" begin
+        x, history = idrs(A, b, log=true)
+        @test history.isconverged
+        @test norm(A * x - b) / norm(b) ≤ tol
     end
 
     # with smoothing
-    context("Matrix{$T}, with residual smoothing") do
-
-    A = convert(Matrix{T}, randn(n,n))
-    b = convert(Vector{T}, randn(n))
-    if T <: Complex
-        A += im*convert(Matrix{T}, randn(n,n))
-        b += im*convert(Vector{T}, randn(n))
-    end
-    b = b/norm(b)
-
-    x_idrs, c_idrs = idrs(A, b; smoothing=true, log=true)
-    @fact c_idrs.isconverged --> true
-    @fact norm(A*x_idrs - b) --> less_than(√eps(real(one(T))))
+    @testset "With residual smoothing" begin
+        x, history = idrs(A, b; smoothing=true, log=true)
+        @test history.isconverged
+        @test norm(A*x - b) / norm(b) ≤ tol
     end
 end
 
-for T in (Float64, Complex128)
-    context("SparseMatrixCSC{$T}") do
-    A = sprandn(n,n,0.5)+0.001*eye(T,n,n)
-    b = convert(Vector{T}, randn(n))
-    if T <: Complex
-        A += im*sprandn(n,n,0.5)
-        b += im*randn(n)
-    end
-    b = b / norm(b)
+@testset "SparseMatrixCSC{$T}" for T in (Float64, Complex128)
+    A = sprand(T, n, n, 0.5) + I
+    b = rand(T, n)
+    tol = √eps(real(T))
 
-    x_idrs, c_idrs= idrs(A, b, log=true)
-    @fact c_idrs.isconverged --> true
-    @fact norm(A*x_idrs - b) --> less_than(√eps(real(one(T))))
-    end
+    x, history = idrs(A, b, log=true)
+    @test history.isconverged
+    @test norm(A * x - b) / norm(b) ≤ tol
 end
 end
