@@ -2,10 +2,11 @@ using IterativeSolvers
 using LinearMaps
 using Base.Test
 
-srand(1234321)
-include("poisson_matrix.jl")
+include("laplace_matrix.jl")
 
 @testset "Conjugate Gradients" begin
+
+srand(1234321)
 
 @testset "Small full system" begin
     n = 10
@@ -38,7 +39,7 @@ include("poisson_matrix.jl")
 end
 
 @testset "Sparse Laplacian" begin
-    A = poisson_matrix(Float64, 10, 3)
+    A = laplace_matrix(Float64, 10, 3)
     L = tril(A)
     D = diag(A)
     U = triu(A)

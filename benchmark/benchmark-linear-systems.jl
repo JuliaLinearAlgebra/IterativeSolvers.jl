@@ -5,7 +5,7 @@ import Base.A_ldiv_B!, Base.\
 using BenchmarkTools
 using IterativeSolvers
 
-include("../test/advection_diffusion.jl")
+include("advection_diffusion.jl")
 
 # A DiagonalMatrix that doesn't check whether it is singular in the \ op.
 immutable DiagonalPreconditioner{T}

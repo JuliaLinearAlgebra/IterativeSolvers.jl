@@ -1,8 +1,6 @@
 using IterativeSolvers
 using Base.Test
 
-include("advection_diffusion.jl")
-
 @testset ("BiCGStab(l)") begin
 
 srand(1234321)
