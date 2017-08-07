@@ -47,11 +47,11 @@ srand(1234321)
     b = rand(3, 3)
 
     for solver in (jacobi, gauss_seidel)
-        @fact_throws Base.LinAlg.SingularException solver(A, b)
+        @test_throws Base.LinAlg.SingularException solver(A, b)
     end
 
     for solver in (sor, ssor)
-        @fact_throws Base.LinAlg.SingularException solver(A, b, 0.5)
+        @test_throws Base.LinAlg.SingularException solver(A, b, 0.5)
     end
 end
 end
