@@ -240,3 +240,53 @@ function sor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real
     for item = iterable end
     iterable.x
 end
+
+
+mutable struct SSORIterable{matT <: SparseMatrixCSC, vecT, numT <: Real}
+    A::matT
+    ω::numT
+    x::vecT
+    b::vecT
+    n::Int
+    maxiter::Int
+end
+
+ssor_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10) = 
+    SSORIterable(A, ω, x, b, length(x), maxiter)
+
+start(s::SSORIterable) = 1
+done(s::SSORIterable, iteration::Int) = iteration > s.maxiter
+
+function next(s::SSORIterable, iteration::Int)
+    A, x, b = s.A, s.x, s.b
+
+    for range = (1 : s.n, s.n : -1 : 1)
+        for col = range
+            diag_el = σ = zero(eltype(A))
+
+            for idx = A.colptr[col] : A.colptr[col + 1] - 1
+                if A.rowval[idx] == col
+                    diag_el = A.nzval[idx]
+                else
+                    σ += A.nzval[idx] * x[A.rowval[idx]]
+                end
+            end
+
+            x[col] += s.ω * ((b[col] - σ) / diag_el - x[col])
+        end
+    end
+
+    nothing, iteration + 1
+end
+
+"""
+Symmetric SOR. Assumes `A` is symmetric with all its
+elements stored.
+
+All operations are in-place in x.
+"""
+function ssor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
+    iterable = sor_iterable(x, A, b, ω, maxiter = maxiter)
+    for item = iterable end
+    iterable.x
+end
