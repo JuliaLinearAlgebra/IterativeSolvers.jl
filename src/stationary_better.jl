@@ -28,7 +28,7 @@ struct FastLowerTriangular{matT <: SparseMatrixCSC}
             r2 = A.colptr[col + 1] - 1
             r1 = searchsortedfirst(A.rowval, col, r1, r2, Base.Order.Forward)
             if (r1 > r2) || (A.rowval[r1] != col)
-                throw(Base.LinAlg.SingularException(1))
+                throw(Base.LinAlg.SingularException(col))
             end
             diag_idx[col] = r1
         end
@@ -40,26 +40,43 @@ end
 FastLowerTriangular(A::matT) where {matT<:SparseMatrixCSC} = FastLowerTriangular{matT}(A)
 
 """
-Backward substitution with α = 1 and β = 0. The α, β and y parameters
-are useful for SOR.
+Backward substitution for the FastLowerTriangular type
 """
-function back_sub!(α, A::FastLowerTriangular, x::StridedVector, β, y::StridedVector)
-    M = A.data
+function back_sub!(F::FastLowerTriangular, x::StridedVector{T}) where {T}
+    A = F.data
 
-    @inbounds for col = 1 : M.n
+    @inbounds for col = 1 : A.n
 
         # Solve for diagonal element
-        idx = A.diag_idx[col]
-        x[col] = α * x[col] / M.nzval[idx] + β * y[col]
+        idx = F.diag_idx[col]
+        x[col] = x[col] / A.nzval[idx]
 
         # Substitute next values involving x[col]
-        for i = idx + 1 : (M.colptr[col + 1] - 1)
-            x[M.rowval[i]] -= M.nzval[i] * x[col]
+        for i = idx + 1 : (A.colptr[col + 1] - 1)
+            x[A.rowval[i]] -= A.nzval[i] * x[col]
         end
     end
 end
 
-@inline back_sub!(A::FastLowerTriangular, x::StridedVector{T}) where {T} = back_sub!(one(T), A, x, zero(T), x)
+"""
+Backward substitution with α = 1 and β = 0. The α, β and y parameters
+are useful for SOR.
+"""
+function back_sub!(α, F::FastLowerTriangular, x::StridedVector, β, y::StridedVector)
+    A = F.data
+
+    @inbounds for col = 1 : A.n
+
+        # Solve for diagonal element
+        idx = F.diag_idx[col]
+        x[col] = α * x[col] / A.nzval[idx] + β * y[col]
+
+        # Substitute next values involving x[col]
+        for i = idx + 1 : (A.colptr[col + 1] - 1)
+            x[A.rowval[i]] -= A.nzval[i] * x[col]
+        end
+    end
+end
 
 function A_mul_B!(α, A::OffDiagonal, x::StridedVector, β, y::StridedVector)
     # Specialize for β = 0 and β = 1
@@ -260,20 +277,32 @@ done(s::SSORIterable, iteration::Int) = iteration > s.maxiter
 function next(s::SSORIterable, iteration::Int)
     A, x, b = s.A, s.x, s.b
 
-    for range = (1 : s.n, s.n : -1 : 1)
-        for col = range
-            diag_el = σ = zero(eltype(A))
+    @inbounds for col = 1 : s.n
+        diag_el = σ = zero(eltype(A))
 
-            for idx = A.colptr[col] : A.colptr[col + 1] - 1
-                if A.rowval[idx] == col
-                    diag_el = A.nzval[idx]
-                else
-                    σ += A.nzval[idx] * x[A.rowval[idx]]
-                end
+        for idx = A.colptr[col] : A.colptr[col + 1] - 1
+            if A.rowval[idx] == col
+                diag_el = A.nzval[idx]
+            else
+                σ += A.nzval[idx] * x[A.rowval[idx]]
             end
-
-            x[col] += s.ω * ((b[col] - σ) / diag_el - x[col])
         end
+
+        x[col] += s.ω * ((b[col] - σ) / diag_el - x[col])
+    end
+
+    @inbounds for col = s.n : -1 : 1
+        diag_el = σ = zero(eltype(A))
+
+        for idx = A.colptr[col] : A.colptr[col + 1] - 1
+            if A.rowval[idx] == col
+                diag_el = A.nzval[idx]
+            else
+                σ += A.nzval[idx] * x[A.rowval[idx]]
+            end
+        end
+
+        x[col] += s.ω * ((b[col] - σ) / diag_el - x[col])
     end
 
     nothing, iteration + 1
@@ -286,7 +315,7 @@ elements stored.
 All operations are in-place in x.
 """
 function ssor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
-    iterable = sor_iterable(x, A, b, ω, maxiter = maxiter)
+    iterable = ssor_iterable(x, A, b, ω, maxiter = maxiter)
     for item = iterable end
     iterable.x
 end
