@@ -69,7 +69,7 @@ function forward_sub!(F::FastLowerTriangular, x::AbstractVector)
 
         # Solve for diagonal element
         idx = F.diag[col]
-        x[col] = x[col] / A.nzval[idx]
+        x[col] /= A.nzval[idx]
 
         # Substitute next values involving x[col]
         for i = idx + 1 : (A.colptr[col + 1] - 1)

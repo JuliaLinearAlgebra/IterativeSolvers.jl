@@ -14,64 +14,37 @@ m = 6
 srand(1234321)
 
 @testset "SparseMatrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
-    # Diagonally dominant matrix.
-    A = sprand(T, n, n, 4 / n) + 2n * I
-    b = rand(T, n)
-    x0 = rand(T, n)
-    x = A \ b
-    tol = √eps(real(T))
+    @testset "Sparse? $sparse" for sparse = (true, false)
+        # Diagonally dominant
+        if sparse
+            A = sprand(T, n, n, 4 / n) + 2n * I
+        else
+            A = rand(T, n, n) + 2n * I
+        end
 
-    for solver in (jacobi, gauss_seidel)
-        xi = solver(A, b, maxiter=2n)
-        @test norm(b - A * xi) / norm(b) ≤ tol
-    end
+        b = rand(T, n)
+        x0 = rand(T, n)
+        tol = √eps(real(T))
 
-    for solver in (jacobi!, gauss_seidel!)
-        xi = solver(copy(x0), A, b, maxiter=2n)
-        @test norm(b - A * xi) / norm(b) ≤ tol
-    end
+        for solver in (jacobi, gauss_seidel)
+            xi = solver(A, b, maxiter=2n)
+            @test norm(b - A * xi) / norm(b) ≤ tol
+        end
 
-    for solver in (sor, ssor)
-        xi = solver(A, b, ω, maxiter=2n)
-        @test norm(b - A * xi) / norm(b) ≤ tol
-    end
+        for solver in (jacobi!, gauss_seidel!)
+            xi = solver(copy(x0), A, b, maxiter=2n)
+            @test norm(b - A * xi) / norm(b) ≤ tol
+        end
 
-    for solver in (sor!, ssor!)
-        xi = solver(copy(x0), A, b, ω, maxiter=2n)
-        @test norm(b - A * xi) / norm(b) ≤ tol
-    end
-end
+        for solver in (sor, ssor)
+            xi = solver(A, b, ω, maxiter=2n)
+            @test norm(b - A * xi) / norm(b) ≤ tol
+        end
 
-@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
-    # Diagonally dominant matrix.
-    A = rand(T, n, n) + 2n * I
-    b = rand(T, n)
-    x0 = rand(T, n)
-    x = A \ b
-    tol = √eps(real(T))
-
-    for solver in (jacobi, gauss_seidel)
-        xi, history = solver(A, b, maxiter=100, tol=tol, log=true)
-        @test history.isconverged
-        @test norm(b - A * xi) / norm(b) ≤ tol
-    end
-
-    for solver in (jacobi!, gauss_seidel!)
-        xi, history = solver(copy(x0), A, b, maxiter=100, tol=tol, log=true)
-        @test history.isconverged
-        @test norm(b - A * xi) / norm(b) ≤ tol
-    end
-
-    for solver in (sor, ssor)
-        xi, history = solver(A, b, ω, maxiter=100, tol=tol, log=true)
-        @test history.isconverged
-        @test norm(b - A * xi) / norm(b) ≤ tol
-    end
-
-    for solver in (sor!, ssor!)
-        xi, history = solver(copy(x0), A, b, ω, maxiter=100, tol=tol, log=true)
-        @test history.isconverged
-        @test norm(b - A * xi) / norm(b) ≤ tol
+        for solver in (sor!, ssor!)
+            xi = solver(copy(x0), A, b, ω, maxiter=2n)
+            @test norm(b - A * xi) / norm(b) ≤ tol
+        end
     end
 end
 
