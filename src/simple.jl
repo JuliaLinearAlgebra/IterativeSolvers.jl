@@ -122,7 +122,7 @@ Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true
 ```
 """
 function powm!(B, x;
-    tol = eps(real(eltype(B))) * size(A, 2) ^ 3,
+    tol = eps(real(eltype(B))) * size(B, 2) ^ 3,
     maxiter = size(B, 1),
     shift = zero(eltype(B)),
     inverse::Bool = false,
