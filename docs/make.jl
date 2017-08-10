@@ -30,9 +30,9 @@ makedocs(
 	]
 )
 
-# deploydocs(
-# 	repo = "github.com/JuliaMath/IterativeSolvers.jl",
-# 	target = "build",
-# 	deps = nothing,
-# 	make = nothing,
-# )
+deploydocs(
+	repo = "github.com/JuliaMath/IterativeSolvers.jl",
+	target = "build",
+	deps = nothing,
+	make = nothing,
+)
