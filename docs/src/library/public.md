@@ -70,21 +70,7 @@ Adapted from: http://web.stanford.edu/group/SOL/software/lsqr/
     LSQR and CRAIG, BIT 35, 588-604.
 ```
 
-### Chebyshev iteration
-
-```@docs
-chebyshev
-chebyshev!
-```
-
 ## Eigen Solvers
-
-### (Inverse) Power iteration
-
-```@docs
-powm
-invpowm
-```
 
 ### Golub-Kahan-Lanczos
 

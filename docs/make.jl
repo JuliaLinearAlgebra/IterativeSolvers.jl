@@ -9,10 +9,14 @@ makedocs(
 		"Manual" => "user_manual.md",
 		"Linear systems" => [
 			"Conjugate Gradients" => "library/cg.md",
-			"Restarted GMRES" => "library/gmres.md",
+			"Chebyshev iteration" => "library/chebyshev.md",
 			"MINRES" => "library/minres.md",
 			"BiCGStab(l)" => "library/bicgstabl.md",
+			"Restarted GMRES" => "library/gmres.md",
 			"Stationary methods" => "library/stationary.md"
+		],
+		"Eigenproblems" => [
+			"Power method" => "library/power_method.md",
 		],
 		"Preconditioning" => "preconditioning.md",
 		"Library" => [
