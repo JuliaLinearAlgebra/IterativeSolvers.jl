@@ -26,14 +26,10 @@ for non-matrix types of `A`.
 
 For matrix-free types of `A` the following interface is expected to be defined:
 
-`A*v` computes the matrix-vector product on a `v::AbstractVector`.
-
-`A_mul_B!(y, A, v)` computes the matrix-vector product on a `v::AbstractVector` in-place.
-
-`eltype(A)` returns the element type implicit in the equivalent matrix representation of `A`.
-
-`size(A, d)` is defined and returns the nominal dimensions along the `d`th axis
-in the equivalent matrix representation of `A`.
+- `A*v` computes the matrix-vector product on a `v::AbstractVector`;
+- `A_mul_B!(y, A, v)` computes the matrix-vector product on a `v::AbstractVector` in-place;
+- `eltype(A)` returns the element type implicit in the equivalent matrix representation of `A`;
+- `size(A, d)` returns the nominal dimensions along the `d`th axis in the equivalent matrix representation of `A`.
 
 ### Solvers
 
@@ -56,34 +52,24 @@ eigsolver!(x, A; kwargs...)
 `b` is the vector to be solved.
 
 `x` is a vector for the initial guess. In the case of a mutating call this
-parameter will be overwritten. (Mutating functions end with `!`)
+parameter will be overwritten.
 
 Output will be the solution to the system.
 
 
 ### Additional arguments
 
-Keyword names will vary depending on the method, however some
-of them will always have the same spelling:
+Keyword names will vary depending on the method, however some of them will always have the same spelling:
 
-`tol`: stopping tolerance of the method. When a method accepts more than one
-tolerance they are enumerated  with a letter prefix, e.g `atol`, `btol`, `ctol`,
-etc.
-
-`verbose`: print information about the running method.
-
-`maxiter`: maximum number of allowed iterations.
-
-`Pl`: left preconditioner. (When applicable)
-
-`Pr`: right preconditioner. (When applicable)
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
+- `tol`: (relative) stopping tolerance of the method;
+- `verbose`: print information during the iterations;
+- `maxiter`: maximum number of allowed iterations;
+- `Pl` and `Pr`: left and right preconditioner. See [Preconditioning](@ref);
+- `log::Bool = false`: output an extra element of type `ConvergenceHistory` containing the convergence history.
 
 ### `log` keyword
 
-All solvers contain the `log` keyword. This is to be used when obtaining
+Most solvers contain the `log` keyword. This is to be used when obtaining
 more information is required, to use it place the set `log` to `true`.
 
 ```julia

@@ -1,25 +1,8 @@
-export minres_iterable, minres
+export minres_iterable, minres, minres!
 
 import Base.LinAlg: BLAS.axpy!, givensAlgorithm
 import Base: start, next, done
 
-"""
-MINRES is full GMRES for Hermitian matrices, finding
-xₖ := x₀ + Vₖyₖ, where Vₖ is an orthonormal basis for
-the Krylov subspace K(A, b - Ax₀). Since
-|rₖ| = |b - Axₖ| = |r₀ - Vₖ₊₁Hₖyₖ| = | |r₀|e₁ - Hₖyₖ|, we solve
-Hₖyₖ = |r₀|e₁ in least-square sense. As the Hessenberg matrix
-is tridiagonal, its QR decomp Hₖ = QₖRₖ has Rₖ with only 3 diagonals,
-easily obtained with Givens rotations. The least-squares problem is
-solved as Hₖ'Hₖyₖ = Hₖ'|r₀|e₁ => yₖ = inv(Rₖ) Qₖ'|r₀|e₁, so
-xₖ := x₀ + [Vₖ inv(Rₖ)] [Qₖ'|r₀|e₁]. Now the main difference with GMRES
-is the placement of the brackets. MINRES computes Wₖ = Vₖ inv(Rₖ) via 3-term
-recurrences using only the last column of R, and computes last 
-two terms of Qₖ'|r₀|e₁ as well.
-The active column of the Hessenberg matrix H is updated in place to form the
-active column of R. Note that for Hermitian matrices the H matrix is purely
-real, while for skew-Hermitian matrices its diagonal is purely imaginary.
-"""
 mutable struct MINRESIterable{matT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}
     A::matT
     skew_hermitian::Bool
@@ -171,6 +154,41 @@ function next(m::MINRESIterable, iteration::Int)
     m.resnorm, iteration + 1
 end
 
+"""
+    minres!(x, A, b; kwargs...) -> x, [history]
+
+Solve Ax = b for (skew-)Hermitian matrices A using MINRES.
+
+# Arguments
+
+- `x`: initial guess, will be updated in-place;
+- `A`: linear operator;
+- `b`: right-hand side.
+
+## Keywords
+
+- `initially_zero::Bool = false`: if `true` assumes that `iszero(x)` so that one 
+  matrix-vector product can be saved when computing the initial 
+  residual vector;
+- `skew_hermitian::Bool = false`: if `true` assumes that `A` is skew-symmetric or skew-Hermitian;
+- `tol`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`. Note that the residual is computed only approximately;
+- `maxiter::Int`: maximum number of inner iterations of GMRES;
+- `Pl`: left preconditioner;
+- `Pr`: right preconditioner;
+- `log::Bool = false`: keep track of the residual norm in each iteration;
+- `verbose::Bool = false`: print convergence information during the iterations.
+
+# Return values
+
+**if `log` is `false`**
+
+- `x`: approximate solution.
+
+**if `log` is `true`**
+
+- `x`: approximate solution;
+- `history`: convergence history.
+"""
 function minres!(x, A, b; 
     skew_hermitian::Bool = false,
     verbose::Bool = false,
@@ -209,74 +227,9 @@ function minres!(x, A, b;
     log ? (iterable.x, history) : iterable.x
 end
 
+"""
+    minres(A, b; kwargs...) -> x, [history]
+
+Same as [`minres!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
 minres(A, b; kwargs...) = minres!(zerox(A, b), A, b; initially_zero = true, kwargs...)
-
-#################
-# Documentation #
-#################
-
-let
-doc_call = "minres(A, b)"
-doc!_call = "minres!(x, A, b)"
-
-doc_msg = "Using initial guess zeros(b)."
-doc!_msg = "Overwrites `x`."
-
-doc_arg = ""
-doc!_arg = """`x`: initial guess, overwrite final approximation."""
-
-doc_version = (doc_call, doc_msg, doc_arg)
-doc!_version = (doc!_call, doc!_msg, doc!_arg)
-
-docstring = String[]
-
-#Build docs
-for (call, msg, arg) in (doc_version, doc!_version) #Start
-    push!(docstring, 
-"""
-$call
-
-Solve A*x = b for (skew-)Hermitian matrices A using MINRES. The method is mathematically 
-equivalent to unrestarted GMRES, but exploits symmetry of A, resulting in short
-recurrences requiring only 6 vectors of storage. MINRES might be slightly less
-stable than full GMRES.
-
-$msg
-
-# Arguments
-
-$arg
-
-`A`: linear operator.
-
-`b`: right hand side (vector).
-
-## Keywords
-
-`tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition 
-`|r_k| / |r_0| ≤ tol`. Note that the residual is computed only approximately.
-
-`maxiter::Int = min(30, size(A, 1))`: maximum number of iterations.
-
-`verbose::Bool = false` output during the iterations
-
-`log::Bool = false` enables logging, see **Output**.
-
-# Output
-
-**if `log` is `false`**
-
-`x`: approximated solution.
-
-**if `log` is `true`**
-
-`x`: approximated solution.
-
-`ch`: convergence history.
-"""
-    )
-end
-
-@doc docstring[1] -> minres
-@doc docstring[2] -> minres!
-end

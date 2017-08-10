@@ -144,8 +144,43 @@ end
 
 # Classical API
 
+"""
+    bicgstabl(A, b, l; kwargs...) -> x, [history]
+
+Same as [`bicgstabl!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
 bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zerox(A, b), A, b, l; initial_zero = true, kwargs...)
 
+"""
+    bicgstabl!(x, A, b, l; kwargs...) -> x, [history]
+
+# Arguments
+
+- `A`: linear operator;
+- `b`: right hand side (vector);
+- `l::Int = 2`: Number of GMRES steps.
+
+## Keywords
+
+- `max_mv_products::Int = min(30, size(A, 1))`: maximum number of matrix vector products.
+For BiCGStab(l) this is a less dubious term than "number of iterations";
+- `Pl = Identity()`: left preconditioner of the method;
+- `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`. 
+   Note that (1) the true residual norm is never computed during the iterations, 
+   only an approximation; and (2) if a preconditioner is given, the stopping condition is based on the 
+   *preconditioned residual*.
+
+# Return values
+
+**if `log` is `false`**
+
+- `x`: approximate solution.
+
+**if `log` is `true`**
+
+- `x`: approximate solution;
+- `history`: convergence history.
+"""
 function bicgstabl!(x, A, b, l = 2;
     tol = sqrt(eps(real(eltype(b)))),
     max_mv_products::Int = min(20, size(A, 1)),
@@ -181,74 +216,4 @@ function bicgstabl!(x, A, b, l = 2;
     log && shrink!(history)
     
     log ? (iterable.x, history) : iterable.x
-end
-
-#################
-# Documentation #
-#################
-
-let
-doc_call = "bicgstab(A, b, l)"
-doc!_call = "bicgstab!(x, A, b, l)"
-
-doc_msg = "Solve A*x = b with the BiCGStab(l)"
-doc!_msg = "Overwrite `x`.\n\n" * doc_msg
-
-doc_arg = ""
-doc!_arg = """`x`: initial guess, overwrite final estimation."""
-
-doc_version = (doc_call, doc_msg, doc_arg)
-doc!_version = (doc!_call, doc!_msg, doc!_arg)
-
-docstring = String[]
-
-#Build docs
-for (call, msg, arg) in (doc_version, doc!_version) #Start
-    push!(docstring, 
-"""
-$call
-
-$msg
-
-# Arguments
-
-$arg
-
-`A`: linear operator.
-
-`b`: right hand side (vector).
-
-`l::Int = 2`: Number of GMRES steps.
-
-## Keywords
-
-`Pl = Identity()`: left preconditioner of the method.
-
-`tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition 
-`|r_k| / |r_0| ≤ tol`. Note that:
-
-1. The actual residual is never computed during the iterations; only an 
-approximate residual is used.
-2. If a preconditioner is given, the stopping condition is based on the 
-*preconditioned residual*.
-
-`max_mv_products::Int = min(30, size(A, 1))`: maximum number of matrix
-vector products. For BiCGStab this is a less dubious criterion than maximum
-number of iterations.
-
-# Output
-
-`x`: approximated solution.
-`residual`: last approximate residual norm
-
-# References
-[1] Sleijpen, Gerard LG, and Diederik R. Fokkema. "BiCGstab(l) for 
-linear equations involving unsymmetric matrices with complex spectrum." 
-Electronic Transactions on Numerical Analysis 1.11 (1993): 2000.
-"""
-    )
-end
-
-@doc docstring[1] -> bicgstabl
-@doc docstring[2] -> bicgstabl!
 end

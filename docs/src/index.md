@@ -1,11 +1,10 @@
 # IterativeSolvers.jl
 
 IterativeSolvers.jl is a Julia package that provides iterative algorithms for
-solving linear systems, eigensystems, and singular value problems. The purpose
+solving linear systems, eigenproblems, and singular value problems. The purpose
 of this package is to provide efficient Julia implementations for iterative
 methods. The package aims to accept a wide variety of input types and that's
-why most arguments don't specify a specific type, however this is still in
-progress.
+why most arguments don't specify a specific type.
 
 For bug reports, feature requests and questions please submit an issue.
 If you're interested in contributing, please see the [Contributing](@ref) guide.
@@ -18,43 +17,34 @@ For more information on future methods have a look at the package [roadmap](http
 
 * Jacobi
 * Gauss-Seidel
-* Successive over relaxation
-* Symmetric successive over relaxation
+* Successive over-relaxation (SOR)
+* Symmetric successive over-relaxation (SSOR)
 
 **Non stationary methods**
 
-* IDRS
+* Conjugate Gradients (CG)
+* MINRES
+* BiCGStabl(l)
+* IDR(s)
+* Restarted GMRES
+* Chebyshev iteration
 * LSMR
 * LSQR
-* Conjugate gradients (CG)
-* Chebyshev iteration
-* Generalized minimal residual method (with restarts) (GMRES)
 
-## Eigen Solvers
+## Eigenproblem Solvers
 
-*Simple eigenpair iterations*
-
-* Power iteration
-* Inverse power iteration
-
-**Hermitian**
-
-*Lanczos*
-
-* Simple Lanczos
+* (Inverse) power iteration
 
 ## Singular Value Decomposition
 
 * Golub-Kahan-Lanczos
+* Randomized singular value decomposition
 
 ## Randomized
 
 * Condition number estimate
 * Extremal eigenvalue estimates
 * Norm estimate
-* Randomized singular value decomposition
-
-
 
 ## Documentation Outline
 

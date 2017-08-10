@@ -1,4 +1,4 @@
-# Public Documentation
+# Iterative methods
 
 Documentation for `IterativeSolvers.jl`'s public interface.
 
@@ -13,45 +13,9 @@ Depth = 4
 Pages = ["public.md"]
 ```
 
-## Types
-
-### `ConvergenceHistory`
-
-```@docs
-ConvergenceHistory
-```
-
 ## Linear Solvers
 
-### `Jacobi`
-
-```@docs
-jacobi
-jacobi!
-```
-
-### `Gauss-Seidel`
-
-```@docs
-gauss_seidel
-gauss_seidel!
-```
-
-### `Successive over relaxation`
-
-```@docs
-sor
-sor!
-```
-
-### `Symmetric successive over relaxation`
-
-```@docs
-ssor
-ssor!
-```
-
-### `IDRS`
+### IDR(s)
 
 ```@docs
 idrs
@@ -71,7 +35,7 @@ idrs!
 [4] IDR(s)' webpage http://ta.twi.tudelft.nl/nw/users/gijzen/IDR.html
 ```
 
-### `LSMR`
+### LSMR
 
 ```@docs
 lsmr
@@ -82,7 +46,7 @@ lsmr!
 
 Adapted from: [http://web.stanford.edu/group/SOL/software/lsmr/](http://web.stanford.edu/group/SOL/software/lsmr/)
 
-### `LSQR`
+### LSQR
 
 ```@docs
 lsqr
@@ -106,49 +70,23 @@ Adapted from: http://web.stanford.edu/group/SOL/software/lsqr/
     LSQR and CRAIG, BIT 35, 588-604.
 ```
 
-
-### `Conjugate gradients`
-
-```@docs
-cg
-cg!
-```
-
-### `Chebyshev iteration`
+### Chebyshev iteration
 
 ```@docs
 chebyshev
 chebyshev!
 ```
 
-### `Generalized minimal residual method (with restarts)`
-
-```@docs
-gmres
-gmres!
-```
-
 ## Eigen Solvers
 
-### `Power iteration`
+### (Inverse) Power iteration
 
 ```@docs
 powm
-```
-
-### `Inverse power iteration`
-
-```@docs
 invpowm
 ```
 
-### `Simple Lanczos`
-
-```@docs
-eiglancz
-```
-
-### `Golub-Kahan-Lanczos`
+### Golub-Kahan-Lanczos
 
 ```@docs
 svdl
@@ -217,30 +155,38 @@ iteration.
 
 ## Randomized
 
-### `Condition number estimate`
+### Condition number estimate
 
 ```@docs
 rcond
 ```
 
-### `Extremal eigenvalue estimates`
+### Extremal eigenvalue estimates
 
 ```@docs
 reigmin
 reigmax
 ```
 
-### `Norm estimate`
+### Norm estimate
 
 ```@docs
 rnorm
 rnorms
 ```
 
-### `Randomized singular value decomposition`
+### Randomized singular value decomposition
 
 ```@docs
 reig
 rsvdfact
 rsvd_fnkz
+```
+
+## Types
+
+### `ConvergenceHistory`
+
+```@docs
+ConvergenceHistory
 ```
