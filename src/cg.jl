@@ -187,7 +187,6 @@ function cg!(x, A, b;
     Pl = Identity(),
     kwargs...
 )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter + 1)
@@ -208,7 +207,6 @@ function cg!(x, A, b;
     verbose && println()
     log && setconv(history, converged(iterable))
     log && shrink!(history)
-    plot && showplot(history)
 
     log ? (iterable.x, history) : iterable.x
 end
