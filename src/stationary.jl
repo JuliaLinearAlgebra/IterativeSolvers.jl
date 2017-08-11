@@ -4,114 +4,103 @@ export jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 
 import Base.LinAlg.SingularException
 
+function check_diag(A::AbstractMatrix)
+    for i = 1 : size(A, 1)
+        if iszero(A[i,i])
+            throw(SingularException(i))
+        end
+    end
+end
+
 ####################
 # API method calls #
 ####################
 
 jacobi(A::AbstractMatrix, b; kwargs...) = jacobi!(zerox(A, b), A, b; kwargs...)
 
-function jacobi!(x, A::AbstractMatrix, b;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    log::Bool=false, kwargs...
-    )
-    history = ConvergenceHistory(partial=!log)
-    history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
-    jacobi_method!(history, x, A, b; tol=tol, maxiter=maxiter, kwargs...)
-    log && shrink!(history)
-    log ? (x, history) : x
+function jacobi!(x, A::AbstractMatrix, b; maxiter::Int=size(A, 2))
+    check_diag(A)
+    iterable = DenseJacobiIterable(A, x, similar(x), b, maxiter)
+    for _ = iterable end
+    x
 end
 
-#########################
-# Method Implementation #
-#########################
+mutable struct DenseJacobiIterable{matT,vecT}
+    A::matT
+    x::vecT
+    next::vecT
+    b::vecT
+    maxiter::Int
+end
 
-function jacobi_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))),maxiter=size(A,2)^2,
-    verbose::Bool=false
-    )
-    verbose && @printf("=== jacobi ===\n%4s\t%7s\n","iter","resnorm")
-    iter=0
-    n = size(A,2)
-    xold = copy(x)
-    z = zero(Amultype(A, x))
-    tol = tol * norm(b)
-	for iter=1:maxiter
-        nextiter!(log,mvps=1)
-		for i=1:n
-			xi = z
-			for j=[1:i-1;i+1:n]
-				xi += A[i,j]*xold[j]
-			end
-			A[i,i]==0 && throw(SingularException(i))
-			x[i]=(b[i]-xi)/A[i,i]
-		end
-		#check convergence
-        resnorm = norm(A*x-b)
-        push!(log,:resnorm,resnorm)
-        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
-		resnorm < tol && (setconv(log, resnorm>=0); break)
-		@blas! xold = x
-	end
-    verbose && @printf("\n")
-	x
+start(::DenseJacobiIterable) = 1
+done(it::DenseJacobiIterable, iteration::Int) = iteration > it.maxiter
+function next(j::DenseJacobiIterable, iteration::Int)
+    n = size(j.A, 1)
+
+    copy!(j.next, j.b)
+    
+    # Computes next = b - (A - D)x
+    for col = 1 : n
+        @simd for row = 1 : col - 1
+            @inbounds j.next[row] -= j.A[row, col] * j.x[col]
+        end
+
+        @simd for row = col + 1 : n
+            @inbounds j.next[row] -= j.A[row, col] * j.x[col]
+        end
+    end
+
+    # Computes x = D \ next
+    for col = 1 : n
+        @inbounds j.x[col] = j.next[col] / j.A[col, col]
+    end
+
+    nothing, iteration + 1
 end
 
 ####################
 # API method calls #
 ####################
 
-gauss_seidel(A::AbstractMatrix, b; kwargs...) =
-    gauss_seidel!(zerox(A, b), A, b; kwargs...)
+gauss_seidel(A::AbstractMatrix, b; kwargs...) = gauss_seidel!(zerox(A, b), A, b; kwargs...)
 
-function gauss_seidel!(x, A::AbstractMatrix, b;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    log::Bool=false, kwargs...
-    )
-    history = ConvergenceHistory(partial=!log)
-    history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
-    gauss_seidel_method!(history, x, A, b; tol=tol, maxiter=maxiter, kwargs...)
-    log && shrink!(history)
-    log ? (x, history) : x
+function gauss_seidel!(x, A::AbstractMatrix, b; maxiter::Int=size(A,2))
+    check_diag(A)
+    iterable = DenseGaussSeidelIterable(A, x, b, maxiter)
+    for _ = iterable end
+    x
 end
 
-#########################
-# Method Implementation #
-#########################
+mutable struct DenseGaussSeidelIterable{matT,vecT}
+    A::matT
+    x::vecT
+    b::vecT
+    maxiter::Int
+end
 
-function gauss_seidel_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    verbose::Bool=false
-    )
-    verbose && @printf("=== gauss_seidel ===\n%4s\t%7s\n","iter","resnorm")
-    iter=0
-    n = size(A,2)
-    xold = copy(x)
-    z = zero(Amultype(A, x))
-    tol = tol * norm(b)
-	for iter=1:maxiter
-        nextiter!(log,mvps=1)
-		for i=1:n
-			σ=z
-			for j=1:i-1
-				σ+=A[i,j]*x[j]
-			end
-			for j=i+1:n
-				σ+=A[i,j]*xold[j]
-			end
-			A[i,i]==0 && throw(SingularException(i))
-			x[i]=(b[i]-σ)/A[i,i]
-		end
-		#check convergence
-		resnorm = norm(A*x-b)
-        push!(log,:resnorm,resnorm)
-        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
-        resnorm < tol && (setconv(log, resnorm>=0); break)
-		@blas! xold = x
-	end
-    verbose && @printf("\n")
-	x
+start(::DenseGaussSeidelIterable) = 1
+done(it::DenseGaussSeidelIterable, iteration::Int) = iteration > it.maxiter
+
+function next(s::DenseGaussSeidelIterable, iteration::Int)
+    n = size(s.A, 1)
+    
+    for col = 1 : n
+        @simd for row = 1 : col - 1
+            @inbounds s.x[row] -= s.A[row, col] * s.x[col]
+        end
+
+        s.x[col] = s.b[col]
+    end
+
+    for col = 1 : n
+        @inbounds s.x[col] /= s.A[col, col]
+        @simd for row = col + 1 : n
+            @inbounds s.x[row] -= s.A[row, col] * s.x[col]
+        end
+    end
+
+    nothing, iteration + 1
 end
 
 ####################
@@ -121,57 +110,43 @@ end
 sor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     sor!(zerox(A, b), A, b, ω; kwargs...)
 
-function sor!(x, A::AbstractMatrix, b, ω::Real;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    log::Bool=false, kwargs...
-    )
-    history = ConvergenceHistory(partial=!log)
-    history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
-    sor_method!(history, x, A, b, ω; tol=tol, maxiter=maxiter, kwargs...)
-    log && shrink!(history)
-    log ? (x, history) : x
+function sor!(x, A::AbstractMatrix, b, ω::Real; maxiter=size(A, 2))
+    check_diag(A)
+    iterable = DenseSORIterable(A, x, similar(x), b, ω, maxiter)
+    for _ = iterable end
+    x
 end
 
-#########################
-# Method Implementation #
-#########################
+mutable struct DenseSORIterable{matT,vecT,numT}
+    A::matT
+    x::vecT
+    tmp::vecT
+    b::vecT
+    ω::numT
+    maxiter::Int
+end
 
-function sor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2)^2,
-    verbose::Bool=false
-    )
-	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
+start(::DenseSORIterable) = 1
+done(it::DenseSORIterable, iteration::Int) = iteration > it.maxiter
+function next(s::DenseSORIterable, iteration::Int)
+    n = size(s.A, 1)
 
-    verbose && @printf("=== sor ===\n%4s\t%7s\n","iter","resnorm")
-    iter=0
-	n = size(A,2)
-    xold = copy(x)
-    z = zero(Amultype(A, x))
-    tol = tol * norm(b)
-	for iter=1:maxiter
-        nextiter!(log,mvps=1)
-		for i=1:n
-			σ=z
-			for j=1:i-1
-				σ+=A[i,j]*x[j]
-			end
-			for j=i+1:n
-				σ+=A[i,j]*xold[j]
-			end
-			A[i,i]==0 && throw(SingularException(i))
-			σ=(b[i]-σ)/A[i,i]
-			x[i]=xold[i]+ω*(σ-xold[i])
-		end
-		#check convergence
-		resnorm = norm(A*x-b)
-        push!(log,:resnorm,resnorm)
-        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
-        resnorm < tol && (setconv(log, resnorm>=0); break)
-		@blas! xold = x
-	end
-    verbose && @printf("\n")
-	x
+    for col = 1 : n
+        @simd for row = 1 : col - 1
+            @inbounds s.tmp[row] -= s.A[row, col] * s.x[col]
+        end
+
+        s.tmp[col] = s.b[col]
+    end
+
+    for col = 1 : n
+        @inbounds s.x[col] += s.ω * (s.tmp[col] / s.A[col, col] - s.x[col])
+        @simd for row = col + 1 : n
+            @inbounds s.tmp[row] -= s.A[row, col] * s.x[col]
+        end
+    end
+
+    nothing, iteration + 1
 end
 
 ####################
@@ -181,70 +156,58 @@ end
 ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
     ssor!(zerox(A, b), A, b, ω; kwargs...)
 
-function ssor!(x, A::AbstractMatrix, b, ω::Real;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
-    log::Bool=false, kwargs...
-    )
-    history = ConvergenceHistory(partial=!log)
-    history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
-    ssor_method!(history, x, A, b, ω; tol=tol, maxiter=maxiter, kwargs...)
-    log && shrink!(history)
-    log ? (x, history) : x
+function ssor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=size(A,2))
+    check_diag(A)
+    iterable = DenseSSORIterable(A, x, similar(x), b, ω, maxiter)
+    for _ = iterable end
+    x
 end
 
-#########################
-# Method Implementation #
-#########################
+mutable struct DenseSSORIterable{matT,vecT,numT}
+    A::matT
+    x::vecT
+    tmp::vecT
+    b::vecT
+    ω::numT
+    maxiter::Int
+end
 
-function ssor_method!(log::ConvergenceHistory, x, A::AbstractMatrix, b, ω::Real;
-    tol=size(A,2)^3*eps(typeof(real(b[1]))), maxiter=size(A,2),
-    verbose::Bool=false
-    )
-	0 < ω < 2 || warn("ω = $ω lies outside the range 0<ω<2 which is required for convergence")
+start(::DenseSSORIterable) = 1
+done(it::DenseSSORIterable, iteration::Int) = iteration > it.maxiter
+function next(s::DenseSSORIterable, iteration::Int)
+    n = size(s.A, 1)
 
-    verbose && @printf("=== sor ===\n%4s\t%7s\n","iter","resnorm")
-    iter=0
-	n = size(A,2)
-    xold = copy(x)
-    z = zero(Amultype(A, x))
-    tol = tol * norm(b)
-	for iter=1:maxiter
-        nextiter!(log,mvps=1)
-		for i=1:n #Do a SOR sweep
-			σ=z
-			for j=1:i-1
-				σ+=A[i,j]*x[j]
-			end
-			for j=i+1:n
-				σ+=A[i,j]*xold[j]
-			end
-			A[i,i]==0 && throw(SingularException(i))
-			σ=(b[i]-σ)/A[i,i]
-			x[i]=xold[i]+ω*(σ-xold[i])
-		end
-		@blas! xold = x
-		for i=n:-1:1 #Do a backward SOR sweep
-			σ=z
-			for j=1:i-1
-				σ+=A[i,j]*xold[j]
-			end
-			for j=i+1:n
-				σ+=A[i,j]*x[j]
-			end
-			A[i,i]==0 && throw(SingularException(i))
-			σ=(b[i]-σ)/A[i,i] #This line is missing in the Templates reference
-			x[i]=xold[i]+ω*(σ-xold[i])
-		end
-		#check convergence
-		resnorm = norm(A*x-b)
-        push!(log,:resnorm,resnorm)
-        verbose && @printf("%3d\t%1.2e\n",iter,resnorm)
-        resnorm < tol && (setconv(log, resnorm>=0); break)
-		@blas! xold = x
-	end
-    verbose && @printf("\n")
-	x
+    for col = 1 : n
+        @simd for row = 1 : col - 1
+            @inbounds s.tmp[row] -= s.A[row, col] * s.x[col]
+        end
+
+        s.tmp[col] = s.b[col]
+    end
+
+    for col = 1 : n
+        @inbounds s.x[col] += s.ω * (s.tmp[col] / s.A[col, col] - s.x[col])
+        @simd for row = col + 1 : n
+            @inbounds s.tmp[row] -= s.A[row, col] * s.x[col]
+        end
+    end
+
+    for col = n : -1 : 1
+        s.tmp[col] = s.b[col]
+        @simd for row = col + 1 : n
+            @inbounds s.tmp[row] -= s.A[row, col] * s.x[col]
+        end
+    end
+
+    for col = n : -1 : 1
+        @simd for row = 1 : col - 1
+            @inbounds s.tmp[row] -= s.A[row, col] * s.x[col]
+        end
+
+        @inbounds s.x[col] += s.ω * (s.tmp[col] / s.A[col, col] - s.x[col])
+    end
+
+    nothing, iteration + 1
 end
 
 #################

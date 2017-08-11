@@ -12,12 +12,8 @@ unicodeplots()
 A = lu(rand(10, 10))[1]
 b = rand(10)
 
-for solver in (cg, gmres, minres, lsqr, lsmr, idrs, jacobi, gauss_seidel)
+for solver in (cg, gmres, minres, lsqr, lsmr, idrs)
     plot(solver(A, b; log=true)[2])
-end
-
-for solver in (sor, ssor)
-    plot(solver(A, b, 1.0; log=true)[2])
 end
 
 plot(bicgstabl(A, b, 2, log=true)[2])

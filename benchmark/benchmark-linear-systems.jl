@@ -84,4 +84,19 @@ function minres(n = 100_000)
     @benchmark IterativeSolvers.minres($A, $b, maxiter = 100)
 end
 
+function sparse_stationary(n = 10_000)
+    A = sprand(n, n, 5 / n)
+    A += A' + 4.0I
+    x = ones(n)
+    b = A * x
+    ω = 1.1
+
+    b1 = @benchmark $sor!(sol, $A, $b, $ω, maxiter = 20) setup = (sol = zeros($n))
+    b2 = @benchmark $ssor!(sol, $A, $b, $ω, maxiter = 20) setup = (sol = zeros($n))
+    b3 = @benchmark $jacobi!(sol, $A, $b, maxiter = 20) setup = (sol = zeros($n))
+    b4 = @benchmark $gauss_seidel!(sol, $A, $b, maxiter = 20) setup = (sol = zeros($n))
+
+    b1, b2, b3, b4
+end
+
 end
