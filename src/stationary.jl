@@ -142,7 +142,7 @@ Allocates a single temporary vector and traverses `A` columnwise.
 Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
-function sor!(x, A::AbstractMatrix, b, ω::Real; maxiter=10)
+function sor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
     check_diag(A)
     iterable = DenseSORIterable(A, x, similar(x), b, ω, maxiter)
     for _ = iterable end

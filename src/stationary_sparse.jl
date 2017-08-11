@@ -333,7 +333,7 @@ function sor_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, 
 end
 
 """
-    sor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter::Int = 10)
+    sor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter=10)
 
 Performs exactly `maxiter` SOR iterations with relaxation parameter `ω`.
 
@@ -393,7 +393,7 @@ function next(s::SSORIterable{T}, iteration::Int) where {T}
 end
 
 """
-    ssor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter::Int = 10)
+    ssor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter=10)
 
 Performs exactly `maxiter` SSOR iterations with relaxation parameter `ω`. Each iteration 
 is basically a forward *and* backward sweep of SOR.
