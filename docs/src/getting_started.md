@@ -1,4 +1,4 @@
-# Manual
+# Getting started
 
 ## Installation
 
@@ -122,8 +122,6 @@ ch[:resnorm] #Vector or Matrix
 ch[:resnorm, x] #Vector or Matrix element
 ch[:resnorm, x, y] #Matrix element
 ```
-
-The available keys of each method is described in the [Public Documentation](@ref).
 
 ### Plotting
 

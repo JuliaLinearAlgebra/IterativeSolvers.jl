@@ -1,4 +1,4 @@
-# MINRES
+# [MINRES](@id MINRES)
 
 MINRES is a short-recurrence version of GMRES for solving $Ax = b$ approximately for $x$ where $A$ is a symmetric, Hermitian, skew-symmetric or skew-Hermitian linear operator and $b$ the right-hand side vector.
 

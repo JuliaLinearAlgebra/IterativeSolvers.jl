@@ -1,4 +1,4 @@
-# BiCGStab(l)
+# [BiCGStab(l)](@id BiCGStabl)
 
 BiCGStab(l) solves the problem $Ax = b$ approximately for $x$ where $A$ is a general, linear operator and $b$ the right-hand side vector. The methods combines BiCG with $l$ GMRES iterations, resulting in a short-reccurence iteration. As a result the memory is fixed as well as the computational costs per iteration.
 

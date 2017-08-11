@@ -1,4 +1,4 @@
-# Conjugate Gradients (CG)
+# [Conjugate Gradients (CG)](@id CG)
 
 Conjugate Gradients solves $Ax = b$ approximately for $x$ where $A$ is a symmetric, positive-definite linear operator and $b$ the right-hand side vector. The method uses short recurrences and therefore has fixed memory costs and fixed computational costs per iteration.
 

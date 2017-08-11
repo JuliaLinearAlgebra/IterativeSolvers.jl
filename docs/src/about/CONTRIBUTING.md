@@ -1,7 +1,7 @@
 # Contributing
 
 Contributions are always welcome, as are feature requests and suggestions. Feel
-free to open [issues](https://help.github.com/articles/creating-an-issue/) and [pull requests](https://help.github.com/articles/creating-a-pull-request/) at any time. If you aren't familiar with git or Github please start [now](https://help.github.com/articles/good-resources-for-learning-git-and-github/).
+free to open [issues](https://help.github.com/articles/creating-an-issue/) and [pull requests](https://help.github.com/articles/creating-a-pull-request/) at any time.
 
 It is important to note that almost every method in the package has documentation,
 to know what it does simply use `?<method>` in the terminal.

@@ -21,14 +21,14 @@ gauss_seidel
 gauss_seidel!
 ```
 
-## Successive over-relaxation (SOR)
+## [Successive over-relaxation (SOR)](@id SOR)
 
 ```@docs
 sor
 sor!
 ```
 
-## Symmetric successive over-relaxation (SSOR)
+## [Symmetric successive over-relaxation (SSOR)](@id SSOR)
 
 ```@docs
 ssor

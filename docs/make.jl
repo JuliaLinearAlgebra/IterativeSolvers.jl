@@ -6,26 +6,31 @@ makedocs(
 	sitename = "IterativeSolvers.jl",
 	pages = [
 		"Home" => "index.md",
-		"Manual" => "user_manual.md",
+		"Getting started" => "getting_started.md",
 		"Linear systems" => [
-			"Conjugate Gradients" => "library/cg.md",
-			"Chebyshev iteration" => "library/chebyshev.md",
-			"MINRES" => "library/minres.md",
-			"BiCGStab(l)" => "library/bicgstabl.md",
-			"Restarted GMRES" => "library/gmres.md",
-			"Stationary methods" => "library/stationary.md"
+			"Conjugate Gradients" => "linear_systems/cg.md",
+			"Chebyshev iteration" => "linear_systems/chebyshev.md",
+			"MINRES" => "linear_systems/minres.md",
+			"BiCGStab(l)" => "linear_systems/bicgstabl.md",
+			"IDR(s)" => "linear_systems/idrs.md",
+			"Restarted GMRES" => "linear_systems/gmres.md",
+			"LSMR" => "linear_systems/lsmr.md",
+			"LSQR" => "linear_systems/lsqr.md",
+			"Stationary methods" => "linear_systems/stationary.md"
 		],
 		"Eigenproblems" => [
-			"Power method" => "library/power_method.md",
+			"Power method" => "eigenproblems/power_method.md",
 		],
+		"SVDL" => "svd/svdl.md",
+		"Randomized algorithms" => "randomized.md",
 		"Preconditioning" => "preconditioning.md",
 		"Library" => [
 			"Public" => "library/public.md",
-			"Internal" => "library/internal.md",
+			# "Internal" => "library/internal.md",
 		],
 		"About" => [
-		"Contributing" => "about/CONTRIBUTING.md",
-		"License" => "about/license.md",
+			"Contributing" => "about/CONTRIBUTING.md",
+			"License" => "about/license.md",
 	    ]
 	]
 )

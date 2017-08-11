@@ -1,6 +1,8 @@
-# (Inverse) power method
+# [(Inverse) power method](@id PowerMethod)
 
 Solves the eigenproblem $Ax = λx$ approximately where $A$ is a general linear map. By default converges towards the dominant eigenpair $(λ, x)$ such that $|λ|$ is largest. Shift-and-invert can be applied to target a specific eigenvalue near `shift` in the complex plane.
+
+## Usage
 
 ```@docs
 powm
