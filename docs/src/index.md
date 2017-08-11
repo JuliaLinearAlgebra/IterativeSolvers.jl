@@ -14,7 +14,7 @@ When solving linear systems $Ax = b$ for a square matrix $A$ there are quite som
 |---------------------|--------------------------------------------------------------------------|
 | [Conjugate Gradients](@ref CG) | Best choice for **symmetric**, **positive-definite** matrices |
 | [MINRES](@ref MINRES) | For **symmetric**, **indefinite** matrices |
-| [GMRES](@ref GMRES) | For **nonsymmetric** matrices when a good preconditioner is available |
+| [GMRES](@ref GMRES) | For **nonsymmetric** matrices when a good [preconditioner](@ref Preconditioning) is available |
 | [IDR(s)](@ref IDRs) | For **nonsymmetric**, **strongly indefinite** problems without a good preconditioner |
 | [BiCGStab(l)](@ref BiCGStabl) | Otherwise for **nonsymmetric** problems |
 

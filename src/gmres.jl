@@ -138,7 +138,7 @@ gmres(A, b; kwargs...) = gmres!(zeros(b), A, b; initially_zero = true, kwargs...
 """
     gmres!(x, A, b; kwargs...) -> x, [history]
 
-Solves the problem Ax = b with restarted GMRES.
+Solves the problem ``Ax = b`` with restarted GMRES.
 
 # Arguments
 

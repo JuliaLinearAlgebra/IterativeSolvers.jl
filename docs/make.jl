@@ -7,6 +7,7 @@ makedocs(
 	pages = [
 		"Home" => "index.md",
 		"Getting started" => "getting_started.md",
+		"Preconditioning" => "preconditioning.md",
 		"Linear systems" => [
 			"Conjugate Gradients" => "linear_systems/cg.md",
 			"Chebyshev iteration" => "linear_systems/chebyshev.md",
@@ -23,11 +24,10 @@ makedocs(
 		],
 		"SVDL" => "svd/svdl.md",
 		"Randomized algorithms" => "randomized.md",
-		"Preconditioning" => "preconditioning.md",
-		"Library" => [
-			"Public" => "library/public.md",
-			# "Internal" => "library/internal.md",
-		],
+		# "Additional resources" => [
+		# 	# "Public" => "library/public.md",
+		# 	# "Internal" => "library/internal.md",
+		# ],
 		"About" => [
 			"Contributing" => "about/CONTRIBUTING.md",
 			"License" => "about/license.md",

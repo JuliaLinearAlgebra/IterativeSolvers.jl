@@ -18,7 +18,6 @@ Pages = ["internal.md"]
 **`Typealiases`**
 
 ```@docs
-IterativeSolvers.PlainHistory
 IterativeSolvers.RestartedHistory
 ```
 
@@ -28,8 +27,6 @@ IterativeSolvers.RestartedHistory
 IterativeSolvers.nextiter!
 IterativeSolvers.reserve!
 IterativeSolvers.shrink!
-IterativeSolvers.setmvps
-IterativeSolvers.setmtvps
 IterativeSolvers.setconv
 IterativeSolvers.showplot
 ```
@@ -48,6 +45,5 @@ IterativeSolvers.Adivtype
 IterativeSolvers.Amultype
 IterativeSolvers.randx
 IterativeSolvers.zerox
-IterativeSolvers.update!
 IterativeSolvers.initrand!(::Vector)
 ```

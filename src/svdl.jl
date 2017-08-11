@@ -83,85 +83,74 @@ end
 ####################
 
 """
-    svdl(A)
+    svdl(A) -> Σ, L, [history]
 
 Compute some singular values (and optionally vectors) using Golub-Kahan-Lanczos
-bidiagonalization \\cite{Golub1965} with thick restarting \\cite{Wu2000}.
+bidiagonalization [^Golub1965] with thick restarting [^Wu2000].
 
 If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 `ch` is a `ConvergenceHistory` object. Otherwise it will only return `X, L`.
 
 # Arguments
 
-`A` : The matrix or matrix-like object whose singular values are desired.
+- `A` : The matrix or matrix-like object whose singular values are desired.
 
 ## Keywords
 
-`nsv::Int = 6`: number of singular values requested.
+- `nsv::Int = 6`: number of singular values requested;
+- `v0 = random unit vector`: starting guess vector in the domain of `A`.
+  The length of `q` should be the number of columns in `A`;
+- `k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting;
+- `j::Int = nsv`: number of vectors to keep at the end of the restart. 
+  We don't recommend j < nsv;
+- `maxiter::Int = minimum(size(A))`: maximum number of iterations to run;
+- `verbose::Bool = false`: print information at each iteration;
+- `tol::Real = √eps()`: maximum absolute error in each desired singular value;
+- `reltol::Real=√eps()`: maximum error in each desired singular value relative to the 
+  estimated norm of the input matrix;
+- `method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
+  1. `:ritz`: Thick restart with Ritz values [Wu2000].
+  2. `:harmonic`: Restart with harmonic Ritz values [Baglama2005].
+- `vecs::Symbol = :none`: singular vectors to return.
+  1. `:both`: Both left and right singular vectors are returned.
+  2. `:left`: Only the left singular vectors are returned.
+  3. `:right`: Only the right singular vectors are returned.
+  4. `:none`: No singular vectors are returned.
+- `dolock::Bool=false`: If `true`, locks converged Ritz values, removing them
+  from the Krylov subspace being searched in the next macroiteration;
+- `log::Bool = false`: output an extra element of type `ConvergenceHistory`
+  containing extra information of the method execution.
 
-`v0 = random unit vector`: starting guess vector in the domain of `A`.
-The length of `q` should be the number of columns in `A`.
-
-`k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting.
-
-`j::Int = nsv`: number of vectors to keep at the end of the restart.
-We don't recommend j < nsv.
-
-`maxiter::Int = minimum(size(A))`: maximum number of iterations to run.
-
-`verbose::Bool = false`: print information at each iteration.
-
-`tol::Real = √eps()`: maximum absolute error in each desired singular value.
-
-`reltol::Real=√eps()`: maximum error in each desired singular value relative to the
-estimated norm of the input matrix.
-
-`method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
-
-* `:ritz`: Thick restart with Ritz values [Wu2000].
-* `:harmonic`: Restart with harmonic Ritz values [Baglama2005].
-
-`vecs::Symbol = :none`: singular vectors to return.
-
-* `:both`: Both left and right singular vectors are returned.
-* `:left`: Only the left singular vectors are returned.
-* `:right`: Only the right singular vectors are returned.
-* `:none`: No singular vectors are returned.
-
-`dolock::Bool=false`: If `true`, locks converged Ritz values, removing them
-from the Krylov subspace being searched in the next macroiteration.
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
-
-# Output
+# Return values
 
 **if `log` is `false`**
 
-`Σ`: list of the desired singular values if `vecs == :none` (the default),
-otherwise returns an `SVD` object with the desired singular vectors filled in.
-
-`L`: computed partial factorizations of A.
+- `Σ`: list of the desired singular values if `vecs == :none` (the default), otherwise 
+  returns an `SVD` object with the desired singular vectors filled in;
+- `L`: computed partial factorizations of A.
 
 **if `log` is `true`**
 
-`Σ`: list of the desired singular values if `vecs == :none` (the default),
-otherwise returns an `SVD` object with the desired singular vectors filled in.
-
-`L`: computed partial factorizations of A.
-
-`ch::ConvergenceHistory`: convergence history.
+- `Σ`: list of the desired singular values if `vecs == :none` (the default),
+otherwise returns an `SVD` object with the desired singular vectors filled in;
+- `L`: computed partial factorizations of A;
+- `history`: convergence history.
 
 **ConvergenceHistory keys**
 
-`:betas` => `betas`: The history of the computed betas.
+- `:betas` => `betas`: The history of the computed betas.
+- `:Bs` => `Bs`: The history of the computed projected matrices.
+- `:ritz` => `ritzvalhist`: Ritz values computed at each iteration.
+- `:conv` => `convhist`: Convergence data.
 
-`:Bs` => `Bs`: The history of the computed projected matrices.
-
-`:ritz` => `ritzvalhist`: Ritz values computed at each iteration.
-
-`:conv` => `convhist`: Convergence data.
-
+[^Golub1965]:
+    Golub, Gene, and William Kahan. "Calculating the singular values and pseudo-inverse 
+    of a matrix." Journal of the Society for Industrial and Applied Mathematics, 
+    Series B: Numerical Analysis 2.2 (1965): 205-224.
+[^Wu2000]:
+    Wu, Kesheng, and Horst Simon. "Thick-restart Lanczos method for large symmetric 
+    eigenvalue problems." SIAM Journal on Matrix Analysis and Applications 22.2 
+    (2000): 602-616.
 """
 function svdl(A;
     nsv::Int=6, k::Int=2nsv, tol::Real=√eps(),
@@ -262,85 +251,39 @@ Determine if any singular values in a partial factorization have converged.
 
 # Arguments
 
-`L::PartialFactorization` : a `PartialFactorization` computed by an iterative
-method such as `svdl`.
-
-`F::Base.LinAlg.SVD`: a `SVD` factorization computed for `L.B`.
-
-`k::Int` : number of singular values to check.
-
-`tol::Real`: absolute tolerance for a Ritz value to be considered converged.
-
-`reltol::Real`: relative tolerance for a Ritz value to be considered converged.
-
-`verbose::Bool = false`: if `true`, prints out all the results of convergence tests.
+- `L::PartialFactorization`: a `PartialFactorization` computed by an iterative
+method such as `svdl`;
+- `F::Base.LinAlg.SVD`: a `SVD` factorization computed for `L.B`;
+- `k::Int` : number of singular values to check;
+- `tol::Real`: absolute tolerance for a Ritz value to be considered converged;
+- `reltol::Real`: relative tolerance for a Ritz value to be considered converged;
+- `verbose::Bool = false`: if `true`, prints out all the results of convergence tests.
 
 # Implementation note
 
 This convergence test routine uses a variety of different tests.
 1. The crudest estimate of the error bound is a simple error bound which dates
-back at least to Wilkinson's classic book [Wilkinson1965:Ch.3 §53 p.170]
-
-```bibtex
-@book{Wilkinson1965,
-    address = {Oxford, UK},
-    author = {J H Wilkinson},
-    publisher = {Oxford},
-    title = {The Algebraic Eigenvalue Problem},
-    year = 1965
-}
-```
-
+back at least to Wilkinson's classic book [^Wilkinson1965] Ch.3 §53 p.170.
 2. When the Ritz values become sufficiently well-separated, more refined estimates
 can be derived from the Rayleigh-Ritz properties of the Krylov process, as
-described in [Wilkinson1965:Ch.3 §54-55 p.173, Yamamoto1980, Ortega1990]
+described in [^Wilkinson1965] Ch.3 §54-55 p.173, [^Yamamoto1980], [^Ortega1990],
+[^Geurts1982] and [^Deif1989].
 
-```bibtex
-@book{Ortega1990,
-    address = {Philadelphia, PA},
-    author = {Ortega, James M},
-    doi = {10.1137/1.9781611971323},
-    edition = {2},
-    publisher = {SIAM},
-    series = {Classics in Applied Mathematics},
-    title = {Numerical Analysis: A Second Course},
-    url = {http://epubs.siam.org/doi/book/10.1137/1.9781611971323},
-    year = 1990
-}
-@article{Yamamoto1980,
-    author = {Yamamoto, Tetsuro},
-    doi = {10.1007/BF01396059},
-    journal = {Numerische Mathematik},
-    number = 2,
-    pages = {189--199},
-    title = {Error bounds for computed eigenvalues and eigenvectors},
-    volume = {34},
-    year = 1980
-}
-@article{Geurts1982,
-    author = {Geurts, A J},
-    doi = {10.1007/BF01399313},
-    journal = {Numerische Mathematik},
-    month = feb,
-    number = {1},
-    pages = {85--96},
-    title = {A contribution to the theory of condition},
-    volume = {39},
-    year = {1982}
-}
-@article{Deif1989,
-    author = {Deif, A.},
-    doi = {10.1007/BF01396348},
-    journal = {Numerische Mathematik},
-    month = jun,
-    number = {6},
-    pages = {625--626},
-    title = {A relative backward perturbation theorem for the eigenvalue problem},
-    volume = {56},
-    year = {1989}
-}
-```
-
+[^Wilkinson1965]:
+    Wilkinson, James Hardy. The algebraic eigenvalue problem. 
+    Vol. 87. Oxford: Clarendon Press, 1965.
+[^Yamamoto1980]: 
+    Yamamoto, Tetsuro. "Error bounds for computed eigenvalues 
+    and eigenvectors." Numerische Mathematik 34.2 (1980): 189-199.
+[^Ortega1990]:
+    Ortega, James M. Numerical analysis: a second course. 
+    Society for Industrial and Applied Mathematics, 1990.
+[^Geurts1982]:
+    Geurts, A. J. "A contribution to the theory of condition." 
+    Numerische Mathematik 39.1 (1982): 85-96.
+[^Deif1989]:
+    Deif, A. "A relative backward perturbation theorem for the eigenvalue 
+    problem." Numerische Mathematik 56.6 (1989): 625-626.
 """
 function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::Real,
     reltol::Real, log::ConvergenceHistory, verbose::Bool=false
@@ -426,7 +369,7 @@ Thick restart (with ordinary Ritz values)
 
 # References
 
-[Hernandez2008]
+[^Hernandez2008]
 
 """
 #Hernandez2008
@@ -462,14 +405,20 @@ function thickrestart!(A, L::PartialFactorization{T,Tr},
 end
 
 """
-    harmonicrestart!(A, L, F, k)
+    harmonicrestart!(A, L, F, k) -> L
 
-Thick restart with harmonic Ritz values.
+Thick restart with harmonic Ritz values. See [^Baglama2005] but note that 
+they have P and Q swapped relative to our notation, which follows that 
+of [^Hernandez2008]
 
-# References
-
-[Baglama2005] - note that they have P and Q swapped relative to our notation,
-which follows that of [Hernandez2008]
+[^Baglama2005]: 
+    Baglama, James, and Lothar Reichel. "Augmented implicitly restarted 
+    Lanczos bidiagonalization methods." SIAM Journal on Scientific 
+    Computing 27.1 (2005): 19-42.
+[^Hernandez2008]: 
+    Vicente Hernández, José E. Román, and Andrés Tomás. "A robust and 
+    efficient parallel SVD solver based on restarted Lanczos bidiagonalization." 
+    Electronic Transactions on Numerical Analysis 31 (2008): 68-85.
 
 """
 function harmonicrestart!(A, L::PartialFactorization{T,Tr},
@@ -550,63 +499,42 @@ of Lanczos vectors.
 
 # Arguments
 
-`A`: matrix or linear map generating the Lanczos vectors
+- `A`: matrix or linear map generating the Lanczos vectors;
+- `L::PartialFactorization`: partial factorization;
+- `orthleft::Bool = false`: orthogonalize left Lanczos vectors;
+- `orthright::Bool = true`: orthogonalize right Lanczos vectors;
+- `α::Real = 1/√2`: criterion for doing a second reorthogonalization.
 
-`L::PartialFactorization`: partial factorization.
+## Implementation details
 
-`orthleft::Bool = false`: orthogonalize left Lanczos vectors.
-
-`orthright::Bool = true`: orthogonalize right Lanczos vectors.
-
-`α::Real = 1/√2`: criterion for doing a second reorthogonalization.
-
-# Implementation note
-
-The implementation mostly follows the description in [Simon2000,Hernandez2008].
+The implementation mostly follows the description in [^Simon2000] and [^Hernandez2008].
 
 The reorthogonalization method used is using double classical Gram-Schmidt
 full reorthogonalization. As explained in the numerical analysis literature by
 Kahan, Golub, Rutishauser, and others in the 1970s, double classical
 Gram-Schmidt reorthogonalization always suffices to keep vectors orthogonal to
-within machine precision. As described in [Bjorck2015], α is a threshold
+within machine precision. As described in [^Bjorck2015], `α` is a threshold
 for determinining when the second orthogonalization is necessary. -log10(α) is
 the number of (decimal) digits lost due to cancellation. Common choices are
-α=0.1 [Rutishauser] and α=1/√2 [Daniel1976] (our default).
+`α=0.1` [Rutishauser] and `α=1/√2` [Daniel1976] (our default).
 
 In most situations it suffices to orthogonalize either the left vectors or the
 right vectors, except when the matrix norm exceeds `1/√eps(eltype(A))`, in
 which case it will be necessary to orthogonalize both sets of vectors. See
-[Simon2000].
+[^Simon2000].
 
-```bibtex
-@book{Bjorck2015,
-    author = {Bj{\\"{o}}rck, {\\AA}ke},
-    doi = {10.1007/978-3-319-05089-8},
-    publisher = {Springer},
-    series = {Texts in Applied Mathematics},
-    title = {Numerical Methods in Matrix Computations},
-    year = {2015}
-}
-@article{Simon2000,
-    author = {Simon, Horst D. and Zha, Hongyuan},
-    doi = {10.1137/S1064827597327309},
-    journal = {SIAM Journal on Scientific Computing},
-    number = {6},
-    pages = {2257--2274},
-    title = {Low-Rank Matrix Approximation Using the {Lanczos} Bidiagonalization Process with Applications},
-    volume = {21},
-    year = {2000}
-}
-@article{Daniel1976,
-    author = {Daniel, J. W. and Gragg, W. B. and Kaufman, L. and Stewart, G. W.},
-    doi = {10.1090/S0025-5718-1976-0431641-8},
-    journal = {Mathematics of Computation},
-    number = {136},
-    pages = {772--795},
-    title = {Reorthogonalization and stable algorithms for updating the {Gram-Schmidt QR} factorization},
-    volume = {30},
-    year = {1976}
-}
+[^Bjorck2015]: 
+    Björck, Åke. Numerical methods in matrix computations. 
+    New York: Springer, 2015.
+[^Simon2000]: 
+    Simon, Horst D., and Hongyuan Zha. "Low-rank matrix approximation 
+    using the Lanczos bidiagonalization process with applications." 
+    SIAM Journal on Scientific Computing 21.6 (2000): 2257-2274. 
+
+[^Daniel1976]:
+    Daniel, James W., et al. "Reorthogonalization and stable algorithms 
+    for updating the Gram-Schmidt QR factorization." Mathematics of 
+    Computation 30.136 (1976): 772-795.
 ```
 """
 function extend!(

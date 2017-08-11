@@ -2,27 +2,25 @@
 
 ## Installation
 
-The package can be installed with a simple instruction.
+The package can be installed via Julia's package manager.
 
 ```julia
 julia> Pkg.add("IterativeSolvers")
 ```
 
-After installing the package, if you wish to use the latest features of the
-package you must switch to the master branch with `Pkg.clone`.
-
-```julia
-julia> Pkg.checkout("IterativeSolvers")
-```
-
 ## Interface
 
-All linear-algebraic routines will take as input a linear operator `A` that maps
-vectors to vectors. Typically `A` is a `Matrix` or a `SparseMatrixCSC`, but since
-`A` is not explicitly typed, any linear operator that supports matrix operations
-can be used as well. This makes it possible to apply solvers *matrix-free*. In 
-IterativeSolvers.jl we strongly recommend [LinearMaps.jl](https://github.com/Jutho/LinearMaps.jl) 
-for non-matrix types of `A`.
+Virtually all solvers have the common function declarations:
+
+```julia
+solver(A, args...; kwargs...)
+solver!(x, A, args...; kwargs...)
+```
+
+where `A` is a [linear operator](@ref matrixfree) and `x` an initial guess. The second declaration also updates `x` in-place.
+
+### [Explicit matrices and the matrix-free approach](@id matrixfree)
+Rather than constructing an explicit matrix `A` of the type `Matrix` or `SparseMatrixCSC`, it is also possible to pass a general linear operator that performs matrix operations implicitly. This is called the **matrix-free** approach.
 
 For matrix-free types of `A` the following interface is expected to be defined:
 
@@ -31,30 +29,8 @@ For matrix-free types of `A` the following interface is expected to be defined:
 - `eltype(A)` returns the element type implicit in the equivalent matrix representation of `A`;
 - `size(A, d)` returns the nominal dimensions along the `d`th axis in the equivalent matrix representation of `A`.
 
-### Solvers
-
-All linear solvers have a common function declaration (with a few exceptions).
-
-```
-solver(A, b::Vector; kwargs...)
-solver!(x, A, b::Vector; kwargs...)
-```
-
-In the case of eigenproblems or singular value decompositions:
-
-```
-eigsolver(A; kwargs...)
-eigsolver!(x, A; kwargs...)
-```
-
-`A` is a linear operator as described above.
-
-`b` is the vector to be solved.
-
-`x` is a vector for the initial guess. In the case of a mutating call this
-parameter will be overwritten.
-
-Output will be the solution to the system.
+!!! tip "Matrix-free with LinearMaps.jl"
+    We strongly recommend [LinearMaps.jl](https://github.com/Jutho/LinearMaps.jl) for matrix-free linear operators, as it implements the above methods already for you; you just have to write the action of the linear map.
 
 
 ### Additional arguments
@@ -64,7 +40,7 @@ Keyword names will vary depending on the method, however some of them will alway
 - `tol`: (relative) stopping tolerance of the method;
 - `verbose`: print information during the iterations;
 - `maxiter`: maximum number of allowed iterations;
-- `Pl` and `Pr`: left and right preconditioner. See [Preconditioning](@ref);
+- `Pl` and `Pr`: left and right preconditioner. See [Preconditioning](@ref Preconditioning);
 - `log::Bool = false`: output an extra element of type `ConvergenceHistory` containing the convergence history.
 
 ### `log` keyword
@@ -121,6 +97,10 @@ or matrix. This data can be a lot of things, most commonly residual.
 ch[:resnorm] #Vector or Matrix
 ch[:resnorm, x] #Vector or Matrix element
 ch[:resnorm, x, y] #Matrix element
+```
+
+```@docs
+ConvergenceHistory
 ```
 
 ### Plotting

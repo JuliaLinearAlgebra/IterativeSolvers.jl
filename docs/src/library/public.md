@@ -1,5 +1,0 @@
-# Iterative methods
-
-```@docs
-ConvergenceHistory
-```

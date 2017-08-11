@@ -4,7 +4,7 @@
 
 # This file provides a rudimentary implementation of the randomized singular
 # value decomposition and spectral (eigen-) decomposition as described in
-# \cite{Halko2011}.
+# [^Halko2011].
 
 import Base.LinAlg: Eigen, SVD
 
@@ -28,42 +28,25 @@ algorithm.
 
 `::SVD`: singular value decomposition.
 
-# Warning
-
-This variant of the randomized singular value decomposition is the most
-commonly found implementation but is not recommended for accurate
-computations, as it often has trouble finding the `n` largest singular pairs,
-but rather finds `n` large singular pairs which may not necessarily be the
-largest.
+!!! warning "Accuracy"
+    This variant of the randomized singular value decomposition is the most
+    commonly found implementation but is not recommended for accurate
+    computations, as it often has trouble finding the `n` largest singular pairs,
+    but rather finds `n` large singular pairs which may not necessarily be the
+    largest.
 
 # Implementation note
 
 This function calls `rrange`, which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
-\\cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
+[^Halko2011]), followed by `svdfact_restricted()`, which computes the
 exact SVD factorization on the restriction of `A` to this randomly selected
-subspace (Algorithm 5.1 of \\cite{Halko2011}).
+subspace (Algorithm 5.1 of [^Halko2011]).
 
 Alternatively, you can mix and match your own randomized algorithm using
 any of the randomized range finding algorithms to find a suitable subspace
 and feeding the result to one of the routines that computes the `SVD`
 restricted to that subspace.
-
-# References
-
-```bibtex
-@article{Halko2011,
-    author = {Halko, N and Martinsson, P G and Tropp, J A},
-    doi = {10.1137/090771806},
-    journal = {SIAM Review},
-    month = jan,
-    number = {2},
-    pages = {217--288},
-    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
-    volume = {53},
-    year = {2011}
-}
-```
 """
 function rsvdfact(A, n::Int, p::Int=0)
     Q = rrange(A, n+p)
@@ -78,52 +61,33 @@ algorithm.
 
 # Arguments
 
-`A`: input matrix.
-
-`n::Int`: number of singular value/vector pairs to find.
-
-`p::Int=0`: number of extra vectors to include in computation.
+- `A`: input matrix;
+- `n::Int`: number of singular value/vector pairs to find;
+- `p::Int=0`: number of extra vectors to include in computation.
 
 # Output
 
-`::Vector`: estimated singular values of `A`.
+- `::Vector`: estimated singular values of `A`.
 
-# Warning
-
-This variant of the randomized singular value decomposition is the most
-commonly found implementation but is not recommended for accurate
-computations, as it often has trouble finding the `n` largest singular pairs,
-but rather finds `n` large singular pairs which may not necessarily be the
-largest.
+!!! warning "Accuracy"
+    This variant of the randomized singular value decomposition is the most
+    commonly found implementation but is not recommended for accurate
+    computations, as it often has trouble finding the `n` largest singular pairs,
+    but rather finds `n` large singular pairs which may not necessarily be the
+    largest.
 
 # Implementation note
 
 This function calls `rrange`, which uses naive randomized rangefinding to
 compute a basis for a subspace of dimension `n` (Algorithm 4.1 of
-\\cite{Halko2011}), followed by `svdfact_restricted()`, which computes the
+[^Halko2011]), followed by `svdfact_restricted()`, which computes the
 exact SVD factorization on the restriction of `A` to this randomly selected
-subspace (Algorithm 5.1 of \\cite{Halko2011}).
+subspace (Algorithm 5.1 of [^Halko2011]).
 
 Alternatively, you can mix and match your own randomized algorithm using
 any of the randomized range finding algorithms to find a suitable subspace
 and feeding the result to one of the routines that computes the `SVD`
 restricted to that subspace.
-
-# References
-
-```bibtex
-@article{Halko2011,
-    author = {Halko, N and Martinsson, P G and Tropp, J A},
-    doi = {10.1137/090771806},
-    journal = {SIAM Review},
-    month = jan,
-    number = {2},
-    pages = {217--288},
-    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
-    volume = {53},
-    year = {2011}
-}
-```
 """
 function rsvdvals(A, n::Int, p::Int=0)
     Q = rrange(A, n+p)
@@ -138,22 +102,20 @@ naive randomized rangefinding.
 
 # Arguments
 
-`A`: Input matrix. Must support `size(A)` and premultiply.
-
-`r::Int = 0`: The number of basis vectors to compute.
+- `A`: Input matrix. Must support `size(A)` and premultiply.
+- `r::Int = 0`: The number of basis vectors to compute.
 
 # Output
 
-`::Matrix`: matrix of dimension `size(A,1) x r` containing the basis
+- `::Matrix`: matrix of dimension `size(A,1) x r` containing the basis
 vectors of the computed subspace of `A`.
 
-# Warning
-
-The Reference explicitly discourages using this algorithm.
+!!! warning "Warning"
+    The Reference explicitly discourages using this algorithm.
 
 # Implementation note
 
-Whereas \\cite{Halko2011} recommends classical Gram-Schmidt with double
+Whereas [^Halko2011] recommends classical Gram-Schmidt with double
 reorthogonalization, we instead compute the basis with `qrfact()`, which
 for dense `A` computes the QR factorization using Householder reflectors.
 """
@@ -181,15 +143,13 @@ a threshold `ϵ`.
 
 # Arguments
 
-`A`: input matrix. Must support `size(A)` and premultiply.
-
-`r::Integer`: number of basis vectors to compute.
-
-`ϵ::Real = eps()`: threshold to determine adaptive fitting.
+- `A`: input matrix. Must support `size(A)` and premultiply.
+- `r::Integer`: number of basis vectors to compute.
+- `ϵ::Real = eps()`: threshold to determine adaptive fitting.
 
 ## Keywords
 
-`maxiter::Int = 10`: maximum number of iterations to run.
+- `maxiter::Int = 10`: maximum number of iterations to run.
 
 # Output
 
@@ -198,7 +158,7 @@ vectors of the computed subspace of `A`.
 
 # References
 
-Algorithm 4.2 of \\cite{Halko2011}
+Algorithm 4.2 of [^Halko2011]
 """
 function rrange_adaptive(A, r::Integer, ϵ::Real=eps(); maxiter::Int=10)
     m, n = size(A)
@@ -239,23 +199,20 @@ randomized rangefinding by subspace iteration.
 
 # Arguments
 
-`A`: input matrix. Must support `size(A)` and premultiply.
-
-`l::Int`: number of basis vectors to compute.
+- `A`: input matrix. Must support `size(A)` and premultiply.
+- `l::Int`: number of basis vectors to compute.
 
 ## Keywords
 
-`At = A'`: transpose of `A`.
-
-`q::Int = 0`: number of subspace iterations.
-
-`p` : oversampling parameter. The number of extra basis vectors to use
-in the computation, which get discarded at the end.
+- `At = A'`: transpose of `A`.
+- `q::Int = 0`: number of subspace iterations.
+- `p` : oversampling parameter. The number of extra basis vectors to use
+  in the computation, which get discarded at the end.
 
 # Output
 
-`::Matrix`: A dense matrix of dimension `size(A,1) x l` containing the basis
-vectors of the computed subspace of `A`.
+- `::Matrix`: A dense matrix of dimension `size(A,1) x l` containing the basis
+  vectors of the computed subspace of `A`.
 
 # Implementation note
 
@@ -265,7 +222,7 @@ for dense A computes the QR factorization using Householder reflectors.
 
 # References
 
-Algorithm 4.4 of \\cite{Halko2011}
+Algorithm 4.4 of [^Halko2011]
 """
 function rrange_si(A, l::Int; At=A', q::Int=0)
     basis=x->full(qrfact(x)[:Q])
@@ -292,17 +249,15 @@ naive randomized rangefinding using stochastic randomized Fourier transforms.
 
 # Arguments
 
-`A` : input matrix. Must support `size(A)` and premultiply.
-
-`l::Int` : number of basis vectors to compute.
-
-`p::Int = 0` : oversampling parameter. The number of extra basis vectors to use
-in the computation, which get discarded at the end.
+- `A` : input matrix. Must support `size(A)` and premultiply.
+- `l::Int` : number of basis vectors to compute.
+- `p::Int = 0` : oversampling parameter. The number of extra basis vectors to use
+  in the computation, which get discarded at the end.
 
 # Output
 
-`::Matrix`: matrix of dimension `size(A,1)` x `l` containing the basis
-vectors of the computed subspace of `A`.
+- `::Matrix`: matrix of dimension `size(A,1)` x `l` containing the basis
+  vectors of the computed subspace of `A`.
 
 # Implementation note
 
@@ -312,7 +267,7 @@ for dense `A` computes the QR factorization using Householder reflectors.
 
 # References
 
-Algorithm 4.5 of \\cite{Halko2011}
+Algorithm 4.5 of [^Halko2011]
 """
 function rrange_f(A, l::Int)
     n = size(A, 2)
@@ -329,10 +284,9 @@ using exact projection.
 
 # Arguments
 
-`A`: input matrix. Must support postmultiply.
-
-`Q`: matrix containing basis vectors of the subspace whose restriction to is
-desired.
+- `A`: input matrix. Must support postmultiply.
+- `Q`: matrix containing basis vectors of the subspace whose restriction to is
+  desired.
 
 # Output
 
@@ -340,7 +294,7 @@ desired.
 
 # References
 
-Algorithm 5.1 of \\cite{Halko2011}
+Algorithm 5.1 of [^Halko2011]
 """
 function svdfact_restricted(A, Q, n::Int)
     B=Q'A
@@ -356,18 +310,17 @@ using exact projection.
 
 # Arguments
 
-`A`: input matrix. Must support postmultiply.
-
-`Q`: matrix containing basis vectors of the subspace whose restriction to is
-desired.
+- `A`: input matrix. Must support postmultiply.
+- `Q`: matrix containing basis vectors of the subspace whose restriction to is
+  desired.
 
 # Output
 
-`::Vector`: estimated singular values of `A`.
+- `::Vector`: estimated singular values of `A`.
 
 # References
 
-Algorithm 5.1 of \\cite{Halko2011}
+Algorithm 5.1 of [^Halko201]
 """
 function svdvals_restricted(A, Q, n::Int)
     B=Q'A
@@ -380,19 +333,18 @@ end
 Compute the SVD factorization of `A` restricted to the subspace spanned by `Q`
 using row extraction.
 
-*Note:* \\cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
+*Note:* Remark 5.2 of [^Halko2011] recommends input of `Q` of the form `Q=A*Ω`
 where `Ω` is a sample computed by `randn(n,l)` or even `srft(l)`.
 
 # Arguments
 
-`A`: input matrix. Must support postmultiply
-
-`Q`: matrix containing basis vectors of the subspace whose restriction to is
-desired. Need not be orthogonal or normalized.
+- `A`: input matrix. Must support postmultiply
+- `Q`: matrix containing basis vectors of the subspace whose restriction to is
+  desired. Need not be orthogonal or normalized.
 
 # Output
 
-`::SVD`: singular value decomposition.
+- `::SVD`: singular value decomposition.
 
 # See also
 
@@ -401,7 +353,7 @@ interpolative decomposition `idfact`.
 
 # References
 
-Algorithm 5.2 of \\cite{Halko2011}
+Algorithm 5.2 of [^Halko2011]
 """
 function svdfact_re(A, Q)
     F = idfact(Q)
@@ -420,18 +372,17 @@ spanned by `Q` using row extraction.
 
 # Arguments
 
-`A::Hermitian`: input matrix. Must be `Hermitian` and support pre- and post-multiply.
-
-`Q`: orthonormal matrix containing basis vectors of the subspace whose
-restriction to is desired.
+- `A::Hermitian`: input matrix. Must be `Hermitian` and support pre- and post-multiply.
+- `Q`: orthonormal matrix containing basis vectors of the subspace whose
+  restriction to is desired.
 
 # Output
 
-`::Base.LinAlg.Eigen`: eigen factorization.
+- `::Base.LinAlg.Eigen`: eigen factorization.
 
 # References
 
-Algorithm 5.3 of \\cite{Halko2011}
+Algorithm 5.3 of [^Halko2011]
 """
 function eigfact_restricted(A::Hermitian, Q)
     B = Q'A*Q
@@ -445,19 +396,18 @@ end
 Compute the spectral (`Eigen`) factorization of `A` restricted to the subspace
 spanned by `Q` using row extraction.
 
-*Note:* \\cite[Remark 5.2]{Halko2011} recommends input of `Q` of the form `Q=A*Ω`
+*Note:* Remark 5.2 of [^Halko2011] recommends input of `Q` of the form `Q=A*Ω`
 where `Ω` is a sample computed by `randn(n,l)` or even `srft(l)`.
 
 # Arguments
 
-`A::Hermitian`: input matrix. Must be `Hermitian` and support pre- and post-multiply.
-
-`Q`: matrix containing basis vectors of the subspace whose restriction to is
-desired. Need not be orthogonal or normalized.
+- `A::Hermitian`: input matrix. Must be `Hermitian` and support pre- and post-multiply.
+- `Q`: matrix containing basis vectors of the subspace whose restriction to is
+  desired. Need not be orthogonal or normalized.
 
 # Output
 
-`::Base.LinAlg.Eigen`: eigen factorization.
+- `::Base.LinAlg.Eigen`: eigen factorization.
 
 # See also
 
@@ -466,7 +416,7 @@ interpolative decomposition `idfact()`.
 
 # References
 
-Algorithm 5.4 of \\cite{Halko2011}
+Algorithm 5.4 of [^Halko2011]
 """
 function eigfact_re(A::Hermitian, Q)
     X, J = idfact(Q)
@@ -485,14 +435,13 @@ spanned by `Q` using the Nyström method.
 
 # Arguments
 
-`A`: input matrix. Must be positive semidefinite.
-
-`Q`: orthonormal matrix containing basis vectors of the subspace whose
-restriction to is desired.
+- `A`: input matrix. Must be positive semidefinite.
+- `Q`: orthonormal matrix containing basis vectors of the subspace whose
+  restriction to is desired.
 
 # Output
 
-`::Base.LinAlg.Eigen`: eigen factorization.
+- `::Base.LinAlg.Eigen`: eigen factorization.
 
 # See also
 
@@ -501,7 +450,7 @@ that can be Cholesky decomposed.
 
 # References
 
-Algorithm 5.5 of \\cite{Halko2011}
+Algorithm 5.5 of [^Halko2011]
 """
 function eigfact_nystrom(A, Q)
     B₁=A*Q
@@ -520,21 +469,18 @@ product involving `A`.
 
 # Arguments
 
-`A::Hermitian`: input matrix.
-
-`Ω`: sample matrix for the column space, e.g. `randn(n, l)` or `srft(l)`.
-
-`Ω̃;`: sample matrix for the row space. Not neeeded for `Hermitian` matrices.
-
-`At = A'`: computes transpose of input matrix.
+- `A::Hermitian`: input matrix.
+- `Ω`: sample matrix for the column space, e.g. `randn(n, l)` or `srft(l)`.
+- `Ω̃;`: sample matrix for the row space. Not neeeded for `Hermitian` matrices.
+- `At = A'`: computes transpose of input matrix.
 
 # Output
 
-`::Base.LingAlg.Eigen`: eigen factorization.
+- `::Base.LingAlg.Eigen`: eigen factorization.
 
 # References
 
-Algorithm 5.6 of \\cite{Halko2011}
+Algorithm 5.6 of [^Halko2011]
 """
 function eigfact_onepass(A::Hermitian, Ω)
     Y=A*Ω; Q = full(qrfact!(Y)[:Q])
@@ -562,34 +508,17 @@ algorithm.
 
 # Arguments
 
-`A`: input matrix.
-
-`l::Int`: number of eigenpairs to find.
+- `A`: input matrix.
+- `l::Int`: number of eigenpairs to find.
 
 # Output
 
-`::Base.LinAlg.Eigen`: eigen decomposition.
+- `::Base.LinAlg.Eigen`: eigen decomposition.
 
 # Implementation note
 
 This is a wrapper around `eigfact_onepass()` which uses the randomized
 samples found using `srft(l)`.
-
-# References
-
-```bibtex
-@article{Halko2011,
-    author = {Halko, N and Martinsson, P G and Tropp, J A},
-    doi = {10.1137/090771806},
-    journal = {SIAM Review},
-    month = jan,
-    number = {2},
-    pages = {217--288},
-    title = {Finding Structure with Randomness: Probabilistic Algorithms for Constructing Approximate Matrix Decompositions},
-    volume = {53},
-    year = {2011}
-}
-```
 """
 reig(A::Hermitian, l::Int) = eigfact_onepass(A, srft(l))
 reig(A, l::Int) = eigfact_onepass(A, srft(l), srft(l))

@@ -2,12 +2,68 @@ export lsmr, lsmr!
 
 using Base.LinAlg
 
-####################
-# API method calls #
-####################
+"""
+    lsmr(A, b; kwrags...) -> x, [history]
 
+Same as [`lsmr!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
 lsmr(A, b; kwargs...) = lsmr!(zerox(A, b), A, b; kwargs...)
 
+"""
+    lsmr!(x, A, b; kwargs...) -> x, [history]
+
+Minimizes ``\|Ax - b\|^2 + \|λx\|^2`` in the Euclidean norm. If multiple solutions
+exists the minimum norm solution is returned.
+
+The method is based on the Golub-Kahan bidiagonalization process. It is 
+algebraically equivalent to applying MINRES to the normal equations 
+``(A^*A + λ^2I)x = A^*b``, but has better numerical properties, 
+especially if ``A`` is ill-conditioned.
+
+# Arguments
+- `x`: Initial guess, will be updated in-place;
+- `A`: linear operator;
+- `b`: right-hand side.
+
+## Keywords
+
+- `λ::Number = 0`: lambda.
+- `atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
+  1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
+  (The final `x` will usually have fewer correct digits,
+  depending on `cond(A)` and the size of damp).
+- `conlim::Number = 1e8`: stopping tolerance. `lsmr` terminates if an estimate
+  of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
+  conlim could be as large as 1.0e+12 (say).  For least-squares
+  problems, conlim should be less than 1.0e+8.
+  Maximum precision can be obtained by setting
+- `atol` = `btol` = `conlim` = zero, but the number of iterations
+  may then be excessive.
+- `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+- `log::Bool`: keep track of the residual norm in each iteration;
+- `verbose::Bool`: print convergence information during the iterations.
+
+# Return values
+
+**if `log` is `false`**
+
+- `x`: approximated solution.
+
+**if `log` is `true`**
+
+- `x`: approximated solution.
+- `ch`: convergence history.
+
+**ConvergenceHistory keys**
+
+- `:atol` => `::Real`: atol stopping tolerance.
+- `:btol` => `::Real`: btol stopping tolerance.
+- `:ctol` => `::Real`: ctol stopping tolerance.
+- `:anorm` => `::Real`: anorm.
+- `:rnorm` => `::Real`: rnorm.
+- `:cnorm` => `::Real`: cnorm.
+- `:resnom` => `::Vector`: residual norm at each iteration.
+"""
 function lsmr!(x, A, b;
     maxiter::Integer = max(size(A,1), size(A,2)),
     log::Bool=false, kwargs...
@@ -231,109 +287,4 @@ for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
             BLAS.gemm!($symbol, 'N', convert(eltype(y), α), A, x, convert(eltype(y), β), y)
         end
     end
-end
-
-#################
-# Documentation #
-#################
-
-let
-#Initialize parameters
-doc_call = """    lsmr(A, b)
-"""
-doc!_call = """    lsmr!(x, A, b)
-"""
-
-doc_msg = "Minimize ||Ax-b||^2 + λ^2 ||x||^2 for A*x=b.\n"
-doc!_msg = "Overwrite `x`.\n\n" * doc_msg
-
-doc_arg = ""
-doc!_arg = """`x`: initial guess, overwrite final estimation."""
-
-doc_version = (lsmr, doc_call, doc_msg, doc_arg)
-doc!_version = (lsmr!, doc!_call, doc!_msg, doc!_arg)
-
-i=0
-docstring = Vector(2)
-
-#Build docs
-for (func, call, msg, arg) in [doc_version, doc!_version]
-i+=1
-docstring[i] =  """
-$call
-
-$msg
-
-The method is based on the Golub-Kahan bidiagonalization process. It is
-algebraically equivalent to applying MINRES to the normal equation (ATA+λ2I)x=ATb,
-but has better numerical properties, especially if A is ill-conditioned.
-
-If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
-
-# Arguments
-
-$arg
-
-`A`: linear operator.
-
-`b`: right hand side.
-
-## Keywords
-
-`λ::Number = 0`: lambda.
-
-`atol::Number = 1e-6`, `btol::Number = 1e-6`: stopping tolerances. If both are
-1.0e-9 (say), the final residual norm should be accurate to about 9 digits.
-(The final `x` will usually have fewer correct digits,
-depending on `cond(A)` and the size of damp).
-
-`conlim::Number = 1e8`: stopping tolerance.  `lsmr` terminates if an estimate
-of `cond(A)` exceeds conlim.  For compatible systems Ax = b,
-conlim could be as large as 1.0e+12 (say).  For least-squares
-problems, conlim should be less than 1.0e+8.
-Maximum precision can be obtained by setting
-`atol` = `btol` = `conlim` = zero, but the number of iterations
-may then be excessive.
-
-`maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-
-`verbose::Bool = false`: print method information.
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
-
-# Output
-
-**if `log` is `false`**
-
-`x`: approximated solution.
-
-**if `log` is `true`**
-
-`x`: approximated solution.
-
-`ch`: convergence history.
-
-**ConvergenceHistory keys**
-
-`:atol` => `::Real`: atol stopping tolerance.
-
-`:btol` => `::Real`: btol stopping tolerance.
-
-`:ctol` => `::Real`: ctol stopping tolerance.
-
-`:anorm` => `::Real`: anorm.
-
-`:rnorm` => `::Real`: rnorm.
-
-`:cnorm` => `::Real`: cnorm.
-
-`:resnom` => `::Vector`: residual norm at each iteration.
-
-"""
-end
-
-@doc docstring[1] -> lsmr
-@doc docstring[2] -> lsmr!
 end
