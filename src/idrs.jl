@@ -51,7 +51,7 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - op(X, args...)::T
     normR = vecnorm(R)
-	iter = 0
+	iter = 1
 
     if smoothing
         X_s = copy(X)
@@ -76,7 +76,7 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
     c = zeros(eltype(C),s)
 
     om::eltype(C) = 1
-    while normR > tol && iter < maxiter
+    while normR > tol && iter ≤ maxiter
         for i in 1:s,
             f[i] = vecdot(P[i], R)
         end
@@ -144,8 +144,7 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
             end
             push!(log, :resnorm, normR)
             verbose && @printf("%3d\t%1.2e\n",iter,normR)
-            iter += 1
-            if normR < tol || iter > maxiter
+            if normR < tol || iter == maxiter
                 shrink!(log)
                 setconv(log, 0<=normR<tol)
                 return X
@@ -153,7 +152,7 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
             if k < s
                 f[k+1:s] = f[k+1:s] - beta*M[k+1:s,k]
             end
-
+            iter += 1
         end
 
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
