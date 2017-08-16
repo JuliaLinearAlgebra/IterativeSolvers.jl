@@ -8,9 +8,9 @@ Same as [`idrs!`](@ref), but allocates a solution vector `x` initialized with ze
 idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
 
 """
-    idrs(A, b; s = 8) -> x, [history]
+    idrs!(x, A, b; s = 8) -> x, [history]
 
-Solve the problem ``Ax = b`` approximate with IDR(s), where `s` is the dimension of the
+Solve the problem ``Ax = b`` approximately with IDR(s), where `s` is the dimension of the
 shadow space.
 
 # Arguments
