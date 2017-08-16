@@ -15,3 +15,6 @@ chebyshev!
 
 !!! warning "BLAS1 operations"
     Although the method is often used to avoid computation of inner products, the stopping criterion is still based on the residual norm. Hence the current implementation is not free of BLAS1 operations.
+
+!!! tip
+    Chebyshev iteration can be used as an [iterator](@ref Iterators).

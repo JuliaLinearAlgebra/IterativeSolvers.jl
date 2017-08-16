@@ -22,3 +22,6 @@ MINRES computes $V$ and $W = VR^{-1}$ via a three-term recurrence, using only th
     If $A$ is Hermitian, then the Hessenberg matrix will be real. This is exploited in the current implementation.
 
     If $A$ is skew-Hermitian, the diagonal of the Hessenberg matrix will be imaginary, and hence we use complex arithmetic in that case.
+
+!!! tip
+    MINRES can be used as an [iterator](@ref Iterators).

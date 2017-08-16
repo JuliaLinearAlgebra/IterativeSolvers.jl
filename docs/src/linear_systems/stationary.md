@@ -1,4 +1,4 @@
-# Stationary methods
+# [Stationary methods](@id Stationary)
 
 Stationary methods are typically used as smoothers in multigrid methods, where only very few iterations are applied to get rid of high-frequency components in the error. The implementations of stationary methods have this goal in mind, which means there is no other stopping criterion besides the maximum number of iterations.
 
@@ -34,3 +34,6 @@ sor!
 ssor
 ssor!
 ```
+
+!!! tip
+    All stationary methods can be used a [iterators](@ref Iterators).

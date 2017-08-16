@@ -15,6 +15,9 @@ The method is based on the original article [^Sleijpen1993], but does not implem
 
 The `r` and `u` factors are pre-allocated as matrices of size $n \times (l + 1)$, so that BLAS2 methods can be used. Also the random shadow residual is pre-allocated as a vector. Hence the storage costs are approximately $2l + 3$ vectors.
 
+!!! tip
+    BiCGStabl(l) can be used as an [iterator](@ref Iterators).
+
 [^Sleijpen1993]: 
 
     Sleijpen, Gerard LG, and Diederik R. Fokkema. "BiCGstab(l) for 
