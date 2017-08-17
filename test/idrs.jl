@@ -35,4 +35,10 @@ end
     @test history.isconverged
     @test norm(A * x - b) / norm(b) ≤ tol
 end
+
+@testset "Maximum number of iterations" begin
+    x, history = idrs(rand(5, 5), rand(5), log=true, maxiter=2)
+    @test history.iters == 2
+    @test length(history[:resnorm]) == 2
+end
 end
