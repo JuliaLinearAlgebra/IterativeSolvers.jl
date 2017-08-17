@@ -7,7 +7,7 @@ import Base.LinAlg: norm
 # Type used in Dampenedtest
 # solve (A'A + diag(v).^2 ) x = b
 # using LSMR in the augmented space A' = [A ; diag(v)] b' = [b; zeros(size(A, 2)]
-type DampenedVector{Ty, Tx}
+mutable struct DampenedVector{Ty, Tx}
     y::Ty
     x::Tx
 end
@@ -15,7 +15,7 @@ end
 eltype(a::DampenedVector) = promote_type(eltype(a.y), eltype(a.x))
 norm(a::DampenedVector) = sqrt(norm(a.y)^2 + norm(a.x)^2)
 
-function copy!{Ty, Tx}(a::DampenedVector{Ty, Tx}, b::DampenedVector{Ty, Tx})
+function copy!(a::DampenedVector{Ty, Tx}, b::DampenedVector{Ty, Tx}) where {Ty, Tx}
     copy!(a.y, b.y)
     copy!(a.x, b.x)
     a
@@ -38,7 +38,7 @@ end
 similar(a::DampenedVector, T) = DampenedVector(similar(a.y, T), similar(a.x, T))
 length(a::DampenedVector) = length(a.y) + length(a.x)
 
-type DampenedMatrix{TA, Tx}
+mutable struct DampenedMatrix{TA, Tx}
     A::TA
     diagonal::Tx
 end
@@ -52,8 +52,8 @@ function size(A::DampenedMatrix, dim::Integer)
     dim == 2 ? n : 1
 end
 
-function A_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::Tx,
-                β::Number, b::DampenedVector{Ty, Tx})
+function A_mul_B!(α::Number, mw::DampenedMatrix{TA, Tx}, a::Tx,
+    β::Number, b::DampenedVector{Ty, Tx}) where {TA, Tx, Ty}
     if β != 1.
         if β == 0.
             fill!(b, 0.)
@@ -66,8 +66,8 @@ function A_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::Tx,
     return b
 end
 
-function Ac_mul_B!{TA, Tx, Ty}(α::Number, mw::DampenedMatrix{TA, Tx}, a::DampenedVector{Ty, Tx},
-                β::Number, b::Tx)
+function Ac_mul_B!(α::Number, mw::DampenedMatrix{TA, Tx}, a::DampenedVector{Ty, Tx},
+    β::Number, b::Tx) where {TA, Tx, Ty}
     if β != 1.
         if β == 0.
             fill!(b, 0.)
