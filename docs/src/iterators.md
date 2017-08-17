@@ -11,7 +11,7 @@ The solvers listed above are basically a thin wrapper around an iterator. Among 
 ```julia
 function my_solver!(x, A, b)
     iterable = MySolverIterable(x, A, b)
-    for item = iterable end
+    for item in iterable end
     return iterable.x
 end
 ```
@@ -36,7 +36,7 @@ x = rand(10_000)
 
 my_iterable = IterativeSolvers.jacobi_iterable(x, A, b1, maxiter = 4)
 
-for item = my_iterable 
+for item in my_iterable 
     println("Iteration for rhs 1")
 end
 
@@ -45,7 +45,7 @@ end
 # Copy the next right-hand side into the iterable
 copy!(my_iterable.b, b2)
 
-for item = my_iterable
+for item in my_iterable
     println("Iteration for rhs 2")
 end
 
