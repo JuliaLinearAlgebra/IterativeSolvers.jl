@@ -8,11 +8,11 @@ using IterativeSolvers
 include("advection_diffusion.jl")
 
 # A DiagonalMatrix that doesn't check whether it is singular in the \ op.
-immutable DiagonalPreconditioner{T}
+struct DiagonalPreconditioner{T}
     diag::Vector{T}
 end
 
-function A_ldiv_B!{T}(y::AbstractVector{T}, A::DiagonalPreconditioner{T}, b::AbstractVector{T})
+function A_ldiv_B!(y::AbstractVector{T}, A::DiagonalPreconditioner{T}, b::AbstractVector{T}) where T
     for i = 1 : length(b)
         @inbounds y[i] = A.diag[i] \ b[i]
     end

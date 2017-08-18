@@ -1,4 +1,4 @@
-function laplace_matrix{T}(::Type{T}, n, dims)
+function laplace_matrix(::Type{T}, n, dims) where T
     D = second_order_central_diff(T, n);
     A = copy(D);
 
@@ -9,4 +9,4 @@ function laplace_matrix{T}(::Type{T}, n, dims)
     A
 end
 
-second_order_central_diff{T}(::Type{T}, dim) = convert(SparseMatrixCSC{T, Int}, SymTridiagonal(fill(2 * one(T), dim), fill(-one(T), dim - 1)))
+second_order_central_diff(::Type{T}, dim) where {T} = convert(SparseMatrixCSC{T, Int}, SymTridiagonal(fill(2 * one(T), dim), fill(-one(T), dim - 1)))
