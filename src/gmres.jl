@@ -128,8 +128,48 @@ function gmres_iterable!(x, A, b;
     )
 end
 
+"""
+    gmres(A, b; kwargs...) -> x, [history]
+
+Same as [`gmres!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
 gmres(A, b; kwargs...) = gmres!(zeros(b), A, b; initially_zero = true, kwargs...)
 
+"""
+    gmres!(x, A, b; kwargs...) -> x, [history]
+
+Solves the problem ``Ax = b`` with restarted GMRES.
+
+# Arguments
+
+- `x`: Initial guess, will be updated in-place;
+- `A`: linear operator;
+- `b`: right-hand side.
+
+## Keywords
+
+- `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one 
+  matrix-vector product can be saved when computing the initial 
+  residual vector;
+- `tol`: relative tolerance;
+- `restart::Int`: restarts GMRES after specified number of iterations;
+- `maxiter::Int`: maximum number of inner iterations of GMRES;
+- `Pl`: left preconditioner;
+- `Pr`: right preconditioner;
+- `log::Bool`: keep track of the residual norm in each iteration;
+- `verbose::Bool`: print convergence information during the iterations.
+
+# Return values
+
+**if `log` is `false`**
+
+- `x`: approximate solution.
+
+**if `log` is `true`**
+
+- `x`: approximate solution;
+- `history`: convergence history.
+"""
 function gmres!(x, A, b;
   Pl = Identity(),
   Pr = Identity(),
@@ -137,7 +177,7 @@ function gmres!(x, A, b;
   restart::Int = min(20, length(b)),
   maxiter::Int = restart,
   log::Bool = false,
-  initially_zero = false,
+  initially_zero::Bool = false,
   verbose::Bool = false
 )
     history = ConvergenceHistory(partial = !log, restart = restart)

@@ -1,7 +1,7 @@
 import Base: start, next, done
 
 #Simple methods
-export powm, invpowm
+export powm, powm!, invpowm, invpowm!
 
 mutable struct PowerMethodIterable{matT, vecT <: AbstractVector, numT <: Number, eigvalT <: Number}
     A::matT
@@ -60,20 +60,71 @@ function powm_iterable(A; kwargs...)
     powm_iterable!(A, x0; kwargs...)
 end
 
-####################
-# API method calls #
-####################
+"""
+    powm(B; kwargs...) -> λ, x, [history]
 
-function powm(A; kwargs...)
-    x0 = rand(Complex{real(eltype(A))}, size(A, 1))
-    scale!(x0, one(eltype(A)) / norm(x0))
-    powm!(A, x0; kwargs...)
+See [`powm!`](@ref). Calls `powm!(B, x0; kwargs...)` with 
+`x0` initialized as a random, complex unit vector.
+"""
+function powm(B; kwargs...)
+    x0 = rand(Complex{real(eltype(B))}, size(B, 1))
+    scale!(x0, one(eltype(B)) / norm(x0))
+    powm!(B, x0; kwargs...)
 end
 
-function powm!(A, x;
-    tol = eps(real(eltype(A))) * size(A, 2) ^ 3,
-    maxiter = size(A, 1),
-    shift = zero(eltype(A)),
+"""
+    powm!(B, x; shift = zero(eltype(B)), inverse::Bool = false, kwargs...) -> λ, x, [history]
+
+By default finds the approximate eigenpair `(λ, x)` of `B` where `|λ|` is largest.
+
+# Arguments
+- `B`: linear map, see the note below.
+- `x`: normalized initial guess. Don't forget to use complex arithmetic when necessary.
+
+## Keywords
+- `tol::Real = eps(real(eltype(B))) * size(B, 2) ^ 3`: stopping tolerance for the residual norm;
+- `maxiter::Integer = size(B,2)`: maximum number of iterations;
+- `log::Bool`: keep track of the residual norm in each iteration;
+- `verbose::Bool`: print convergence information during the iterations.
+
+!!! note "Shift-and-invert"
+    When applying shift-and-invert to ``Ax = λx`` with `invert = true` and `shift = ...`, note 
+    that the role of `B * b` becomes computing `inv(A - shift I) * b`. So rather than 
+    passing the linear map ``A`` itself, pass a linear map `B` that has the action of 
+    shift-and-invert. The eigenvalue is transformed back to an eigenvalue of the actual 
+    matrix ``A``.
+
+# Return values
+
+**if `log` is `false`**
+- `λ::Number` approximate eigenvalue computed as the Rayleigh quotient;
+- `x::Vector` approximate eigenvector.
+
+**if `log` is `true`**
+- `λ::Number`: approximate eigenvalue computed as the Rayleigh quotient;
+- `x::Vector`: approximate eigenvector;
+- `history`: convergence history.
+
+**ConvergenceHistory keys**
+
+- `:tol` => `::Real`: stopping tolerance;
+- `:resnom` => `::Vector`: residual norm at each iteration.
+
+# Examples
+
+```julia
+using LinearMaps
+σ = 1.0 + 1.3im
+A = rand(Complex128, 50, 50)
+F = lufact(A - σ * I)
+Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
+λ, x = powm(Fmap, inverse = true, shift = σ, tol = 1e-4, maxiter = 200)
+```
+"""
+function powm!(B, x;
+    tol = eps(real(eltype(B))) * size(B, 2) ^ 3,
+    maxiter = size(B, 1),
+    shift = zero(eltype(B)),
     inverse::Bool = false,
     log::Bool = false,
     verbose::Bool = false
@@ -83,7 +134,7 @@ function powm!(A, x;
     reserve!(history, :resnorm, maxiter)
     verbose && @printf("=== powm ===\n%4s\t%7s\n", "iter", "resnorm")
 
-    iterable = powm_iterable!(A, x, tol = tol, maxiter = maxiter)
+    iterable = powm_iterable!(B, x, tol = tol, maxiter = maxiter)
 
     for (iteration, residual) = enumerate(iterable)
         nextiter!(history, mvps = 1)
@@ -102,30 +153,14 @@ function powm!(A, x;
     log ? (λ, x, history) : (λ, x)
 end
 
-function invpowm(B; kwargs...)
-    x0 = rand(Complex{real(eltype(B))}, size(B, 1))
-    scale!(x0, one(eltype(B)) / norm(x0))
-    invpowm!(B, x0; kwargs...)
-end
-
-invpowm!(B, x0; kwargs...) = powm!(B, x0; inverse = true, kwargs...)
-
-#################
-# Documentation #
-#################
-
-let
-#Initialize parameters
-doc1_call = """    powm(A)
 """
-doc2_call = """    invpowm(B)
-"""
-doc1_msg = """Find the largest eigenvalue `λ` (in absolute value) of `A` and its associated eigenvector `x`
-using the power method.
-"""
-doc2_msg = """For an eigenvalue problem Ax = λx, find the closest eigenvalue in the complex plane to `shift`
-together with its associated eigenvector `x`. The first argument `B` should be a mapping that has
-the effect of B * x = inv(A - shift * I) * x and should support the `A_mul_B!` operation.
+    invpowm(B; shift = σ, kwargs...) -> λ, x, [history]
+
+Find the approximate eigenpair `(λ, x)` of ``A`` near `shift`, where `B`
+is a linear map that has the effect `B * v = inv(A - σI) * v`.
+
+The method calls `powm!(B, x0; inverse = true, shift = σ)` with
+`x0` a random, complex unit vector. See [`powm!`](@ref)
 
 # Examples
 
@@ -133,75 +168,23 @@ the effect of B * x = inv(A - shift * I) * x and should support the `A_mul_B!` o
 using LinearMaps
 σ = 1.0 + 1.3im
 A = rand(Complex128, 50, 50)
-F = lufact(A - UniformScaling(σ))
+F = lufact(A - σ * I)
 Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
 λ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """
-doc1_karg = ""
-doc2_karg = "`shift::Number=0`: shift to be applied to matrix A."
-
-doc1_version = (powm, doc1_call, doc1_msg, doc1_karg)
-doc2_version = (invpowm, doc2_call, doc2_msg, doc2_karg)
-
-i=0
-docstring = Vector(2)
-
-#Build docs
-for (func, call, msg, karg) in [doc1_version, doc2_version]
-i+=1
-docstring[i] = """
-$call
-
-$msg
-
-If `log` is set to `true` is given, method will output a tuple `λ, x, ch`. Where
-`ch` is a `ConvergenceHistory` object. Otherwise it will only return `λ, x`.
-
-# Arguments
-
-`A`: linear operator.
-
-## Keywords
-
-$karg
-
-`x = random unit vector`: initial eigenvector guess.
-
-`tol::Real = eps()*size(A,2)^3`: stopping tolerance.
-
-`maxiter::Integer = size(A,2)`: maximum number of iterations.
-
-`verbose::Bool = false`: verbose flag.
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
-
-# Output
-
-**if `log` is `false`**
-
-`λ::Number`: eigenvalue
-
-`x::Vector`: eigenvector
-
-**if `log` is `true`**
-
-`eig::Real`: eigenvalue
-
-`x::Vector`: eigenvector
-
-`ch`: convergence history.
-
-**ConvergenceHistory keys**
-
-`:tol` => `::Real`: stopping tolerance.
-
-`:resnom` => `::Vector`: residual norm at each iteration.
+function invpowm(B; kwargs...)
+    x0 = rand(Complex{real(eltype(B))}, size(B, 1))
+    scale!(x0, one(eltype(B)) / norm(x0))
+    invpowm!(B, x0; kwargs...)
+end
 
 """
-end
+    invpowm!(B, x0; shift = σ, kwargs...) -> λ, x, [history]
 
-@doc docstring[1] -> powm
-@doc docstring[2] -> invpowm
-end
+Find the approximate eigenpair `(λ, x)` of ``A`` near `shift`, where `B`
+is a linear map that has the effect `B * v = inv(A - σI) * v`.
+
+The method calls `powm!(B, x0; inverse = true, shift = σ)`. See [`powm!`](@ref).
+"""
+invpowm!(B, x0; kwargs...) = powm!(B, x0; inverse = true, kwargs...)

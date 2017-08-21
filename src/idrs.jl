@@ -1,14 +1,45 @@
 export idrs, idrs!
 
-####################
-# API method calls #
-####################
+"""
+    idrs(A, b; s = 8) -> x, [history]
 
-
+Same as [`idrs!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
 idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
 
+"""
+    idrs!(x, A, b; s = 8) -> x, [history]
+
+Solve the problem ``Ax = b`` approximately with IDR(s), where `s` is the dimension of the
+shadow space.
+
+# Arguments
+
+- `x`: Initial guess, will be updated in-place;
+- `A`: linear operator;
+- `b`: right-hand side.
+
+## Keywords
+
+- `s::Integer = 8`: dimension of the shadow space;
+- `tol`: relative tolerance;
+- `maxiter::Int`: maximum number of iterations;
+- `log::Bool`: keep track of the residual norm in each iteration;
+- `verbose::Bool`: print convergence information during the iterations.
+
+# Return values
+
+**if `log` is `false`**
+
+- `x`: approximate solution.
+
+**if `log` is `true`**
+
+- `x`: approximate solution;
+- `history`: convergence history.
+"""
 function idrs!(x, A, b;
-    s = 8, tol=sqrt(eps(typeof(real(b[1])))), maxiter=length(x)^2,
+    s = 8, tol=sqrt(eps(real(eltype(b)))), maxiter=length(x)^2,
     log::Bool=false, kwargs...
     )
     history = ConvergenceHistory(partial=!log)
@@ -38,12 +69,6 @@ end
 
 @inline linsys_op(x, A) = A*x
 
-"""
-The Induced Dimension Reduction method is a family of simple and fast Krylov
-subspace algorithms for solving large nonsymmetric linear systems. The idea
-behind the IDR(s) variant is to generate residuals that are in the nested
-subspaces of shrinking dimensions.
-"""
 function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
     s::Number, tol::Number, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
     ) where {T}
@@ -189,87 +214,4 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
     verbose && @printf("\n")
     setconv(log, 0<=normR<tol)
     X
-end
-
-#################
-# Documentation #
-#################
-
-let
-#Initialize parameters
-doc_call = """    idrs(A, b)
-"""
-doc!_call = """    idrs!(x, A, b)
-"""
-
-doc_msg = "Solve A*x=b using the induced dimension reduction method."
-doc!_msg = "Overwrite `x`.\n\n" * doc_msg
-
-doc_arg = ""
-doc!_arg = """`x`: initial guess, overwrite final estimation."""
-
-doc_version = (idrs, doc_call, doc_msg, doc_arg)
-doc!_version = (idrs!, doc!_call, doc!_msg, doc!_arg)
-
-i=0
-docstring = Vector(2)
-
-#Build docs
-for (func, call, msg, arg) in [doc_version, doc!_version]
-i+=1
-docstring[i] =  """
-$call
-
-$msg
-
-If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
-
-# Arguments
-
-$arg
-
-`A`: linear operator.
-
-`b`: right hand side.
-
-## Keywords
-
-`Pl = 1`: left preconditioner of the method.
-
-`Pr = 1`: right preconditioner of the method.
-
-`tol::Real = sqrt(eps())`: stopping tolerance.
-
-`restart::Integer = min(20,length(b))`: maximum number of iterations per restart.
-
-`maxiter::Integer = min(20,length(b))`: maximum number of iterations.
-
-`verbose::Bool = false`: print method information.
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
-
-# Output
-
-**if `log` is `false`**
-
-`x`: approximated solution.
-
-**if `log` is `true`**
-
-`x`: approximated solution.
-
-`ch`: convergence history.
-
-**ConvergenceHistory keys**
-
-`:tol` => `::Real`: stopping tolerance.
-
-`:resnom` => `::Vector`: residual norm at each iteration.
-"""
-end
-
-@doc docstring[1] -> idrs
-@doc docstring[2] -> idrs!
 end

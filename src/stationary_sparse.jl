@@ -232,18 +232,18 @@ end
 jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) =
     JacobiIterable{eltype(x), typeof(x)}(OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)
 
-"""
-Jacobi iteration is a matrix-splitting iteration with
-`A = D + R` where `D` is the diagonal and `R` the off-diagonal.
-It iterates as x ← D \\ (b - R * x).
 
-The SparseMatrixCSC version of Jacobi iteration pre-computes the
-indices of the diagonal of `A` and stores a temporary vector.
-Storage costs are hence O(2n). For multiple solves with `A` it is
-recommended to reuse the underlying iterator, see the 
-`JacobiIterable` type.
 """
-function jacobi!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10)
+    jacobi!(x, A::SparseMatrixCSC, b; maxiter=10) -> x
+
+Performs exactly `maxiter` Jacobi iterations.
+
+Allocates a temporary vector and precomputes the diagonal indices.
+
+Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+is performed once beforehand.
+"""
+function jacobi!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int=10)
     iterable = jacobi_iterable(x, A, b, maxiter = maxiter)
     for item = iterable end
     iterable.x
@@ -280,15 +280,14 @@ function next(g::GaussSeidelIterable, iteration::Int)
 end
 
 """
-Gauss-Seidel iteration is a matrix-splitting iteration with
-`A = L + U` where `L` is lower-triangular and `U` strictly upper-triangular.
-It iterates as x ← L \\ (b - U * x).
+    gauss_seidel!(x, A::SparseMatrixCSC, b; maxiter=10) -> x
 
-Gauss-Seidel can be computed in-place even for the `SparseMatrixCSC` type,
-however, this implementation pre-computes the indices of the diagonal of `A`.
-Hence storage costs are O(n). For multiple solves with `A` it is
-recommended to reuse the underlying iterator, see the 
-`GaussSeidelIterable` type.
+Performs exactly `maxiter` Gauss-Seidel iterations.
+
+Works fully in-place, but precomputes the diagonal indices.
+
+Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+is performed once beforehand.
 """
 function gauss_seidel!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10)
     iterable = gauss_seidel_iterable(x, A, b, maxiter = maxiter)
@@ -334,14 +333,14 @@ function sor_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, 
 end
 
 """
-SOR takes a weighted average of the previous iterate and the Gauss-Seidel iterate
-x_i ← ω * x_gs + (1 - ω) * x_i for each successive component i = 1, ..., n.
+    sor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter=10)
 
-Although SOR can be computed fully in-place, this is difficult to accomplish for
-the `SparseMatrixCSC` type. A temporary vector is pre-allocated together with the 
-indices of the diagonal of `A`. Hence storage costs are O(2n). For multiple solves 
-with `A` it is recommended to reuse the underlying iterator, see the 
-`SORIterable` type.
+Performs exactly `maxiter` SOR iterations with relaxation parameter `ω`.
+
+Allocates a temporary vector and precomputes the diagonal indices.
+
+Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+is performed once beforehand.
 """
 function sor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
     iterable = sor_iterable(x, A, b, ω, maxiter = maxiter)
@@ -394,14 +393,15 @@ function next(s::SSORIterable{T}, iteration::Int) where {T}
 end
 
 """
-Symmetric SOR (SSOR) combines two SOR sweeps (one forward and one backward) such that
-the resulting iteration matrix is symmetric.
+    ssor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter=10)
 
-Although SSOR can be computed fully in-place, this is difficult to accomplish for
-the `SparseMatrixCSC` type. A temporary vector is pre-allocated together with the 
-indices of the diagonal of `A`. Hence storage costs are O(2n). For multiple solves 
-with `A` it is recommended to reuse the underlying iterator, see the 
-`SSORIterable` type.
+Performs exactly `maxiter` SSOR iterations with relaxation parameter `ω`. Each iteration 
+is basically a forward *and* backward sweep of SOR.
+
+Allocates a temporary vector and precomputes the diagonal indices.
+
+Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+is performed once beforehand.
 """
 function ssor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
     iterable = ssor_iterable(x, A, b, ω, maxiter = maxiter)

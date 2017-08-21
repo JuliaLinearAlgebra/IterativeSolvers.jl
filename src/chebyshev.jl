@@ -90,13 +90,50 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
     )
 end
 
-####################
-# API method calls #
-####################
 
+"""
+    chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) -> x, [history]
+
+Same as [`chebyshev!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
 chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) =
     chebyshev!(zerox(A, b), A, b, λmin, λmax; initially_zero = true, kwargs...)
 
+"""
+    chebyshev!(x, A, b, λmin::Real, λmax::Real; kwargs...) -> x, [history]
+
+Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
+
+# Arguments
+
+- `x`: initial guess, will be updated in-place;
+- `A`: linear operator;
+- `b`: right-hand side;
+- `λmin::Real`: lower bound for the real eigenvalues
+- `λmax::Real`: upper bound for the real eigenvalues
+
+## Keywords
+
+- `initially_zero::Bool = false`: if `true` assumes that `iszero(x)` so that one 
+  matrix-vector product can be saved when computing the initial 
+  residual vector;
+- `tol`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`.
+- `maxiter::Int`: maximum number of inner iterations of GMRES;
+- `Pl = Identity()`: left preconditioner;
+- `log::Bool = false`: keep track of the residual norm in each iteration;
+- `verbose::Bool = false`: print convergence information during the iterations.
+
+# Return values
+
+**if `log` is `false`**
+
+- `x`: approximate solution.
+
+**if `log` is `true`**
+
+- `x`: approximate solution;
+- `history`: convergence history.
+"""
 function chebyshev!(x, A, b, λmin::Real, λmax::Real;
     Pl = Identity(),
     tol::Real=sqrt(eps(real(eltype(b)))),
@@ -124,84 +161,4 @@ function chebyshev!(x, A, b, λmin::Real, λmax::Real;
     log && shrink!(history)
 
     log ? (x, history) : x
-end
-
-#################
-# Documentation #
-#################
-
-let
-#Initialize parameters
-doc_call = """    chebyshev!(A, b, λmin, λmax)
-"""
-doc!_call = """    chebyshev!(x, A, b, λmin, λmax)
-"""
-
-doc_msg = "Solve A*x=b using the chebyshev method."
-doc!_msg = "Overwrite `x`.\n\n" * doc_msg
-
-doc_arg = ""
-doc!_arg = """`x`: initial guess, overwrite final estimation."""
-
-doc_version = (doc_call, doc_msg, doc_arg)
-doc!_version = (doc!_call, doc!_msg, doc!_arg)
-
-i=0
-docstring = Vector(2)
-
-#Build docs
-for (call, msg, arg) in [doc_version, doc!_version] #Start
-i+=1
-docstring[i] = """
-$call
-
-$msg
-
-If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
-
-# Arguments
-
-$arg
-
-`A`: linear operator.
-
-`b`: right hand side.
-
-## Keywords
-
-`Pl = 1`: left preconditioner of the method.
-
-`tol::Real = sqrt(eps())`: stopping tolerance.
-
-`maxiter::Integer = size(A,2)^3`: maximum number of iterations.
-
-`verbose::Bool = false`: print method information.
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
-
-# Output
-
-**if `log` is `false`**
-
-`x`: approximated solution.
-
-**if `log` is `true`**
-
-`x`: approximated solution.
-
-`ch`: convergence history.
-
-**ConvergenceHistory keys**
-
-`:tol` => `::Real`: stopping tolerance.
-
-`:resnom` => `::Vector`: residual norm at each iteration.
-
-"""
-end
-
-@doc docstring[1] -> chebyshev
-@doc docstring[2] -> chebyshev!
 end

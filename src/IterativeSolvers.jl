@@ -16,8 +16,8 @@ include("factorization.jl")
 include("hessenberg.jl")
 
 #Linear solvers
-include("stationary_sparse.jl")
 include("stationary.jl")
+include("stationary_sparse.jl")
 include("cg.jl")
 include("minres.jl")
 include("bicgstabl.jl")

@@ -135,18 +135,58 @@ function cg_iterator!(x, A, b, Pl = Identity();
     end
 end
 
+"""
+    cg(A, b; kwargs...) -> x, [history]
+
+Same as [`cg!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
 cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
+"""
+    cg!(x, A, b; kwargs...) -> x, [history]
+
+# Arguments
+
+- `x`: Initial guess, will be updated in-place;
+- `A`: linear operator;
+- `b`: right-hand side.
+
+## Keywords
+
+- `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one 
+  matrix-vector product can be saved when computing the initial 
+  residual vector;
+- `Pl = Identity()`: left preconditioner of the method. Should be symmetric, 
+  positive-definite like `A`.
+- `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`;
+- `maxiter::Integer = size(A,2)`: maximum number of iterations;
+- `verbose::Bool = false`: print method information;
+- `log::Bool = false`: keep track of the residual norm in each iteration;
+
+# Output
+
+**if `log` is `false`**
+
+- `x`: approximated solution.
+
+**if `log` is `true`**
+
+- `x`: approximated solution.
+- `ch`: convergence history.
+
+**ConvergenceHistory keys**
+
+- `:tol` => `::Real`: stopping tolerance.
+- `:resnom` => `::Vector`: residual norm at each iteration.
+"""
 function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Integer = min(20, size(A, 1)),
-    plot = false,
     log::Bool = false,
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...
 )
-    (plot & !log) && error("Can't plot when log keyword is false")
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter + 1)
@@ -167,87 +207,6 @@ function cg!(x, A, b;
     verbose && println()
     log && setconv(history, converged(iterable))
     log && shrink!(history)
-    plot && showplot(history)
 
     log ? (iterable.x, history) : iterable.x
-end
-
-#################
-# Documentation #
-#################
-
-let
-#Initialize parameters
-doc_call = """    cg(A, b)
-"""
-doc!_call = """    cg!(x, A, b)
-"""
-
-doc_msg = "Solve A*x=b with the conjugate gradients method."
-doc!_msg = "Overwrite `x`.\n\n" * doc_msg
-
-doc_arg = ""
-doc!_arg = """`x`: initial guess, overwrite final estimation."""
-
-doc_version = (doc_call, doc_msg, doc_arg)
-doc!_version = (doc!_call, doc!_msg, doc!_arg)
-
-i = 0
-docstring = Vector(2)
-
-#Build docs
-for (call, msg, arg) in [doc_version, doc!_version] #Start
-i+=1
-docstring[i] = """
-$call
-
-$msg
-
-If `log` is set to `true` is given, method will output a tuple `x, ch`. Where
-`ch` is a `ConvergenceHistory` object. Otherwise it will only return `x`.
-
-# Arguments
-
-$arg
-
-`A`: linear operator.
-
-`b`: right hand side.
-
-## Keywords
-
-`Pl = Identity()`: left preconditioner of the method.
-
-`tol::Real = size(A,2)*eps()`: stopping tolerance.
-
-`maxiter::Integer = size(A,2)`: maximum number of iterations.
-
-`verbose::Bool = false`: print method information.
-
-`log::Bool = false`: output an extra element of type `ConvergenceHistory`
-containing extra information of the method execution.
-
-# Output
-
-**if `log` is `false`**
-
-`x`: approximated solution.
-
-**if `log` is `true`**
-
-`x`: approximated solution.
-
-`ch`: convergence history.
-
-**ConvergenceHistory keys**
-
-`:tol` => `::Real`: stopping tolerance.
-
-`:resnom` => `::Vector`: residual norm at each iteration.
-
-"""
-end
-
-@doc docstring[1] -> cg
-@doc docstring[2] -> cg!
 end
