@@ -2,12 +2,11 @@ import Base: next, start, done
 
 export chebyshev, chebyshev!
 
-mutable struct ChebyshevIterable{precT, matT, vecT, realT <: Real}
+mutable struct ChebyshevIterable{precT, matT, solT, vecT, realT <: Real}
     Pl::precT
     A::matT
-    b::vecT
 
-    x::vecT
+    x::solT
     r::vecT
     u::vecT
     c::vecT
@@ -28,7 +27,7 @@ start(::ChebyshevIterable) = 0
 done(c::ChebyshevIterable, iteration::Int) = iteration ≥ c.maxiter || converged(c)
 
 function next(cheb::ChebyshevIterable, iteration::Int)
-    T = eltype(cheb.u)
+    T = eltype(cheb.x)
 
     solve!(cheb.c, cheb.Pl, cheb.r)
 
@@ -64,8 +63,9 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
     λ_avg = (λmax + λmin) / 2
     λ_diff = (λmax - λmin) / 2
 
-    T = eltype(b)
-    r = copy(b)
+    T = eltype(x)
+    r = similar(x)
+    copy!(r, b)
     u = zeros(x)
     c = similar(x)
 
@@ -82,8 +82,7 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
         mv_products = 1
     end
 
-    ChebyshevIterable(Pl, A, b,
-        x, r, u, c,
+    ChebyshevIterable(Pl, A, x, r, u, c,
         zero(real(T)),
         λ_avg, λ_diff,
         resnorm, reltol, maxiter, mv_products
