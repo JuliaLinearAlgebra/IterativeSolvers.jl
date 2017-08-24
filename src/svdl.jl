@@ -444,7 +444,7 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     #Compute scaled residual from the harmonic Ritz problem
     r0 = zeros(Tr, m)
     r0[end] = 1
-    isa(L.B, Bidiagonal) && @assert L.B.isupper
+    # isa(L.B, Bidiagonal) && @assert L.B.isupper
     r = try
         #(L.B\r0)
         A_ldiv_B!(L.B, r0)
