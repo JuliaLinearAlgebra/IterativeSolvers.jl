@@ -28,11 +28,11 @@ Residual(order, T::Type) = Residual{T, real(T)}(
     one(real(T))
 )
 
-mutable struct GMRESIterable{preclT, precrT, vecT <: AbstractVector, arnoldiT <: ArnoldiDecomp, residualT <: Residual, resT <: Real}
+mutable struct GMRESIterable{preclT, precrT, solT, rhsT, vecT, arnoldiT <: ArnoldiDecomp, residualT <: Residual, resT <: Real}
     Pl::preclT
     Pr::precrT
-    x::vecT
-    b::vecT
+    x::solT
+    b::rhsT
     Ax::vecT # Some room to work in.
 
     arnoldi::arnoldiT
@@ -98,7 +98,7 @@ function next(g::GMRESIterable, iteration::Int)
     g.residual.current, iteration + 1
 end
 
-gmres_iterable(A, b; kwargs...) = gmres_iterable!(zeros(b), A, b; initially_zero = true, kwargs...)
+gmres_iterable(A, b; kwargs...) = gmres_iterable!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
 function gmres_iterable!(x, A, b;
     Pl = Identity(),
@@ -106,17 +106,17 @@ function gmres_iterable!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     restart::Int = min(20, length(b)),
     maxiter::Int = restart,
-    initially_zero = false
+    initially_zero::Bool = false
 )
-    T = eltype(b)
+    T = eltype(x)
 
     # Approximate solution
     arnoldi = ArnoldiDecomp(A, restart, T)
     residual = Residual(restart, T)
-    mv_products = initially_zero == true ? 1 : 0
+    mv_products = initially_zero ? 1 : 0
 
     # Workspace vector to reduce the # allocs.
-    Ax = similar(b)
+    Ax = similar(x)
     residual.current = init!(arnoldi, x, b, Pl, Ax, initially_zero = initially_zero)
     init_residual!(residual, residual.current)
 
