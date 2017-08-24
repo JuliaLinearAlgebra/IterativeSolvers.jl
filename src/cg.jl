@@ -2,10 +2,9 @@ import Base: start, next, done
 
 export cg, cg!, CGIterable, PCGIterable, cg_iterator, cg_iterator!
 
-mutable struct CGIterable{matT, vecT <: AbstractVector, numT <: Real}
+mutable struct CGIterable{matT, solT, vecT, numT <: Real}
     A::matT
-    x::vecT
-    b::vecT
+    x::solT
     r::vecT
     c::vecT
     u::vecT
@@ -16,11 +15,10 @@ mutable struct CGIterable{matT, vecT <: AbstractVector, numT <: Real}
     mv_products::Int
 end
 
-mutable struct PCGIterable{precT, matT, vecT <: AbstractVector, numT <: Real, paramT <: Number}
+mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Number}
     Pl::precT
     A::matT
-    x::vecT
-    b::vecT
+    x::solT
     r::vecT
     c::vecT
     u::vecT
@@ -46,7 +44,7 @@ function next(it::CGIterable, iteration::Int)
     # u := r + βu (almost an axpy)
     β = it.residual^2 / it.prev_residual^2
     @blas! it.u *= β
-    @blas! it.u += one(eltype(it.b)) * it.r
+    @blas! it.u += one(eltype(it.u)) * it.r
 
     # c = A * u
     A_mul_B!(it.c, it.A, it.u)
@@ -76,7 +74,7 @@ function next(it::PCGIterable, iteration::Int)
     # u := c + βu (almost an axpy)
     β = it.ρ / ρ_prev
     @blas! it.u *= β
-    @blas! it.u += one(eltype(it.b)) * it.c
+    @blas! it.u += one(eltype(it.u)) * it.c
 
     # c = A * u
     A_mul_B!(it.c, it.A, it.u)
@@ -102,7 +100,8 @@ function cg_iterator!(x, A, b, Pl = Identity();
     initially_zero::Bool = false
 )
     u = zeros(x)
-    r = copy(b)
+    r = similar(x)
+    copy!(r, b)
 
     # Compute r with an MV-product or not.
     if initially_zero
@@ -120,16 +119,13 @@ function cg_iterator!(x, A, b, Pl = Identity();
 
     # Return the iterable
     if isa(Pl, Identity)
-        return CGIterable(A, x, b,
-            r, c, u,
+        return CGIterable(A, x, r, c, u,
             reltol, residual, one(residual),
             maxiter, mv_products
         )
     else
-        ρ = one(eltype(r))
-        return PCGIterable(Pl, A, x, b,
-            r, c, u,
-            reltol, residual, ρ,
+        return PCGIterable(Pl, A, x, r, c, u,
+            reltol, residual, one(eltype(x)),
             maxiter, mv_products
         )
     end
