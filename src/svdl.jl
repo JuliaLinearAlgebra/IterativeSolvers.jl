@@ -356,9 +356,8 @@ function build(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int) where {
     p = A*q
     α = convert(Tr, norm(p))
     @blas! p *= inv(α)
-    extend!(log, A, PartialFactorization(
-        reshape(p, m, 1), reshape(q, n, 1), Bidiagonal([α], Tr[], true), β
-        ), k)
+    bidiag = Bidiagonal([α], Tr[], @static VERSION < v"0.7.0-DEV.884" ? true : :U)
+    extend!(log, A, PartialFactorization(reshape(p, m, 1), reshape(q, n, 1), bidiag, β), k)
 end
 
 
