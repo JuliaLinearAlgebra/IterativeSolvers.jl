@@ -35,11 +35,11 @@ function jacobi!(x, A::AbstractMatrix, b; maxiter::Int=10)
     x
 end
 
-mutable struct DenseJacobiIterable{matT,vecT}
+mutable struct DenseJacobiIterable{matT,vecT,solT,rhsT}
     A::matT
-    x::vecT
+    x::solT
     next::vecT
-    b::vecT
+    b::rhsT
     maxiter::Int
 end
 
@@ -93,10 +93,10 @@ function gauss_seidel!(x, A::AbstractMatrix, b; maxiter::Int=10)
     x
 end
 
-mutable struct DenseGaussSeidelIterable{matT,vecT}
+mutable struct DenseGaussSeidelIterable{matT,solT,rhsT}
     A::matT
-    x::vecT
-    b::vecT
+    x::solT
+    b::rhsT
     maxiter::Int
 end
 
@@ -149,11 +149,11 @@ function sor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
     x
 end
 
-mutable struct DenseSORIterable{matT,vecT,numT}
+mutable struct DenseSORIterable{matT,solT,vecT,rhsT,numT}
     A::matT
-    x::vecT
+    x::solT
     tmp::vecT
-    b::vecT
+    b::rhsT
     ω::numT
     maxiter::Int
 end
@@ -207,11 +207,11 @@ function ssor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
     x
 end
 
-mutable struct DenseSSORIterable{matT,vecT,numT}
+mutable struct DenseSSORIterable{matT,solT,vecT,rhsT,numT}
     A::matT
-    x::vecT
+    x::solT
     tmp::vecT
-    b::vecT
+    b::rhsT
     ω::numT
     maxiter::Int
 end
