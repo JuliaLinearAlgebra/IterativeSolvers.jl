@@ -16,15 +16,12 @@ Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
     zerox(A, b)
 Build a zeros vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
 """
-function zerox(A, b)
-    T = Adivtype(A, b)
-    x = zeros(T, size(A, 2))
-end
+zerox(A, b) = zeros(Adivtype(A, b), size(A, 2))
 
 #### Numerics
 """
     solve(A,b)
-Solve `A\b` with a direct solver. When `A` is a function `A(b)` is dispatched instead.
+Solve `A\\b` with a direct solver. When `A` is a function `A(b)` is dispatched instead.
 """
 solve(A::Function,b) = A(b)
 solve(A,b) = A\b
