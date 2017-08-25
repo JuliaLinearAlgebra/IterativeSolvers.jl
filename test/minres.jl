@@ -30,6 +30,7 @@ n = 15
 
     x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
 
+    @test isa(hist, ConvergenceHistory)
     @test norm(b - A * x_approx) / norm(b) ≤ tol
     @test hist.isconverged
 end

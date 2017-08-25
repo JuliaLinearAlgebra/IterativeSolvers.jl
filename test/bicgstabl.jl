@@ -16,6 +16,7 @@ n = 20
     @testset "BiCGStab($l)" for l = (2, 4)
         # Solve without preconditioner
         x1, his1 = bicgstabl(A, b, l, max_mv_products = 100, log = true, tol = tol)
+        @test isa(his1, ConvergenceHistory)
         @test norm(A * x1 - b) / norm(b) ≤ tol
 
         # Do an exact LU decomp of a nearby matrix

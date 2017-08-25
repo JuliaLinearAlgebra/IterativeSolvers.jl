@@ -101,7 +101,8 @@ end
     @testset "Small dense matrix" for T = (Float32, Float64)
         A = rand(T, 10, 5)
         b = rand(T, 10)
-        x = lsmr(A, b)
+        x, history = lsmr(A, b, log = true)
+        @test isa(history, ConvergenceHistory)
         @test norm(x - A\b) ≤ √eps(T)
     end
 

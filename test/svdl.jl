@@ -15,7 +15,8 @@ srand(1234567)
 
             A = full(Diagonal(T[1.0 : n;]))
             q = ones(T, n) / √n
-            σ, L = svdl(A, nsv=ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none)
+            σ, L, history = svdl(A, nsv=ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=method, vecs=:none, log=true)
+            @test isa(history, ConvergenceHistory)
             @test norm(σ - [n : -1.0 : n - 4;]) < 5^2 * 1e-5
             @test_throws ArgumentError svdl(A, nsv=ns, v0=q, tol=tol, reltol=tol, maxiter=n, method=:fakemethod, vecs=:none)
 

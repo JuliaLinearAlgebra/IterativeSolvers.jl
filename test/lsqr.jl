@@ -10,6 +10,7 @@ srand(1234321)
     A = rand(T, 10, 5)
     b = rand(T, 10)
     x, history = lsqr(A, b, log = true)
+    @test isa(history, ConvergenceHistory)
     @test norm(x - A\b) ≤ √eps(T)
     @test history.isconverged
     @test last(history[:resnorm]) ≈ norm(b - A * x) atol=√eps(T)
