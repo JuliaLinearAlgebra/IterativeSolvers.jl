@@ -133,7 +133,7 @@ end
 
 Same as [`gmres!`](@ref), but allocates a solution vector `x` initialized with zeros.
 """
-gmres(A, b; kwargs...) = gmres!(zeros(b), A, b; initially_zero = true, kwargs...)
+gmres(A, b; kwargs...) = gmres!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
 """
     gmres!(x, A, b; kwargs...) -> x, [history]
