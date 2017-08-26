@@ -10,7 +10,7 @@ lsqr(A, b; kwargs...) = lsqr!(zerox(A, b), A, b; kwargs...)
 """
     lsqr!(x, A, b; kwargs...) -> x, [history]
 
-Minimizes ``\|Ax - b\|^2 + \|damp*x\|^2`` in the Euclidean norm. If multiple solutions
+Minimizes ``\\|Ax - b\\|^2 + \\|damp*x\\|^2`` in the Euclidean norm. If multiple solutions
 exists returns the minimal norm solution.
 
 The method is based on the Golub-Kahan bidiagonalization process.

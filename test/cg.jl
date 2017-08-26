@@ -18,6 +18,7 @@ srand(1234321)
         tol = √eps(real(T))
 
         x,ch = cg(A, b; tol=tol, maxiter=2n, log=true)
+        @test isa(ch, ConvergenceHistory)
         @test norm(A*x - b) / norm(b) ≤ tol
         @test ch.isconverged
 

@@ -356,9 +356,8 @@ function build(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int) where {
     p = A*q
     α = convert(Tr, norm(p))
     @blas! p *= inv(α)
-    extend!(log, A, PartialFactorization(
-        reshape(p, m, 1), reshape(q, n, 1), Bidiagonal([α], Tr[], true), β
-        ), k)
+    bidiag = Bidiagonal([α], Tr[], @static VERSION < v"0.7.0-DEV.884" ? true : :U)
+    extend!(log, A, PartialFactorization(reshape(p, m, 1), reshape(q, n, 1), bidiag, β), k)
 end
 
 
@@ -445,7 +444,9 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     #Compute scaled residual from the harmonic Ritz problem
     r0 = zeros(Tr, m)
     r0[end] = 1
-    isa(L.B, Bidiagonal) && @assert L.B.isupper
+    if isa(L.B, Bidiagonal)
+        @assert @static VERSION < v"0.7.0-DEV.884" ? L.B.isupper : L.B.uplo == 'U'
+    end
     r = try
         #(L.B\r0)
         A_ldiv_B!(L.B, r0)

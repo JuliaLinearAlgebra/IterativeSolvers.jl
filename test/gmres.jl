@@ -17,6 +17,7 @@ n = 10
 
     # Test optimality condition: residual should be non-increasing
     x, history = gmres(A, b, log = true, restart = 3, maxiter = 10, tol = tol);
+    @test isa(history, ConvergenceHistory)
     @test all(diff(history[:resnorm]) .<= 0.0)
 
     # Left exact preconditioner

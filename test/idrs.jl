@@ -14,6 +14,7 @@ srand(1234567)
 
     @testset "Without residual smoothing" begin
         x, history = idrs(A, b, log=true)
+        @test isa(history, ConvergenceHistory)
         @test history.isconverged
         @test norm(A * x - b) / norm(b) ≤ tol
     end

@@ -26,6 +26,7 @@ srand(1234321)
     tol = √(eps(real(T)))
     
     x, history = chebyshev(A, b, λ_min, λ_max, tol=tol, maxiter=10n, log=true)
+    @test isa(history, ConvergenceHistory)
     @test history.isconverged
     @test norm(A * x - b) / norm(b) ≤ tol
 

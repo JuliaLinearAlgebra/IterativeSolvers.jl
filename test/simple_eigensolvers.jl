@@ -18,7 +18,8 @@ n = 10
     ## Simple methods
 
     @testset "Power iteration" begin
-        λ, x = powm(A; tol = tol, maxiter = 10n)
+        λ, x, history = powm(A; tol=tol, maxiter=10n, log=true)
+        @test isa(history, ConvergenceHistory)
         @test λs[end] ≈ λ
         @test norm(A * x - λ * x) ≤ tol
     end
@@ -34,8 +35,9 @@ n = 10
         F = lufact(complex(A) - UniformScaling(σ))
         Fmap = LinearMap{complex(T)}((y, x) -> A_ldiv_B!(y, F, x), size(A, 1), ismutating = true)
 
-        λ, x = invpowm(Fmap; shift = σ, tol = tol, maxiter = 10n)
+        λ, x, history = invpowm(Fmap; shift=σ, tol=tol, maxiter=10n, log=true)
 
+        @test isa(history, ConvergenceHistory)
         @test norm(A * x - λ * x) ≤ tol
         @test λ ≈ λs[idx]
 

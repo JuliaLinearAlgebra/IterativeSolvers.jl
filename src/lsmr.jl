@@ -12,7 +12,7 @@ lsmr(A, b; kwargs...) = lsmr!(zerox(A, b), A, b; kwargs...)
 """
     lsmr!(x, A, b; kwargs...) -> x, [history]
 
-Minimizes ``\|Ax - b\|^2 + \|λx\|^2`` in the Euclidean norm. If multiple solutions
+Minimizes ``\\|Ax - b\\|^2 + \\|λx\\|^2`` in the Euclidean norm. If multiple solutions
 exists the minimum norm solution is returned.
 
 The method is based on the Golub-Kahan bidiagonalization process. It is 
