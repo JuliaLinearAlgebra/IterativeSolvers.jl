@@ -39,6 +39,8 @@ makedocs(
 deploydocs(
 	repo = "github.com/JuliaMath/IterativeSolvers.jl",
 	target = "build",
+	osname = "linux",
+	julia  = "0.6",
 	deps = nothing,
 	make = nothing,
 )
