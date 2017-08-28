@@ -3,10 +3,10 @@ export minres_iterable, minres, minres!
 import Base.LinAlg: BLAS.axpy!, givensAlgorithm
 import Base: start, next, done
 
-mutable struct MINRESIterable{matT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}
+mutable struct MINRESIterable{matT, solT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}
     A::matT
     skew_hermitian::Bool
-    x::vecT
+    x::solT
 
     # Krylov basis vectors
     v_prev::vecT
@@ -44,15 +44,16 @@ function minres_iterable!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))), 
     maxiter = size(A, 1)
 )
-    T = eltype(b)
+    T = eltype(x)
     HessenbergT = skew_hermitian ? T : real(T)
 
-    v_prev = similar(b)
-    v_curr = copy(b)
-    v_next = similar(b)
-    w_prev = similar(b)
-    w_curr = similar(b)
-    w_next = similar(b)
+    v_prev = similar(x)
+    v_curr = similar(x)
+    copy!(v_curr, b)
+    v_next = similar(x)
+    w_prev = similar(x)
+    w_curr = similar(x)
+    w_next = similar(x)
 
     mv_products = 0
 

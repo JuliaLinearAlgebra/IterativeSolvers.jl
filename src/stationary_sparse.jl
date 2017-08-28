@@ -208,12 +208,12 @@ end
 ## Jacobi
 ##
 
-mutable struct JacobiIterable{T <: Number, vecT <: AbstractVector}
+mutable struct JacobiIterable{T <: Number, solT, vecT, rhsT}
     O::OffDiagonal
 
-    x::vecT
+    x::solT
     next::vecT
-    b::vecT
+    b::rhsT
 
     maxiter::Int
 end
@@ -229,8 +229,9 @@ function next(j::JacobiIterable{T}, iteration::Int) where {T}
     nothing, iteration + 1
 end
 
-jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) =
-    JacobiIterable{eltype(x), typeof(x)}(OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)
+jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) = 
+    JacobiIterable{eltype(x), typeof(x), typeof(x), typeof(b)}(
+        OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)
 
 
 """
@@ -253,12 +254,12 @@ end
 ## Gauss-Seidel
 ##
 
-mutable struct GaussSeidelIterable{vecT <: AbstractVector}
+mutable struct GaussSeidelIterable{solT, rhsT}
     U::StrictlyUpperTriangular
     L::FastLowerTriangular
 
-    x::vecT
-    b::vecT
+    x::solT
+    b::rhsT
 
     maxiter::Int
 end
@@ -299,14 +300,14 @@ end
 ## SOR
 ##
 
-mutable struct SORIterable{T, vecT <: AbstractVector, numT <: Real}
+mutable struct SORIterable{T, solT, vecT, rhsT, numT <: Real}
     U::StrictlyUpperTriangular
     L::FastLowerTriangular
     ω::numT
 
-    x::vecT
+    x::solT
     next::vecT
-    b::vecT
+    b::rhsT
 
     maxiter::Int
 end
@@ -329,7 +330,10 @@ end
 function sor_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
     D = DiagonalIndices(A)
     T = eltype(x)
-    SORIterable{T,typeof(x),eltype(ω)}(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), ω, x, similar(x), b, maxiter)
+    SORIterable{T,typeof(x),typeof(x),typeof(b),eltype(ω)}(
+        StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), ω, 
+        x, similar(x), b, maxiter
+    )
 end
 
 """
@@ -352,25 +356,27 @@ end
 ## SSOR
 ##
 
-mutable struct SSORIterable{T, vecT, numT <: Real}
+mutable struct SSORIterable{T, solT, vecT, rhsT, numT <: Real}
     sL::StrictlyLowerTriangular
     sU::StrictlyUpperTriangular
     L::FastLowerTriangular
     U::FastUpperTriangular
     ω::numT
-    x::vecT
+    x::solT
     tmp::vecT
-    b::vecT
+    b::rhsT
     maxiter::Int
 end
 
 function ssor_iterable(x::AbstractVector{T}, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10) where {T}
     D = DiagonalIndices(A)
-    sL = StrictlyLowerTriangular(A, D)
-    sU = StrictlyUpperTriangular(A, D)
-    L = FastLowerTriangular(A, D)
-    U = FastUpperTriangular(A, D)
-    SSORIterable{T,typeof(x),typeof(ω)}(sL, sU, L, U, ω, x, similar(x), b, maxiter)
+    SSORIterable{T,typeof(x),typeof(x),typeof(b),typeof(ω)}(
+        StrictlyLowerTriangular(A, D),
+        StrictlyUpperTriangular(A, D),
+        FastLowerTriangular(A, D),
+        FastUpperTriangular(A, D),
+        ω, x, similar(x), b, maxiter
+    )
 end
 
 start(s::SSORIterable) = 1

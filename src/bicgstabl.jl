@@ -2,12 +2,11 @@ export bicgstabl, bicgstabl!, bicgstabl_iterator, bicgstabl_iterator!, BiCGStabI
 
 import Base: start, next, done
 
-mutable struct BiCGStabIterable{precT, matT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
+mutable struct BiCGStabIterable{precT, matT, solT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
     A::matT
-    b::vecT
     l::Int
 
-    x::vecT
+    x::solT
     r_shadow::vecT
     rs::smallMatT
     us::smallMatT
@@ -33,7 +32,7 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
     initial_zero = false,
     tol = sqrt(eps(real(eltype(b))))
 )
-    T = eltype(b)
+    T = eltype(x)
     n = size(A, 1)
     mv_products = 0
 
@@ -69,7 +68,7 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
     # Stopping condition based on relative tolerance.
     reltol = nrm * tol
 
-    BiCGStabIterable(A, b, l, x, r_shadow, rs, us,
+    BiCGStabIterable(A, l, x, r_shadow, rs, us,
         max_mv_products, mv_products, reltol, nrm,
         Pl,
         γ, ω, σ, M
@@ -81,7 +80,7 @@ end
 @inline done(it::BiCGStabIterable, iteration::Int) = it.mv_products ≥ it.max_mv_products || converged(it)
 
 function next(it::BiCGStabIterable, iteration::Int)
-    T = eltype(it.b)
+    T = eltype(it.x)
     L = 2 : it.l + 1
 
     it.σ = -it.ω * it.σ
