@@ -3,6 +3,8 @@ using Documenter, IterativeSolvers
 makedocs(
 	modules = [IterativeSolvers],
 	format = :html,
+	doctest = false,
+	clean = true,
 	sitename = "IterativeSolvers.jl",
 	pages = [
 		"Home" => "index.md",
@@ -25,10 +27,6 @@ makedocs(
 		"SVDL" => "svd/svdl.md",
 		"Randomized algorithms" => "randomized.md",
 		"The iterator approach" => "iterators.md",
-		# "Additional resources" => [
-		# 	# "Public" => "library/public.md",
-		# 	# "Internal" => "library/internal.md",
-		# ],
 		"About" => [
 			"Contributing" => "about/CONTRIBUTING.md",
 			"License" => "about/license.md",
@@ -37,7 +35,7 @@ makedocs(
 )
 
 deploydocs(
-	repo = "github.com/JuliaMath/IterativeSolvers.jl",
+	repo = "github.com/JuliaMath/IterativeSolvers.jl.git",
 	target = "build",
 	osname = "linux",
 	julia  = "0.6",
