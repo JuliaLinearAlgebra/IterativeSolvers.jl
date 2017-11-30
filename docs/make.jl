@@ -3,6 +3,8 @@ using Documenter, IterativeSolvers
 makedocs(
 	modules = [IterativeSolvers],
 	format = :html,
+	doctest = false,
+	clean = true,
 	sitename = "IterativeSolvers.jl",
 	pages = [
 		"Home" => "index.md",
