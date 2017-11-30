@@ -11,3 +11,4 @@ notifications:
     email: false
 after_success:
     - julia -e 'Pkg.add("Coverage"); cd(Pkg.dir("IterativeSolvers")); using Coverage; Coveralls.submit(Coveralls.process_folder()); Codecov.submit(process_folder())'
+    - julia -e 'Pkg.add("Documenter"); cd(Pkg.dir("IterativeSolvers")); include(joinpath("docs", "make.jl"))'
