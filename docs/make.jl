@@ -27,10 +27,6 @@ makedocs(
 		"SVDL" => "svd/svdl.md",
 		"Randomized algorithms" => "randomized.md",
 		"The iterator approach" => "iterators.md",
-		# "Additional resources" => [
-		# 	# "Public" => "library/public.md",
-		# 	# "Internal" => "library/internal.md",
-		# ],
 		"About" => [
 			"Contributing" => "about/CONTRIBUTING.md",
 			"License" => "about/license.md",
