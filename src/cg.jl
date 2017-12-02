@@ -96,7 +96,7 @@ end
 
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
-    maxiter = min(20, length(b)),
+    maxiter::Int = size(A, 2),
     initially_zero::Bool = false
 )
     u = zeros(x)
@@ -155,7 +155,7 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 - `Pl = Identity()`: left preconditioner of the method. Should be symmetric, 
   positive-definite like `A`.
 - `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`;
-- `maxiter::Integer = size(A,2)`: maximum number of iterations;
+- `maxiter::Int = size(A,2)`: maximum number of iterations;
 - `verbose::Bool = false`: print method information;
 - `log::Bool = false`: keep track of the residual norm in each iteration;
 
@@ -177,7 +177,7 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 """
 function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Integer = min(20, size(A, 1)),
+    maxiter::Int = size(A, 2),
     log::Bool = false,
     verbose::Bool = false,
     Pl = Identity(),

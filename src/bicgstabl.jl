@@ -28,7 +28,7 @@ bicgstabl_iterator(A, b, l; kwargs...) = bicgstabl_iterator!(zerox(A, b), A, b, 
 
 function bicgstabl_iterator!(x, A, b, l::Int = 2;
     Pl = Identity(),
-    max_mv_products = min(30, size(A, 1)),
+    max_mv_products = size(A, 2),
     initial_zero = false,
     tol = sqrt(eps(real(eltype(b))))
 )
@@ -161,7 +161,7 @@ bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zerox(A, b), A, b, l; initial_zer
 
 ## Keywords
 
-- `max_mv_products::Int = min(30, size(A, 1))`: maximum number of matrix vector products.
+- `max_mv_products::Int = size(A, 2)`: maximum number of matrix vector products.
 For BiCGStab(l) this is a less dubious term than "number of iterations";
 - `Pl = Identity()`: left preconditioner of the method;
 - `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`. 
@@ -182,7 +182,7 @@ For BiCGStab(l) this is a less dubious term than "number of iterations";
 """
 function bicgstabl!(x, A, b, l = 2;
     tol = sqrt(eps(real(eltype(b)))),
-    max_mv_products::Int = min(20, size(A, 1)),
+    max_mv_products::Int = size(A, 2),
     log::Bool = false,
     verbose::Bool = false,
     Pl = Identity(),

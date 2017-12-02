@@ -37,7 +37,7 @@ especially if A is ill-conditioned.
   Maximum precision can be obtained by setting
   `atol` = `btol` = `conlim` = zero, but the number of iterations
   may then be excessive.
-- `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+- `maxiter::Int = maximum(size(A))`: maximum number of iterations.
 - `verbose::Bool = false`: print method information.
 - `log::Bool = false`: output an extra element of type `ConvergenceHistory`
   containing extra information of the method execution.
@@ -64,7 +64,7 @@ especially if A is ill-conditioned.
 - `:resnom` => `::Vector`: residual norm at each iteration.
 """
 function lsqr!(x, A, b;
-    maxiter::Int=max(size(A,1), size(A,2)), log::Bool=false,
+    maxiter::Int=maximum(size(A)), log::Bool=false,
     kwargs...
     )
     T = Adivtype(A, b)
@@ -90,7 +90,7 @@ end
 function lsqr_method!(log::ConvergenceHistory, x, A, b;
     damp=0, atol=sqrt(eps(real(Adivtype(A,b)))), btol=sqrt(eps(real(Adivtype(A,b)))),
     conlim=real(one(Adivtype(A,b)))/sqrt(eps(real(Adivtype(A,b)))),
-    maxiter::Int=max(size(A,1), size(A,2)), verbose::Bool=false,
+    maxiter::Int=maximum(size(A)), verbose::Bool=false,
     )
     verbose && @printf("=== lsqr ===\n%4s\t%7s\t\t%7s\t\t%7s\t\t%7s\n","iter","resnorm","anorm","cnorm","rnorm")
     # Sanity-checking

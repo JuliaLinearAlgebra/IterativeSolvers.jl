@@ -23,7 +23,7 @@ shadow space.
 
 - `s::Integer = 8`: dimension of the shadow space;
 - `tol`: relative tolerance;
-- `maxiter::Int`: maximum number of iterations;
+- `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iterations.
 

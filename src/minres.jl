@@ -42,7 +42,7 @@ function minres_iterable!(x, A, b;
     initially_zero::Bool = false, 
     skew_hermitian::Bool = false, 
     tol = sqrt(eps(real(eltype(b)))), 
-    maxiter = size(A, 1)
+    maxiter = size(A, 2)
 )
     T = eltype(x)
     HessenbergT = skew_hermitian ? T : real(T)
@@ -173,7 +173,7 @@ Solve Ax = b for (skew-)Hermitian matrices A using MINRES.
   residual vector;
 - `skew_hermitian::Bool = false`: if `true` assumes that `A` is skew-symmetric or skew-Hermitian;
 - `tol`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`. Note that the residual is computed only approximately;
-- `maxiter::Int`: maximum number of inner iterations of GMRES;
+- `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `Pl`: left preconditioner;
 - `Pr`: right preconditioner;
 - `log::Bool = false`: keep track of the residual norm in each iteration;
@@ -195,7 +195,7 @@ function minres!(x, A, b;
     verbose::Bool = false,
     log::Bool = false,
     tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Int = min(30, size(A, 1)),
+    maxiter::Int = size(A, 2),
     initially_zero::Bool = false
 )
     history = ConvergenceHistory(partial = !log)
