@@ -39,7 +39,7 @@ shadow space.
 - `history`: convergence history.
 """
 function idrs!(x, A, b;
-    s = 8, tol=sqrt(eps(real(eltype(b)))), maxiter=length(x)^2,
+    s = 8, tol=sqrt(eps(real(eltype(b)))), maxiter=size(A, 2),
     log::Bool=false, kwargs...
     )
     history = ConvergenceHistory(partial=!log)
