@@ -102,25 +102,3 @@ ch[:resnorm, x, y] #Matrix element
 ```@docs
 ConvergenceHistory
 ```
-
-### Plotting
-
-`ConvergeHistory` provides a recipe to use with the package [Plots.jl](https://github.com/tbreloff/Plots.jl), this makes it really easy to
-plot on different plot backends. There are two recipes provided:
-
-One for the whole `ConvergenceHistory`.
-
-```julia
-plot(ch)
-```
-
-The other one to plot data binded to a key.
-
-```julia
-_, ch = gmres(rand(10,10), rand(10), maxiter = 100, log=true)
-plot(ch, :resnorm, sep = :blue)
-```
-
-*Plot additional keywords*
-
-`sep::Symbol = :white`: color of the line separator in restarted methods.

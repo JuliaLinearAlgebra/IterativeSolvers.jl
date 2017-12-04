@@ -41,11 +41,3 @@ include("lsmr.jl")
 include("rlinalg.jl")
 include("rsvd.jl")
 include("rsvd_fnkz.jl")
-
-#History data structure
-include("history.jl")
-
-#Expensive tests - don't run by default
-#include("matrixmarket.jl")
-#include("matrixcollection.jl")
-
