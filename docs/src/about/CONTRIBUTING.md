@@ -42,10 +42,7 @@ other git branches will let you use/test whatever there is.
 
 ## Adding or modifying iterative methods
 
-Each iterative method method must log information using the inner `ConvergenceHistory`
-type. When information is not necessary to be stored (plot is set to `false`) then
-instead of `ConvergenceHistory` create a `DummyHistory`, this type has the same
-calls `ConvergenceHistory` does but without storing anything.
+Each iterative method method must log information using the inner `ConvergenceHistory` type.
 
 There are two types of `ConvergenceHistory`: plain and restarted. The only real
 difference between the two is how they are plotted and how the number of restarts
