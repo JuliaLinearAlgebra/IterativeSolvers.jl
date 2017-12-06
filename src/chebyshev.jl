@@ -54,9 +54,6 @@ function next(cheb::ChebyshevIterable, iteration::Int)
     cheb.resnorm, iteration + 1
 end
 
-chebyshev_iterable(A, b, λmin::Real, λmax::Real; kwargs...) =
-    chebyshev_iterable!(zerox(A, b), A, b, λmin, λmax; kwargs...)
-
 function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
     tol = sqrt(eps(real(eltype(b)))), maxiter = size(A, 2), Pl = Identity(), initially_zero = false)
 
