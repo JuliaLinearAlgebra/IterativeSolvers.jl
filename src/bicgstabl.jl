@@ -24,8 +24,6 @@ mutable struct BiCGStabIterable{precT, matT, solT, vecT <: AbstractVector, small
     M::smallMatT
 end
 
-bicgstabl_iterator(A, b, l; kwargs...) = bicgstabl_iterator!(zerox(A, b), A, b, l; initial_zero = true, kwargs...)
-
 function bicgstabl_iterator!(x, A, b, l::Int = 2;
     Pl = Identity(),
     max_mv_products = size(A, 2),

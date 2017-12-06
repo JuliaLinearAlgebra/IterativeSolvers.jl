@@ -36,8 +36,6 @@ mutable struct MINRESIterable{matT, solT, vecT <: DenseVector, smallVecT <: Dens
     resnorm::realT
 end
 
-minres_iterable(A, b; kwargs...) = minres_iterable!(zerox(A, b), A, b; initially_zero = true, kwargs...)
-
 function minres_iterable!(x, A, b; 
     initially_zero::Bool = false, 
     skew_hermitian::Bool = false, 

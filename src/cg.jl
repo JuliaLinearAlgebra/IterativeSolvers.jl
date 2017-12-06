@@ -1,6 +1,6 @@
 import Base: start, next, done
 
-export cg, cg!, CGIterable, PCGIterable, cg_iterator, cg_iterator!
+export cg, cg!, CGIterable, PCGIterable, cg_iterator!
 
 mutable struct CGIterable{matT, solT, vecT, numT <: Real}
     A::matT
@@ -91,8 +91,6 @@ function next(it::PCGIterable, iteration::Int)
 end
 
 # Utility functions
-
-@inline cg_iterator(A, b, Pl = Identity(); kwargs...) = cg_iterator!(zerox(A, b), A, b, Pl; initially_zero = true, kwargs...)
 
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
