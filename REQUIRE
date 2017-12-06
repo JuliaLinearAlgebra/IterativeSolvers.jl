@@ -1,6 +1,4 @@
 julia 0.6
 
-UnicodePlots
 RecipesBase
 SugarBLAS
-LinearMaps

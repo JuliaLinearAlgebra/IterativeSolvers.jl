@@ -1,24 +1,68 @@
 using IterativeSolvers
-using Plots
+using RecipesBase
+using Base.Test
 
-#Just check it doesn't crash
 @testset "ConvergenceHistory" begin
 
-srand(1234321)
+    const KW = Dict{Symbol, Any}
 
-#Use UnicodePlots backend because it is the lightest
-unicodeplots()
+    RecipesBase.is_key_supported(k::Symbol) = k == :sep ? false : true
 
-A = lu(rand(10, 10))[1]
-b = rand(10)
+    # No plottables
+    begin
+        history = ConvergenceHistory(partial = false)
+        @test_throws ErrorException RecipesBase.apply_recipe(KW(), history)
+    end
 
-for solver in (cg, gmres, minres, lsqr, lsmr, idrs)
-    plot(solver(A, b; log=true)[2])
-end
+    # Without restart markers
+    begin
+        history = ConvergenceHistory(partial = false)
+        history.iters = 3
+        history.data[:resnorm] = [10.0, 3.0, 0.1]
+        
+        plots = (
+            RecipesBase.apply_recipe(KW(), history),
+            RecipesBase.apply_recipe(KW(), history, :resnorm)
+        )
 
-plot(bicgstabl(A, b, 2, log=true)[2])
-plot(chebyshev(A, b, 0.5, 1.5; log=true)[2])
-plot(powm(A; log=true)[2])
-plot(invpowm(A; log=true)[2])
-plot(svdl(A; log=true)[3])
+        for data in plots
+            @test length(data) == 1
+            @test data[1].d[:label] == "resnorm"
+            @test data[1].d[:seriestype] == :line
+        end
+    end
+
+    # With restart markers
+    begin
+        history = ConvergenceHistory(partial = false, restart = 2)
+        history.iters = 3
+        history.data[:resnorm] = [10.0, 3.0, 0.1]
+
+        plots = (
+            RecipesBase.apply_recipe(KW(), history),
+            RecipesBase.apply_recipe(KW(), history, :resnorm)
+        )
+
+        for data in plots
+            @test length(data) == 2
+            @test data[2].d[:linecolor] == :white    
+        end
+    end
+
+    # Custom color
+    begin
+        history = ConvergenceHistory(partial = false, restart = 2)
+        history.iters = 3
+        history.data[:resnorm] = [10.0, 3.0, 0.1]
+
+        plots = (
+            RecipesBase.apply_recipe(KW(:sep => :red), history),
+            RecipesBase.apply_recipe(KW(:sep => :red), history, :resnorm)
+        )
+
+        for data in plots
+            @test length(data) == 2
+            @test data[2].d[:linecolor] == :red
+        end
+    end
 end
