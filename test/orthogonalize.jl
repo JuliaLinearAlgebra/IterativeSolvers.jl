@@ -15,6 +15,20 @@ m = 3
     # And a random vector to be orth. to V.
     w_original = rand(T, n)
 
+    # Test whether w is w_original orthonormalized w.r.t. V,
+    # given the projection h = V' * h and the norm of V * V' * h
+    is_orthonormalized = (w, h, nrm) -> begin
+        # Normality
+        @test norm(w) ≈ one(real(T))
+
+        # Orthogonality
+        @test norm(V'w) ≈ zero(real(T)) atol = 10eps(real(T))
+
+        # Denormalizing and adding the components in V should give back the original
+        @test nrm * w + V * h ≈ w_original
+    end
+
+    # Assuming V is a matrix
     @testset "Using $method" for method = (DGKS, ClassicalGramSchmidt, ModifiedGramSchmidt)
 
         # Projection size
@@ -24,14 +38,21 @@ m = 3
         w = copy(w_original)
         nrm = orthogonalize_and_normalize!(V, w, h, method)
 
-        # Normality
-        @test norm(w) ≈ one(real(T))
+        is_orthonormalized(w, h, nrm)
+    end
 
-        # Orthogonality
-        @test norm(V'w) ≈ zero(real(T)) atol = 10eps(real(T))
+    # Assuming V is a vector.
+    @testset "ModifiedGramSchmidt with vectors" begin
+        V_vec = [V[:, i] for i = 1 : m]
 
-        # Denormalizing and adding the components in V should give back the original
-        @test nrm * w + V * h ≈ w_original
+        # Projection size
+        h = zeros(T, m)
+
+        # Orthogonalize w in-place
+        w = copy(w_original)
+        nrm = orthogonalize_and_normalize!(V_vec, w, h, ModifiedGramSchmidt)
+
+        is_orthonormalized(w, h, nrm)
     end
 end
 end
