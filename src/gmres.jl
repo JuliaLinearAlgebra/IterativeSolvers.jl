@@ -104,8 +104,8 @@ function gmres_iterable!(x, A, b;
     Pl = Identity(),
     Pr = Identity(),
     tol = sqrt(eps(real(eltype(b)))),
-    restart::Int = min(20, length(b)),
-    maxiter::Int = restart,
+    restart::Int = min(20, size(A, 2)),
+    maxiter::Int = size(A, 2),
     initially_zero::Bool = false
 )
     T = eltype(x)
@@ -152,8 +152,8 @@ Solves the problem ``Ax = b`` with restarted GMRES.
   matrix-vector product can be saved when computing the initial 
   residual vector;
 - `tol`: relative tolerance;
-- `restart::Int`: restarts GMRES after specified number of iterations;
-- `maxiter::Int`: maximum number of inner iterations of GMRES;
+- `restart::Int = min(20, size(A, 2))`: restarts GMRES after specified number of iterations;
+- `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;
 - `Pl`: left preconditioner;
 - `Pr`: right preconditioner;
 - `log::Bool`: keep track of the residual norm in each iteration;
@@ -174,8 +174,8 @@ function gmres!(x, A, b;
   Pl = Identity(),
   Pr = Identity(),
   tol = sqrt(eps(real(eltype(b)))),
-  restart::Int = min(20, length(b)),
-  maxiter::Int = restart,
+  restart::Int = min(20, size(A, 2)),
+  maxiter::Int = size(A, 2),
   log::Bool = false,
   initially_zero::Bool = false,
   verbose::Bool = false

@@ -23,7 +23,7 @@ shadow space.
 
 - `s::Integer = 8`: dimension of the shadow space;
 - `tol`: relative tolerance;
-- `maxiter::Int`: maximum number of iterations;
+- `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iterations.
 
@@ -39,7 +39,7 @@ shadow space.
 - `history`: convergence history.
 """
 function idrs!(x, A, b;
-    s = 8, tol=sqrt(eps(real(eltype(b)))), maxiter=length(x)^2,
+    s = 8, tol=sqrt(eps(real(eltype(b)))), maxiter=size(A, 2),
     log::Bool=false, kwargs...
     )
     history = ConvergenceHistory(partial=!log)

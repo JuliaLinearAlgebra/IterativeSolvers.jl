@@ -45,6 +45,12 @@ end
 
 eltype(A::DampenedMatrix) = promote_type(eltype(A.A), eltype(A.diagonal))
 
+function size(A::DampenedMatrix)
+    m, n = size(A.A)
+    l = length(A.diagonal)
+    (m + l, n)
+end
+
 function size(A::DampenedMatrix, dim::Integer)
     m, n = size(A.A)
     l = length(A.diagonal)

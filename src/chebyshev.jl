@@ -58,7 +58,7 @@ chebyshev_iterable(A, b, λmin::Real, λmax::Real; kwargs...) =
     chebyshev_iterable!(zerox(A, b), A, b, λmin, λmax; kwargs...)
 
 function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
-    tol = sqrt(eps(real(eltype(b)))), maxiter = size(A, 1), Pl = Identity(), initially_zero = false)
+    tol = sqrt(eps(real(eltype(b)))), maxiter = size(A, 2), Pl = Identity(), initially_zero = false)
 
     λ_avg = (λmax + λmin) / 2
     λ_diff = (λmax - λmin) / 2
@@ -117,7 +117,7 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
   matrix-vector product can be saved when computing the initial 
   residual vector;
 - `tol`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`.
-- `maxiter::Int`: maximum number of inner iterations of GMRES;
+- `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;
 - `Pl = Identity()`: left preconditioner;
 - `log::Bool = false`: keep track of the residual norm in each iteration;
 - `verbose::Bool = false`: print convergence information during the iterations.
@@ -136,7 +136,7 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
 function chebyshev!(x, A, b, λmin::Real, λmax::Real;
     Pl = Identity(),
     tol::Real=sqrt(eps(real(eltype(b)))),
-    maxiter::Int=size(A, 1),
+    maxiter::Int=size(A, 2),
     log::Bool=false,
     verbose::Bool=false,
     initially_zero::Bool=false

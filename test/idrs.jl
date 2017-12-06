@@ -28,7 +28,7 @@ srand(1234567)
 end
 
 @testset "SparseMatrixCSC{$T}" for T in (Float64, Complex128)
-    A = sprand(T, n, n, 0.5) + I
+    A = sprand(T, n, n, 0.5) + n * I
     b = rand(T, n)
     tol = √eps(real(T))
 

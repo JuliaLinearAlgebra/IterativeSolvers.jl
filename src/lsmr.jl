@@ -39,7 +39,7 @@ especially if ``A`` is ill-conditioned.
   Maximum precision can be obtained by setting
 - `atol` = `btol` = `conlim` = zero, but the number of iterations
   may then be excessive.
-- `maxiter::Integer = min(20,length(b))`: maximum number of iterations.
+- `maxiter::Int = maximum(size(A))`: maximum number of iterations.
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iterations.
 
@@ -65,7 +65,7 @@ especially if ``A`` is ill-conditioned.
 - `:resnom` => `::Vector`: residual norm at each iteration.
 """
 function lsmr!(x, A, b;
-    maxiter::Integer = max(size(A,1), size(A,2)),
+    maxiter::Int = maximum(size(A)),
     log::Bool=false, kwargs...
     )
     history = ConvergenceHistory(partial=!log)
@@ -87,7 +87,7 @@ end
 
 function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     atol::Number = 1e-6, btol::Number = 1e-6, conlim::Number = 1e8,
-    maxiter::Integer = max(size(A,1), size(A,2)), λ::Number = 0,
+    maxiter::Int = maximum(size(A)), λ::Number = 0,
     verbose::Bool=false
     )
     verbose && @printf("=== lsmr ===\n%4s\t%7s\t\t%7s\t\t%7s\n","iter","anorm","cnorm","rnorm")
