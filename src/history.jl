@@ -1,9 +1,9 @@
-import  Base: getindex, setindex!, push!, keys
+using RecipesBase
+
+import Base: getindex, setindex!, push!, keys
 
 export ConvergenceHistory
 export nprods, niters, nrests
-
-using UnicodePlots
 
 ########
 # Type #
@@ -259,71 +259,6 @@ such objects.
 plotable(::VecOrMat{T}) where {T <: Real} = true
 plotable(::Any) = false
 
-# inner plots
-
-"""
-    showplot(ch)
-
-Print all plotable information inside `ConvergenceHistory` `ch`.
-"""
-function showplot(ch::ConvergenceHistory)
-    candidates = collect(values(ch.data))
-    plotables = convert(Vector{Bool},map(plotable, candidates))
-    n = length(filter(identity, plotables))
-    n > 0 || return
-    println("\n")
-    for (name, draw) in collect(ch.data)[plotables]
-        restart = isa(ch, UnrestartedHistory) ? ch.iters : ch.restart
-        drawing = plot_collection(draw, ch.iters, restart; name=string(name))
-        println("$drawing\n\n")
-    end
-end
-
-"""
-    plot_collection(x)
-
-Build a `UnicodePlot.Plot` object from the plotable collection `x`.
-If `x` is a vector, a series will be made. In case of being a matrix an scatterplot
-will be returned.
-"""
-function plot_collection(vals::Vector{T}, iters::Int, gap::Int;
-    restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
-    title::AbstractString="", left::Int=1
-    ) where {T <: Real}
-    maxy = round(maximum(vals),2)
-    miny = round(minimum(vals),2)
-    plot = lineplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
-    right = min(left+gap-1,iters)
-    lineplot!(plot,collect(left:right),vals[left:right],color=color)
-    for restart in 2:restarts
-        left+=gap
-        right = min(left+gap-1,iters)
-        lineplot!(plot,collect(left:right),vals[left:right],color=color)
-        lineplot!(plot,[left,left],[miny,maxy], color=:white)
-    end
-    plot
-end
-function plot_collection(vals::Matrix{T}, iters::Int, gap::Int;
-    restarts=Int(ceil(iters/gap)), color::Symbol=:blue, name::AbstractString="",
-    title::AbstractString="", left::Int=1
-    ) where {T <: Real}
-    n = size(vals,2)
-    maxy = round(maximum(vals),2)
-    miny = round(minimum(vals),2)
-    plot = scatterplot([left],[miny],xlim=[left,iters],ylim=[miny,maxy],title=title,name=name)
-    for i in left:iters
-        scatterplot!(plot,[i for j in 1:n],vec(vals[i,1:n]),color=color)
-    end
-    for restart in 2:restarts
-        left+=gap
-        lineplot!(plot,[left,left],[miny,maxy], color=:white)
-    end
-    plot
-end
-
-## Recipes (See Plots.jl tutorial on recipes)
-
-using RecipesBase
 
 # Plot entire ConvergenceHistory. `sep` is the color of the restart separator.
 @recipe function chef(ch::CompleteHistory; sep = :white)
