@@ -1,7 +1,7 @@
 using IterativeSolvers
 using Base.Test
 
-import IterativeSolvers: Hessenberg, solve!
+import IterativeSolvers: Hessenberg
 
 @testset "Hessenberg" begin
 

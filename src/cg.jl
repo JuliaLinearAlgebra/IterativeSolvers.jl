@@ -66,7 +66,7 @@ end
 #####################
 
 function next(it::PCGIterable, iteration::Int)
-    solve!(it.c, it.Pl, it.r)
+    A_ldiv_B!(it.c, it.Pl, it.r)
 
     ρ_prev = it.ρ
     it.ρ = dot(it.c, it.r)
