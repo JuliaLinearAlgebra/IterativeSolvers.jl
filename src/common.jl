@@ -1,7 +1,5 @@
 import Base: A_ldiv_B!, \
 
-using LinearMaps
-
 export Identity
 
 #### Type-handling
