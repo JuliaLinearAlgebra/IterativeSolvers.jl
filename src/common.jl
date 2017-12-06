@@ -16,7 +16,9 @@ Build a zeros vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
 """
 zerox(A, b) = zeros(Adivtype(A, b), size(A, 2))
 
-# Identity preconditioner
+"""
+No-op preconditioner
+"""
 struct Identity end
 
 \(::Identity, x) = copy(x)
