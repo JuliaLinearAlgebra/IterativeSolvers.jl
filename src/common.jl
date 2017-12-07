@@ -16,18 +16,9 @@ Build a zeros vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
 """
 zerox(A, b) = zeros(Adivtype(A, b), size(A, 2))
 
-#### Numerics
 """
-    solve(A,b)
-Solve `A\\b` with a direct solver. When `A` is a function `A(b)` is dispatched instead.
+No-op preconditioner
 """
-solve(A::Function,b) = A(b)
-solve(A,b) = A\b
-solve!(out::AbstractArray{T},A::Int,b::AbstractArray{T}) where {T} = scale!(out,b, 1/A)
-solve!(out::AbstractArray{T},A,b::AbstractArray{T}) where {T} = A_ldiv_B!(out,A,b)
-solve!(out::AbstractArray{T},A::Function,b::AbstractArray{T}) where {T} = copy!(out,A(b))
-
-# Identity preconditioner
 struct Identity end
 
 \(::Identity, x) = copy(x)

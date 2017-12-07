@@ -29,7 +29,7 @@ done(c::ChebyshevIterable, iteration::Int) = iteration ≥ c.maxiter || converge
 function next(cheb::ChebyshevIterable, iteration::Int)
     T = eltype(cheb.x)
 
-    solve!(cheb.c, cheb.Pl, cheb.r)
+    A_ldiv_B!(cheb.c, cheb.Pl, cheb.r)
 
     if iteration == 1
         cheb.α = T(2) / cheb.λ_avg
