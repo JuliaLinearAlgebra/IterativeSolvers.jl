@@ -18,11 +18,18 @@ n = 20
         x1, his1 = bicgstabl(A, b, l, max_mv_products = 100, log = true, tol = tol)
         @test isa(his1, ConvergenceHistory)
         @test norm(A * x1 - b) / norm(b) ≤ tol
+        
+        # With an initial guess
+        x_guess = rand(T, n)
+        x2, his2 = bicgstabl!(x_guess, A, b, l, max_mv_products = 100, log = true, tol = tol)
+        @test isa(his2, ConvergenceHistory)
+        @test x2 == x_guess
+        @test norm(A * x2 - b) / norm(b) ≤ tol
 
         # Do an exact LU decomp of a nearby matrix
         F = lufact(A + rand(T, n, n))
-        x2, his2 = bicgstabl(A, b, Pl = F, l, max_mv_products = 100, log = true, tol = tol)
-        @test norm(A * x2 - b) / norm(b) ≤ tol
+        x3, his3 = bicgstabl(A, b, Pl = F, l, max_mv_products = 100, log = true, tol = tol)
+        @test norm(A * x3 - b) / norm(b) ≤ tol
     end
 end
 end

@@ -98,8 +98,6 @@ function next(g::GMRESIterable, iteration::Int)
     g.residual.current, iteration + 1
 end
 
-gmres_iterable(A, b; kwargs...) = gmres_iterable!(zerox(A, b), A, b; initially_zero = true, kwargs...)
-
 function gmres_iterable!(x, A, b;
     Pl = Identity(),
     Pr = Identity(),

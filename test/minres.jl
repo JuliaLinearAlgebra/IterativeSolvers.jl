@@ -27,12 +27,16 @@ n = 15
 @testset "Hermitian Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
     A, x, b = hermitian_problem(T, n)
     tol = sqrt(eps(real(T)))
+    x0 = rand(T, n)
 
-    x_approx, hist = minres(A, b, maxiter = 10n, tol = tol, log = true)
+    x1, hist1 = minres(A, b, maxiter = 10n, tol = tol, log = true)
+    x2, hist2 = minres!(x0, A, b, maxiter = 10n, tol = tol, log = true)
 
-    @test isa(hist, ConvergenceHistory)
-    @test norm(b - A * x_approx) / norm(b) ≤ tol
-    @test hist.isconverged
+    @test isa(hist1, ConvergenceHistory)
+    @test norm(b - A * x1) / norm(b) ≤ tol
+    @test hist1.isconverged
+    @test norm(b - A * x2) / norm(b) ≤ tol
+    @test x2 == x0
 end
 
 @testset "Skew-Hermitian Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)

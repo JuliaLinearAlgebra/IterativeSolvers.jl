@@ -54,12 +54,6 @@ function powm_iterable!(A, x; tol = eps(real(eltype(A))) * size(A, 2) ^ 3, maxit
     PowerMethodIterable(A, x, tol, maxiter, zero(T), similar(x), similar(x), realmax(real(T)))
 end
 
-function powm_iterable(A; kwargs...)
-    x0 = rand(Complex{real(eltype(A))}, size(A, 1))
-    scale!(x0, one(eltype(A)) / norm(x0))
-    powm_iterable!(A, x0; kwargs...)
-end
-
 """
     powm(B; kwargs...) -> λ, x, [history]
 
