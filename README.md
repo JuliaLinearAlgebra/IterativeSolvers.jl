@@ -24,5 +24,3 @@ Pkg.add("IterativeSolvers")
 - [Issue #1](https://github.com/JuliaMath/IterativeSolvers.jl/issues/1) documents the implementation roadmap for iterative solvers.
 
 - The interfaces between the various algorithms are still in flux, but aim to be consistent.
-
-- [Issue #33](https://github.com/JuliaMath/IterativeSolvers.jl/issues/33) documents the implementation roadmap for randomized algorithms.
