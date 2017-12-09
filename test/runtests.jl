@@ -37,11 +37,6 @@ include("svdl.jl")
 include("lsqr.jl")
 include("lsmr.jl")
 
-#Randomized algorithms
-include("rlinalg.jl")
-include("rsvd.jl")
-include("rsvd_fnkz.jl")
-
 #History data structure
 include("history.jl")
 

@@ -25,7 +25,6 @@ makedocs(
 			"Power method" => "eigenproblems/power_method.md",
 		],
 		"SVDL" => "svd/svdl.md",
-		"Randomized algorithms" => "randomized.md",
 		"The iterator approach" => "iterators.md",
 		"About" => [
 			"Contributing" => "about/CONTRIBUTING.md",
