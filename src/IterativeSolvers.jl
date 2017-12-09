@@ -11,11 +11,10 @@ include("common.jl")
 include("orthogonalize.jl")
 include("history.jl")
 
-#Specialized factorizations
-include("factorization.jl")
+# Factorizations
 include("hessenberg.jl")
 
-#Linear solvers
+# Linear solvers
 include("stationary.jl")
 include("stationary_sparse.jl")
 include("cg.jl")
@@ -25,13 +24,13 @@ include("gmres.jl")
 include("chebyshev.jl")
 include("idrs.jl")
 
-#Eigensolvers
+# Eigensolvers
 include("simple.jl")
 
-#SVD solvers
+# SVD solvers
 include("svdl.jl")
 
-#Least-squares
+# Least-squares
 include("lsqr.jl")
 include("lsmr.jl")
 
