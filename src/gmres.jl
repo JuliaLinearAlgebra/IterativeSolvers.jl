@@ -221,14 +221,14 @@ function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool = f
     # Potentially save one MV product
     if !initially_zero
         A_mul_B!(Ax, arnoldi.A, x)
-        @blas! first_col -= one(T) * Ax
+        first_col .-= Ax
     end
 
     A_ldiv_B!(Pl, first_col)
 
     # Normalize
     β = norm(first_col)
-    @blas! first_col *= one(T) / β
+    first_col .*= inv(β)
     β
 end
 
@@ -259,7 +259,7 @@ function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int, Ax) where
     # Computing x ← x + Pr \ (V * y) and use Ax as a work space
     A_mul_B!(Ax, view(arnoldi.V, :, 1 : k - 1), y)
     A_ldiv_B!(Pr, Ax)
-    @blas! x += one(T) * Ax
+    x .+= Ax
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl::Identity, Pr::Identity, k::Int, Ax)

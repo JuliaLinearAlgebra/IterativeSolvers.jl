@@ -352,10 +352,10 @@ function build(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int) where {
     m, n = size(A)
     Tr = typeof(real(one(T)))
     β = norm(q)
-    @blas! q *= inv(β)
+    q .*= inv(β)
     p = A*q
     α = convert(Tr, norm(p))
-    @blas! p *= inv(α)
+    p .*= inv(α)
     bidiag = Bidiagonal([α], Tr[], @static VERSION < v"0.7.0-DEV.884" ? true : :U)
     extend!(log, A, PartialFactorization(reshape(p, m, 1), reshape(q, n, 1), bidiag, β), k)
 end
@@ -393,7 +393,7 @@ function thickrestart!(A, L::PartialFactorization{T,Tr},
     #@assert ρ[i] ≈ f⋅L.P[:, i]
     f -= L.P*ρ
     α = convert(Tr, norm(f))
-    @blas! f *= inv(α)
+    f .*= inv(α)
     L.P = [L.P f]
 
     g = A'f - α*L.Q[:, end]
@@ -457,7 +457,7 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
             pinv(full(L.B))*r0
         else rethrow(exc) end
     end::Vector{Tr}
-    @blas! r *= L.β
+    r .*= L.β
     M::Matrix{T} = view(M,1:m, :) + r*view(M,m+1:m+1,:)
 
     M2 = zeros(T, m+1, k+1)
@@ -474,16 +474,16 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     f = A*view(Q,:,k+1)
     f -= P*(P'f)
     α = convert(Tr, norm(f))
-    @blas! f *= inv(α)
+    f .*= inv(α)
     P = [P f]
     B = UpperTriangular{Tr,Matrix{Tr}}([(Diagonal(Σ)*triu(R')); zeros(Tr,1,k) α])
     #@assert size(P, 2) == size(B, 1) == size(Q, 2)
     g = A'f
     q = view(Q,:,k+1)
     #g-= (g⋅q)*q
-    @blas! g -= (g⋅q)*q
+    g .-= (g⋅q)*q
     β = convert(Tr, norm(g))
-    @blas! g *= inv(β)
+    g .*= inv(β)
     #@assert size(P, 2) == size(Q, 2) == size(B, 2)
     L.P = P
     L.Q = Q
@@ -572,7 +572,7 @@ function extend!(
         end
 
         β = norm(q)
-        @blas! q *= inv(β)
+        q .*= inv(β)
 
         L.Q = [L.Q q]
         j==k && break
@@ -580,7 +580,7 @@ function extend!(
         log.mvps+=1
         #p = A*q - β*p
         A_mul_B!(p, A, q)
-        @blas! p -= β*view(L.P, :, j)
+        p .-= β*view(L.P, :, j)
 
         if orthleft #Orthogonalize left Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization
@@ -592,7 +592,7 @@ function extend!(
         end
 
         α = norm(p)
-        @blas! p *= inv(α)
+        p .*= inv(α)
         if isa(L.B, Bidiagonal) || isa(L.B, BrokenArrowBidiagonal)
             push!(L.B.dv, α)
             push!(L.B.ev, β)

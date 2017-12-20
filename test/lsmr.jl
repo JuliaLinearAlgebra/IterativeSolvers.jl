@@ -1,7 +1,7 @@
 using IterativeSolvers
 using Base.Test
 
-import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, scale!, copy!, fill!, length
+import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, scale!, copy!, fill!, length, broadcast!
 import Base.LinAlg: norm
 
 # Type used in Dampenedtest
