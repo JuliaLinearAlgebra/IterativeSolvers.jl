@@ -27,12 +27,12 @@ function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, 
         projection_size = norm(correction)
         # w = w - V * correction
         BLAS.gemv!('N', -one(T), V, correction, one(T), w)
-        @blas! h += one(T) * correction
+        h .+= correction
         nrm = norm(w)
     end
 
     # Normalize; note that we already have norm(w).
-    scale!(w, one(T) / nrm)
+    w .*= inv(nrm)
 
     nrm
 end
@@ -44,7 +44,7 @@ function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, 
     nrm = norm(w)
 
     # Normalize
-    scale!(w, one(T) / nrm)
+    w .*= inv(nrm)
 
     nrm
 end
@@ -53,12 +53,12 @@ function orthogonalize_and_normalize!(V::StridedVector{Vector{T}}, w::StridedVec
     # Orthogonalize using BLAS-1 ops
     for i = 1 : length(V)
         h[i] = dot(V[i], w)
-        @blas! w -= h[i] * V[i]
+        w .-= h[i] .* V[i]
     end
 
     # Normalize
     nrm = norm(w)
-    scale!(w, one(T) / nrm)
+    w .*= inv(nrm)
 
     nrm
 end
@@ -68,11 +68,11 @@ function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, 
     for i = 1 : size(V, 2)
         column = view(V, :, i)
         h[i] = dot(column, w)
-        @blas! w -= h[i] * column
+        w .-= h[i] .* column
     end
 
     nrm = norm(w)
-    scale!(w, one(T) / nrm)
+    w .*= inv(nrm)
 
     nrm
 end

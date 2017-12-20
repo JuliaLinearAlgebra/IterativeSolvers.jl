@@ -111,32 +111,26 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
             # Solve small system and make v orthogonal to P
 
             c = LowerTriangular(M[k:s,k:s])\f[k:s]
-            @blas! V = G[k]
-            @blas! V *= c[1]
+            V .= c[1] .* G[k]
+            Q .= c[1] .* U[k]
 
-            @blas! Q = U[k]
-            @blas! Q *= c[1]
             for i = k+1:s
-                @blas! V += c[i-k+1]*G[i]
-                @blas! Q += c[i-k+1]*U[i]
+                V .+= c[i-k+1] .* G[i]
+                Q .+= c[i-k+1] .* U[i]
             end
 
             # Compute new U[:,k] and G[:,k], G[:,k] is in space G_j
+            V .= R .- V
 
-            #V = R - V
-            @blas! V *= -1.
-            @blas! V += R
-
-            @blas! U[k] = Q
-            @blas! U[k] += om*V
+            U[k] .= Q .+ om .* V
             G[k] = op(U[k], args...)
 
             # Bi-orthogonalise the new basis vectors
 
             for i in 1:k-1
                 alpha = vecdot(P[i],G[k])/M[i,i]
-                @blas! G[k] += -alpha*G[i]
-                @blas! U[k] += -alpha*U[i]
+                G[k] .-= alpha .* G[i]
+                U[k] .-= alpha .* U[i]
             end
 
             # New column of M = P'*G  (first k-1 entries are zero)
@@ -148,22 +142,17 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
             #  Make r orthogonal to q_i, i = 1..k
 
             beta = f[k]/M[k,k]
-            @blas! R += -beta*G[k]
-            @blas! X += beta*U[k]
+            R .-= beta .* G[k]
+            X .+= beta .* U[k]
 
             normR = vecnorm(R)
             if smoothing
-                # T_s = R_s - R
-                @blas! T_s = R_s
-                @blas! T_s += (-1.)*R
+                T_s .= R_s .- R
 
                 gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
 
-                @blas! R_s += -gamma*T_s
-                # X_s = X_s - gamma*(X_s - X)
-                @blas! T_s = X_s
-                @blas! T_s += (-1.)*X
-                @blas! X_s += -gamma*T_s
+                R_s .-= gamma .* T_s
+                X_s .-= gamma .* (X_s .- X)
 
                 normR = vecnorm(R_s)
             end
@@ -182,34 +171,29 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
 
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
         # Note: r is already perpendicular to P so v = r
-        @blas! V = R
+        copy!(V, R)
         Q = op(V, args...)::T
         om = omega(Q, R)
-        @blas! R += -om*Q
-        @blas! X += om*V
+        R .-= om .* Q
+        X .+= om .* V
 
         normR = vecnorm(R)
         if smoothing
-            # T_s = R_s - R
-            @blas! T_s = R_s
-            @blas! T_s += (-1.)*R
+            T_s .= R_s .- R
 
             gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
 
-            @blas! R_s += -gamma*T_s
-            # X_s = X_s - gamma*(X_s - X)
-            @blas! T_s = X_s
-            @blas! T_s += (-1.)*X
-            @blas! X_s += -gamma*T_s
+            R_s .-= gamma .* T_s
+            X_s .-= gamma .* (X_s .- X)
 
             normR = vecnorm(R_s)
         end
         iter += 1
-        nextiter!(log,mvps=1)
+        nextiter!(log, mvps=1)
         push!(log, :resnorm, normR)
     end
     if smoothing
-        @blas! X = X_s
+        copy!(X, X_s)
     end
     verbose && @printf("\n")
     setconv(log, 0<=normR<tol)

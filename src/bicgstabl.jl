@@ -47,8 +47,7 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
         copy!(residual, b)
     else
         A_mul_B!(residual, A, x)
-        @blas! residual -= one(T) * b
-        @blas! residual *= -one(T)
+        residual .= b .- residual
         mv_products += 1
     end
 
@@ -89,10 +88,7 @@ function next(it::BiCGStabIterable, iteration::Int)
         β = ρ / it.σ
         
         # us[:, 1 : j] .= rs[:, 1 : j] - β * us[:, 1 : j]
-        for i = 1 : j
-            @blas! view(it.us, :, i) *= -β
-            @blas! view(it.us, :, i) += one(T) * view(it.rs, :, i)
-        end
+        it.us[:, 1 : j] .= it.rs[:, 1 : j] .- β .* it.us[:, 1 : j]
 
         # us[:, j + 1] = Pl \ (A * us[:, j])
         next_u = view(it.us, :, j + 1)
@@ -102,10 +98,7 @@ function next(it::BiCGStabIterable, iteration::Int)
         it.σ = dot(it.r_shadow, next_u)
         α = ρ / it.σ
 
-        # rs[:, 1 : j] .= rs[:, 1 : j] - α * us[:, 2 : j + 1]
-        for i = 1 : j
-            @blas! view(it.rs, :, i) -= α * view(it.us, :, i + 1)
-        end
+        it.rs[:, 1 : j] .-= α .* it.us[:, 2 : j + 1]
         
         # rs[:, j + 1] = Pl \ (A * rs[:, j])
         next_r = view(it.rs, :, j + 1)
@@ -113,7 +106,7 @@ function next(it::BiCGStabIterable, iteration::Int)
         A_ldiv_B!(it.Pl, next_r)
         
         # x = x + α * us[:, 1]
-        @blas! it.x += α * view(it.us, :, 1)
+        it.x .+= α .* view(it.us, :, 1)
     end
 
     # Bookkeeping
