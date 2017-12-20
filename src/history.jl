@@ -1,6 +1,6 @@
 using RecipesBase
 
-import Base: getindex, setindex!, push!, keys
+import Base: getindex, setindex!, push!, keys, show
 
 export ConvergenceHistory
 export nprods, niters, nrests
@@ -89,6 +89,11 @@ const RestartedHistory{T} = ConvergenceHistory{T, Int}
 #############
 # Functions #
 #############
+
+function show(io::IO, ch::ConvergenceHistory)
+    print(io, ch.isconverged ? "Converged" : "Not converged",
+        " after ", ch.iters, " iterations.")
+end
 
 """
     getindex(ch, s)
