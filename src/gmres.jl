@@ -2,7 +2,7 @@ import Base: start, next, done
 
 export gmres, gmres!
 
-mutable struct ArnoldiDecomp{T, matT}
+struct ArnoldiDecomp{T, matT}
     A::matT
     V::Matrix{T} # Orthonormal basis vectors
     H::Matrix{T} # Hessenberg matrix
