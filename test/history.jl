@@ -8,6 +8,15 @@ using Base.Test
 
     RecipesBase.is_key_supported(k::Symbol) = k == :sep ? false : true
 
+    begin
+        history = ConvergenceHistory(partial = false)
+        history.iters = 3
+        history.isconverged = true
+        @test string(history) == "Converged after 3 iterations."
+        history.isconverged = false
+        @test string(history) == "Not converged after 3 iterations."
+    end
+
     # No plottables
     begin
         history = ConvergenceHistory(partial = false)
