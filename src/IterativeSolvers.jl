@@ -5,8 +5,6 @@ eigensystems, and singular value problems.
 """
 module IterativeSolvers
 
-using SugarBLAS
-
 include("common.jl")
 include("orthogonalize.jl")
 include("history.jl")
