@@ -15,6 +15,12 @@ end
 eltype(a::DampenedVector) = promote_type(eltype(a.y), eltype(a.x))
 norm(a::DampenedVector) = sqrt(norm(a.y)^2 + norm(a.x)^2)
 
+function Base.Broadcast.broadcast!(f::Tf, to::DampenedVector, from::DampenedVector, args...) where {Tf}
+    to.x .= f.(from.x, args...)
+    to.y .= f.(from.y, args...)
+    to
+end
+
 function copy!(a::DampenedVector{Ty, Tx}, b::DampenedVector{Ty, Tx}) where {Ty, Tx}
     copy!(a.y, b.y)
     copy!(a.x, b.x)
