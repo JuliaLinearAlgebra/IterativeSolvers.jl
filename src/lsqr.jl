@@ -125,12 +125,12 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
     alpha = zero(Tr)
     if beta > 0
         log.mtvps=1
-        @blas! u *= inv(beta)
+        u .*= inv(beta)
         Ac_mul_B!(v,A,u)
         alpha = norm(v)
     end
     if alpha > 0
-        @blas! v *= inv(alpha)
+        v .*= inv(alpha)
     end
     w = copy(v)
     wrho = similar(w)
@@ -158,21 +158,19 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
         # Note that the following three lines are a band aid for a GEMM: X: C := αAB + βC.
         # This is already supported in A_mul_B! for sparse and distributed matrices, but not yet dense
         A_mul_B!(tmpm, A, v)
-        @blas! u *= -alpha
-        @blas! u += one(eltype(tmpm))*tmpm
+        u .= -alpha .* u .+ tmpm
         beta = norm(u)
         if beta > 0
             log.mtvps+=1
-            @blas! u *= inv(beta)
+            u .*= inv(beta)
             Anorm = sqrt(abs2(Anorm) + abs2(alpha) + abs2(beta) + dampsq)
             # Note that the following three lines are a band aid for a GEMM: X: C := αA'B + βC.
             # This is already supported in Ac_mul_B! for sparse and distributed matrices, but not yet dense
             Ac_mul_B!(tmpn, A, u)
-            @blas! v *= -beta
-            @blas! v += one(eltype(tmpn))*tmpn
+            v .= -beta .* v .+ tmpn
             alpha  = norm(v)
             if alpha > 0
-                @blas! v *= inv(alpha)
+                v .*= inv(alpha)
             end
         end
 
@@ -199,11 +197,9 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
         t1      =   phi  /rho
         t2      = - theta/rho
 
-        @blas! x += t1*w
-        @blas! w *= t2
-        @blas! w += one(t2)*v
-        @blas! wrho = w
-        @blas! wrho *= inv(rho)
+        x .+= t1*w
+        w = t2 .* w .+ v
+        wrho .= w .* inv(rho)
         ddnorm += norm(wrho)
 
         # Use a plane rotation on the right to eliminate the

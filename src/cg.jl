@@ -43,16 +43,15 @@ end
 function next(it::CGIterable, iteration::Int)
     # u := r + βu (almost an axpy)
     β = it.residual^2 / it.prev_residual^2
-    @blas! it.u *= β
-    @blas! it.u += one(eltype(it.u)) * it.r
+    it.u .= it.r .+ β .* it.u
 
     # c = A * u
     A_mul_B!(it.c, it.A, it.u)
     α = it.residual^2 / dot(it.u, it.c)
 
     # Improve solution and residual
-    @blas! it.x += α * it.u
-    @blas! it.r -= α * it.c
+    it.x .+= α .* it.u
+    it.r .-= α .* it.c
 
     it.prev_residual = it.residual
     it.residual = norm(it.r)
@@ -73,16 +72,15 @@ function next(it::PCGIterable, iteration::Int)
     
     # u := c + βu (almost an axpy)
     β = it.ρ / ρ_prev
-    @blas! it.u *= β
-    @blas! it.u += one(eltype(it.u)) * it.c
+    it.u .= it.c .+ β .* it.u
 
     # c = A * u
     A_mul_B!(it.c, it.A, it.u)
     α = it.ρ / dot(it.u, it.c)
 
     # Improve solution and residual
-    @blas! it.x += α * it.u
-    @blas! it.r -= α * it.c
+    it.x .+= α .* it.u
+    it.r .-= α .* it.c
 
     it.residual = norm(it.r)
 
@@ -110,7 +108,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
     else
         mv_products = 1
         c = A * x
-        @blas! r -= one(eltype(x)) * c
+        r .-= c
         residual = norm(r)
         reltol = norm(b) * tol
     end

@@ -1,7 +1,7 @@
 using IterativeSolvers
 using Base.Test
 
-import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, scale!, copy!, fill!, length
+import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, scale!, copy!, fill!, length, broadcast!
 import Base.LinAlg: norm
 
 # Type used in Dampenedtest
@@ -14,6 +14,12 @@ end
 
 eltype(a::DampenedVector) = promote_type(eltype(a.y), eltype(a.x))
 norm(a::DampenedVector) = sqrt(norm(a.y)^2 + norm(a.x)^2)
+
+function Base.Broadcast.broadcast!(f::Tf, to::DampenedVector, from::DampenedVector, args...) where {Tf}
+    to.x .= f.(from.x, args...)
+    to.y .= f.(from.y, args...)
+    to
+end
 
 function copy!(a::DampenedVector{Ty, Tx}, b::DampenedVector{Ty, Tx}) where {Ty, Tx}
     copy!(a.y, b.y)

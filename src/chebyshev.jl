@@ -37,17 +37,14 @@ function next(cheb::ChebyshevIterable, iteration::Int)
     else
         β = (cheb.λ_diff * cheb.α / 2) ^ 2
         cheb.α = inv(cheb.λ_avg - β)
-
-        # Almost an axpy u = c + βu
-        scale!(cheb.u, β)
-        @blas! cheb.u += one(T) * cheb.c
+        cheb.u .= cheb.c .+ β .* cheb.c
     end
 
     A_mul_B!(cheb.c, cheb.A, cheb.u)
     cheb.mv_products += 1
 
-    @blas! cheb.x += cheb.α * cheb.u
-    @blas! cheb.r -= cheb.α * cheb.c
+    cheb.x .+= cheb.α .* cheb.u
+    cheb.r .-= cheb.α .* cheb.c
 
     cheb.resnorm = norm(cheb.r)
 
@@ -73,7 +70,7 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
         mv_products = 0
     else
         A_mul_B!(c, A, x)
-        @blas! r -= one(T) * c
+        r .-= c
         resnorm = norm(r)
         reltol = tol * norm(b)
         mv_products = 1
