@@ -45,7 +45,7 @@ function idrs!(x, A, b;
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
     reserve!(history,:resnorm, maxiter)
-    idrs_method!(history, x, linsys_op, (A,), b, s, tol, maxiter; kwargs...)
+    idrs_method!(history, x, A, b, s, tol, maxiter; kwargs...)
     log && shrink!(history)
     log ? (x, history) : x
 end
@@ -67,14 +67,12 @@ end
     om
 end
 
-@inline linsys_op(x, A) = A*x
-
-function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
+function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     s::Number, tol::Number, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
     ) where {T}
 
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
-    R = C - op(X, args...)::T
+    R = C - A*X
     normR = vecnorm(R)
 	iter = 1
 
@@ -123,7 +121,7 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
             V .= R .- V
 
             U[k] .= Q .+ om .* V
-            G[k] = op(U[k], args...)
+            A_mul_B!(G[k], A, U[k])
 
             # Bi-orthogonalise the new basis vectors
 
@@ -164,7 +162,7 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
                 return X
             end
             if k < s
-                f[k+1:s] = f[k+1:s] - beta*M[k+1:s,k]
+                f[k+1:s] .-=  beta*M[k+1:s,k]
             end
             iter += 1
         end
@@ -172,7 +170,7 @@ function idrs_method!(log::ConvergenceHistory, X, op, args, C::T,
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
         # Note: r is already perpendicular to P so v = r
         copy!(V, R)
-        Q = op(V, args...)::T
+        A_mul_B!(Q, A, V)
         om = omega(Q, R)
         R .-= om .* Q
         X .+= om .* V
