@@ -1,8 +1,6 @@
 using IterativeSolvers
 using Base.Test
 
-import IterativeSolvers: Hessenberg
-
 @testset "Hessenberg" begin
 
     # Some well-conditioned Hessenberg matrix
@@ -24,7 +22,7 @@ import IterativeSolvers: Hessenberg
             0.0+0.0im          0.0+0.0im               0.0+0.0im             1.42175+0.0im
     ]
 
-    for H = [H1, H2]
+    for H = (H1, H2)
         T = eltype(H)
 
         # Fist standard basis vector as rhs
@@ -32,7 +30,7 @@ import IterativeSolvers: Hessenberg
 
         # Compare \ against the optimized version.
         solution_with_residual = copy(rhs)
-        A_ldiv_B!(IterativeSolvers.Hessenberg(copy(H)), solution_with_residual)
+        A_ldiv_B!(IterativeSolvers.FastHessenberg(copy(H)), solution_with_residual)
         solution = H \ rhs
 
         # First part is the solution
