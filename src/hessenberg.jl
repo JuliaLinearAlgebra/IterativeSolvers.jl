@@ -1,18 +1,18 @@
 import Base.LinAlg: Givens, givensAlgorithm
 import Base.A_ldiv_B!
 
-struct Hessenberg{T<:AbstractMatrix}
+struct FastHessenberg{T<:AbstractMatrix}
     H::T # H is assumed to be Hessenberg of size (m + 1) × m
 end
 
-@inline Base.size(H::Hessenberg, args...) = size(H.H, args...)
+@inline Base.size(H::FastHessenberg, args...) = size(H.H, args...)
 
 """
 Solve Hy = rhs for a non-square Hessenberg matrix.
 Note that `H` is also modified as is it converted
 to an upper triangular matrix via Given's rotations
 """
-function A_ldiv_B!(H::Hessenberg, rhs)
+function A_ldiv_B!(H::FastHessenberg, rhs)
     # Implicitly computes H = QR via Given's rotations
     # and then computes the least-squares solution y to
     # |Hy - rhs| = |QRy - rhs| = |Ry - Q'rhs|

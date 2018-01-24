@@ -242,7 +242,7 @@ function solve_least_squares!(arnoldi::ArnoldiDecomp{T}, β, k::Int) where {T}
     rhs = zeros(T, k)
     rhs[1] = β
 
-    H = Hessenberg(view(arnoldi.H, 1 : k, 1 : k - 1))
+    H = FastHessenberg(view(arnoldi.H, 1 : k, 1 : k - 1))
     A_ldiv_B!(H, rhs)
 
     rhs
