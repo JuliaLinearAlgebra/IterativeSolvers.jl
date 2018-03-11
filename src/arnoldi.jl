@@ -20,7 +20,7 @@ function arnoldi_procedure(A,m::Int64)
             # h1 = view(h,i,j)
             h[i,j] = dot(w,q1)
             # zero dimensional subarray
-            w = w-q1*h[i,j]
+            w.-=q1.*h[i,j]
         end
         #h1 = view(h,j+1,j)
         #copy!(h1,norm(w,1))
@@ -29,7 +29,7 @@ function arnoldi_procedure(A,m::Int64)
             return Q,h
         end
         q1=view(Q,:,j+1)
-        copy!(q1,w/h[j+1,j])
+        copy!(q1,w./h[j+1,j])
     end
     return Q,h
 end
