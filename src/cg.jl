@@ -184,7 +184,7 @@ function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
-    statevars::CGStateVariables = CGStateVariables{eltype(x)}(zeros(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables{eltype(x), typeof(x)}(zeros(x), similar(x), similar(x)),
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...
