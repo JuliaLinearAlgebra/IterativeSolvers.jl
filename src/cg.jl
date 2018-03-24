@@ -1,6 +1,6 @@
 import Base: start, next, done
 
-export cg, cg!, CGIterable, PCGIterable, cg_iterator!
+export cg, cg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
 mutable struct CGIterable{matT, solT, vecT, numT <: Real}
     A::matT
@@ -90,13 +90,22 @@ end
 
 # Utility functions
 
+struct CGStateVariables{T}
+    u::Vector{T}
+    r::Vector{T}
+    c::Vector{T}
+end
+
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
+    statevars::CGStateVariables = CGStateVariables{eltype(x)}(zeros(x), similar(x), similar(x)),
     initially_zero::Bool = false
 )
-    u = zeros(x)
-    r = similar(x)
+    u = statevars.u
+    r = statevars.r
+    c = statevars.c
+    u .= zero(eltype(x))
     copy!(r, b)
 
     # Compute r with an MV-product or not.
@@ -107,7 +116,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
         reltol = residual * tol # Save one dot product
     else
         mv_products = 1
-        c = A * x
+        A_mul_B!(c, A, x)
         r .-= c
         residual = norm(r)
         reltol = norm(b) * tol
@@ -175,6 +184,7 @@ function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
+    statevars::CGStateVariables = CGStateVariables{eltype(x)}(zeros(x), similar(x), similar(x)),
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...
@@ -184,7 +194,7 @@ function cg!(x, A, b;
     log && reserve!(history, :resnorm, maxiter + 1)
 
     # Actually perform CG
-    iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, kwargs...)
+    iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, statevars = statevars, kwargs...)
     if log
         history.mvps = iterable.mv_products
     end
