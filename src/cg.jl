@@ -90,16 +90,16 @@ end
 
 # Utility functions
 
-struct CGStateVariables{T}
-    u::Vector{T}
-    r::Vector{T}
-    c::Vector{T}
+struct CGStateVariables{T,Tx<:AbstractArray{T}}
+    u::Tx
+    r::Tx
+    c::Tx
 end
 
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
-    statevars::CGStateVariables = CGStateVariables{eltype(x)}(zeros(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables{eltype(x),typeof(x)}(zeros(x), similar(x), similar(x)),
     initially_zero::Bool = false
 )
     u = statevars.u
