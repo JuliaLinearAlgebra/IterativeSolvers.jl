@@ -1,6 +1,6 @@
 import Base: start, next, done
 
-export cg, cg!, CGIterable, PCGIterable, cg_iterator!
+export cg, cg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
 mutable struct CGIterable{matT, solT, vecT, numT <: Real}
     A::matT
@@ -90,13 +90,32 @@ end
 
 # Utility functions
 
+"""
+Intermediate CG state variables to be used inside cg and cg!. `u`, `r` and `c` should be of the same type as the solution of `cg` or `cg!`.
+```
+struct CGStateVariables{T,Tx<:AbstractArray{T}}
+    u::Tx
+    r::Tx
+    c::Tx
+end
+```
+"""
+struct CGStateVariables{T,Tx<:AbstractArray{T}}
+    u::Tx
+    r::Tx
+    c::Tx
+end
+
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
+    statevars::CGStateVariables = CGStateVariables{eltype(x),typeof(x)}(zeros(x), similar(x), similar(x)),
     initially_zero::Bool = false
 )
-    u = zeros(x)
-    r = similar(x)
+    u = statevars.u
+    r = statevars.r
+    c = statevars.c
+    u .= zero(eltype(x))
     copy!(r, b)
 
     # Compute r with an MV-product or not.
@@ -107,7 +126,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
         reltol = residual * tol # Save one dot product
     else
         mv_products = 1
-        c = A * x
+        A_mul_B!(c, A, x)
         r .-= c
         residual = norm(r)
         reltol = norm(b) * tol
@@ -145,15 +164,16 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 
 ## Keywords
 
+- `statevars::CGStateVariables`: Has 3 arrays similar to `x` to hold intermediate results;
 - `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one 
   matrix-vector product can be saved when computing the initial 
   residual vector;
 - `Pl = Identity()`: left preconditioner of the method. Should be symmetric, 
-  positive-definite like `A`.
+  positive-definite like `A`;
 - `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`;
 - `maxiter::Int = size(A,2)`: maximum number of iterations;
 - `verbose::Bool = false`: print method information;
-- `log::Bool = false`: keep track of the residual norm in each iteration;
+- `log::Bool = false`: keep track of the residual norm in each iteration.
 
 # Output
 
@@ -175,6 +195,7 @@ function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
+    statevars::CGStateVariables = CGStateVariables{eltype(x), typeof(x)}(zeros(x), similar(x), similar(x)),
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...
@@ -184,7 +205,7 @@ function cg!(x, A, b;
     log && reserve!(history, :resnorm, maxiter + 1)
 
     # Actually perform CG
-    iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, kwargs...)
+    iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, statevars = statevars, kwargs...)
     if log
         history.mvps = iterable.mv_products
     end
