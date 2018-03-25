@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Home",
     "title": "IterativeSolvers.jl",
     "category": "section",
-    "text": "IterativeSolvers.jl is a Julia package that provides efficient iterative algorithms for solving large linear systems, eigenproblems, and singular value problems. Most of the methods can be used matrix-free.For bug reports, feature requests and questions please submit an issue. If you're interested in contributing, please see the Contributing guide.For more information on future methods have a look at the package roadmap."
+    "text": "IterativeSolvers.jl is a Julia package that provides efficient iterative algorithms for solving large linear systems, eigenproblems, and singular value problems. Most of the methods can be used matrix-free.For bug reports, feature requests and questions please submit an issue. If you\'re interested in contributing, please see the Contributing guide.For more information on future methods have a look at the package roadmap."
 },
 
 {
@@ -53,7 +53,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Getting started",
     "title": "Installation",
     "category": "section",
-    "text": "The package can be installed via Julia's package manager.julia> Pkg.add(\"IterativeSolvers\")"
+    "text": "The package can be installed via Julia\'s package manager.julia> Pkg.add(\"IterativeSolvers\")"
 },
 
 {
@@ -92,7 +92,7 @@ var documenterSearchIndex = {"docs": [
     "location": "getting_started.html#IterativeSolvers.ConvergenceHistory",
     "page": "Getting started",
     "title": "IterativeSolvers.ConvergenceHistory",
-    "category": "Type",
+    "category": "type",
     "text": "Store general and in-depth information about an iterative method.\n\nFields\n\nmvps::Int: number of matrix vector products.\n\nmtvps::Int: number of transposed matrix-vector products\n\niters::Int: iterations taken by the method.\n\nrestart::T: restart relevant information.\n\nT == Int: iterations per restart.\nT == Void: methods without restarts.\n\nisconverged::Bool: convergence of the method.\n\ndata::Dict{Symbol,Any}: Stores all the information stored during the method execution. It stores tolerances, residuals and other information, e.g. Ritz values in svdl.\n\nConstructors\n\nConvergenceHistory()\nConvergenceHistory(restart)\n\nCreate ConvergenceHistory with empty fields.\n\nArguments\n\nrestart: number of iterations per restart.\n\nPlots\n\nSupports plots using the Plots.jl package via a type recipe. Vectors are ploted as series and matrices as scatterplots.\n\nImplements\n\nBase: getindex, setindex!, push!\n\n\n\n"
 },
 
@@ -156,7 +156,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/cg.html#IterativeSolvers.cg",
     "page": "Conjugate Gradients",
     "title": "IterativeSolvers.cg",
-    "category": "Function",
+    "category": "function",
     "text": "cg(A, b; kwargs...) -> x, [history]\n\nSame as cg!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -164,8 +164,8 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/cg.html#IterativeSolvers.cg!",
     "page": "Conjugate Gradients",
     "title": "IterativeSolvers.cg!",
-    "category": "Function",
-    "text": "cg!(x, A, b; kwargs...) -> x, [history]\n\nArguments\n\nx: Initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side.\n\nKeywords\n\ninitially_zero::Bool: If true assumes that iszero(x) so that one  matrix-vector product can be saved when computing the initial  residual vector;\nPl = Identity(): left preconditioner of the method. Should be symmetric,  positive-definite like A.\ntol::Real = sqrt(eps(real(eltype(b)))): tolerance for stopping condition |r_k| / |r_0| ≤ tol;\nmaxiter::Int = size(A,2): maximum number of iterations;\nverbose::Bool = false: print method information;\nlog::Bool = false: keep track of the residual norm in each iteration;\n\nOutput\n\nif log is false\n\nx: approximated solution.\n\nif log is true\n\nx: approximated solution.\nch: convergence history.\n\nConvergenceHistory keys\n\n:tol => ::Real: stopping tolerance.\n:resnom => ::Vector: residual norm at each iteration.\n\n\n\n"
+    "category": "function",
+    "text": "cg!(x, A, b; kwargs...) -> x, [history]\n\nArguments\n\nx: Initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side.\n\nKeywords\n\nstatevars::CGStateVariables: Has 3 arrays similar to x to hold intermediate results;\ninitially_zero::Bool: If true assumes that iszero(x) so that one  matrix-vector product can be saved when computing the initial  residual vector;\nPl = Identity(): left preconditioner of the method. Should be symmetric,  positive-definite like A;\ntol::Real = sqrt(eps(real(eltype(b)))): tolerance for stopping condition |r_k| / |r_0| ≤ tol;\nmaxiter::Int = size(A,2): maximum number of iterations;\nverbose::Bool = false: print method information;\nlog::Bool = false: keep track of the residual norm in each iteration.\n\nOutput\n\nif log is false\n\nx: approximated solution.\n\nif log is true\n\nx: approximated solution.\nch: convergence history.\n\nConvergenceHistory keys\n\n:tol => ::Real: stopping tolerance.\n:resnom => ::Vector: residual norm at each iteration.\n\n\n\n"
 },
 
 {
@@ -204,7 +204,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/chebyshev.html#IterativeSolvers.chebyshev",
     "page": "Chebyshev iteration",
     "title": "IterativeSolvers.chebyshev",
-    "category": "Function",
+    "category": "function",
     "text": "chebyshev(A, b, λmin::Real, λmax::Real; kwargs...) -> x, [history]\n\nSame as chebyshev!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -212,7 +212,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/chebyshev.html#IterativeSolvers.chebyshev!",
     "page": "Chebyshev iteration",
     "title": "IterativeSolvers.chebyshev!",
-    "category": "Function",
+    "category": "function",
     "text": "chebyshev!(x, A, b, λmin::Real, λmax::Real; kwargs...) -> x, [history]\n\nSolve Ax = b for symmetric, definite matrices A using Chebyshev iteration.\n\nArguments\n\nx: initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side;\nλmin::Real: lower bound for the real eigenvalues\nλmax::Real: upper bound for the real eigenvalues\n\nKeywords\n\ninitially_zero::Bool = false: if true assumes that iszero(x) so that one  matrix-vector product can be saved when computing the initial  residual vector;\ntol: tolerance for stopping condition |r_k| / |r_0| ≤ tol.\nmaxiter::Int = size(A, 2): maximum number of inner iterations of GMRES;\nPl = Identity(): left preconditioner;\nlog::Bool = false: keep track of the residual norm in each iteration;\nverbose::Bool = false: print convergence information during the iterations.\n\nReturn values\n\nif log is false\n\nx: approximate solution.\n\nif log is true\n\nx: approximate solution;\nhistory: convergence history.\n\n\n\n"
 },
 
@@ -252,7 +252,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/minres.html#IterativeSolvers.minres",
     "page": "MINRES",
     "title": "IterativeSolvers.minres",
-    "category": "Function",
+    "category": "function",
     "text": "minres(A, b; kwargs...) -> x, [history]\n\nSame as minres!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -260,7 +260,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/minres.html#IterativeSolvers.minres!",
     "page": "MINRES",
     "title": "IterativeSolvers.minres!",
-    "category": "Function",
+    "category": "function",
     "text": "minres!(x, A, b; kwargs...) -> x, [history]\n\nSolve Ax = b for (skew-)Hermitian matrices A using MINRES.\n\nArguments\n\nx: initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side.\n\nKeywords\n\ninitially_zero::Bool = false: if true assumes that iszero(x) so that one  matrix-vector product can be saved when computing the initial  residual vector;\nskew_hermitian::Bool = false: if true assumes that A is skew-symmetric or skew-Hermitian;\ntol: tolerance for stopping condition |r_k| / |r_0| ≤ tol. Note that the residual is computed only approximately;\nmaxiter::Int = size(A, 2): maximum number of iterations;\nPl: left preconditioner;\nPr: right preconditioner;\nlog::Bool = false: keep track of the residual norm in each iteration;\nverbose::Bool = false: print convergence information during the iterations.\n\nReturn values\n\nif log is false\n\nx: approximate solution.\n\nif log is true\n\nx: approximate solution;\nhistory: convergence history.\n\n\n\n"
 },
 
@@ -300,7 +300,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/bicgstabl.html#IterativeSolvers.bicgstabl",
     "page": "BiCGStab(l)",
     "title": "IterativeSolvers.bicgstabl",
-    "category": "Function",
+    "category": "function",
     "text": "bicgstabl(A, b, l; kwargs...) -> x, [history]\n\nSame as bicgstabl!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -308,7 +308,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/bicgstabl.html#IterativeSolvers.bicgstabl!",
     "page": "BiCGStab(l)",
     "title": "IterativeSolvers.bicgstabl!",
-    "category": "Function",
+    "category": "function",
     "text": "bicgstabl!(x, A, b, l; kwargs...) -> x, [history]\n\nArguments\n\nA: linear operator;\nb: right hand side (vector);\nl::Int = 2: Number of GMRES steps.\n\nKeywords\n\nmax_mv_products::Int = size(A, 2): maximum number of matrix vector products.\n\nFor BiCGStab(l) this is a less dubious term than \"number of iterations\";\n\nPl = Identity(): left preconditioner of the method;\ntol::Real = sqrt(eps(real(eltype(b)))): tolerance for stopping condition |r_k| / |r_0| ≤ tol.   Note that (1) the true residual norm is never computed during the iterations,   only an approximation; and (2) if a preconditioner is given, the stopping condition is based on the   preconditioned residual.\n\nReturn values\n\nif log is false\n\nx: approximate solution.\n\nif log is true\n\nx: approximate solution;\nhistory: convergence history.\n\n\n\n"
 },
 
@@ -348,7 +348,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/idrs.html#IterativeSolvers.idrs",
     "page": "IDR(s)",
     "title": "IterativeSolvers.idrs",
-    "category": "Function",
+    "category": "function",
     "text": "idrs(A, b; s = 8) -> x, [history]\n\nSame as idrs!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -356,7 +356,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/idrs.html#IterativeSolvers.idrs!",
     "page": "IDR(s)",
     "title": "IterativeSolvers.idrs!",
-    "category": "Function",
+    "category": "function",
     "text": "idrs!(x, A, b; s = 8) -> x, [history]\n\nSolve the problem Ax = b approximately with IDR(s), where s is the dimension of the shadow space.\n\nArguments\n\nx: Initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side.\n\nKeywords\n\ns::Integer = 8: dimension of the shadow space;\ntol: relative tolerance;\nmaxiter::Int = size(A, 2): maximum number of iterations;\nlog::Bool: keep track of the residual norm in each iteration;\nverbose::Bool: print convergence information during the iterations.\n\nReturn values\n\nif log is false\n\nx: approximate solution.\n\nif log is true\n\nx: approximate solution;\nhistory: convergence history.\n\n\n\n"
 },
 
@@ -396,7 +396,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/gmres.html#IterativeSolvers.gmres",
     "page": "Restarted GMRES",
     "title": "IterativeSolvers.gmres",
-    "category": "Function",
+    "category": "function",
     "text": "gmres(A, b; kwargs...) -> x, [history]\n\nSame as gmres!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -404,7 +404,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/gmres.html#IterativeSolvers.gmres!",
     "page": "Restarted GMRES",
     "title": "IterativeSolvers.gmres!",
-    "category": "Function",
+    "category": "function",
     "text": "gmres!(x, A, b; kwargs...) -> x, [history]\n\nSolves the problem Ax = b with restarted GMRES.\n\nArguments\n\nx: Initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side.\n\nKeywords\n\ninitially_zero::Bool: If true assumes that iszero(x) so that one  matrix-vector product can be saved when computing the initial  residual vector;\ntol: relative tolerance;\nrestart::Int = min(20, size(A, 2)): restarts GMRES after specified number of iterations;\nmaxiter::Int = size(A, 2): maximum number of inner iterations of GMRES;\nPl: left preconditioner;\nPr: right preconditioner;\nlog::Bool: keep track of the residual norm in each iteration;\nverbose::Bool: print convergence information during the iterations.\n\nReturn values\n\nif log is false\n\nx: approximate solution.\n\nif log is true\n\nx: approximate solution;\nhistory: convergence history.\n\n\n\n"
 },
 
@@ -444,7 +444,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/lsmr.html#IterativeSolvers.lsmr",
     "page": "LSMR",
     "title": "IterativeSolvers.lsmr",
-    "category": "Function",
+    "category": "function",
     "text": "lsmr(A, b; kwrags...) -> x, [history]\n\nSame as lsmr!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -452,7 +452,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/lsmr.html#IterativeSolvers.lsmr!",
     "page": "LSMR",
     "title": "IterativeSolvers.lsmr!",
-    "category": "Function",
+    "category": "function",
     "text": "lsmr!(x, A, b; kwargs...) -> x, [history]\n\nMinimizes Ax - b^2 + x^2 in the Euclidean norm. If multiple solutions exists the minimum norm solution is returned.\n\nThe method is based on the Golub-Kahan bidiagonalization process. It is  algebraically equivalent to applying MINRES to the normal equations  (A^*A + ^2I)x = A^*b, but has better numerical properties,  especially if A is ill-conditioned.\n\nArguments\n\nx: Initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side.\n\nKeywords\n\nλ::Number = 0: lambda.\natol::Number = 1e-6, btol::Number = 1e-6: stopping tolerances. If both are 1.0e-9 (say), the final residual norm should be accurate to about 9 digits. (The final x will usually have fewer correct digits, depending on cond(A) and the size of damp).\nconlim::Number = 1e8: stopping tolerance. lsmr terminates if an estimate of cond(A) exceeds conlim.  For compatible systems Ax = b, conlim could be as large as 1.0e+12 (say).  For least-squares problems, conlim should be less than 1.0e+8. Maximum precision can be obtained by setting\natol = btol = conlim = zero, but the number of iterations may then be excessive.\nmaxiter::Int = maximum(size(A)): maximum number of iterations.\nlog::Bool: keep track of the residual norm in each iteration;\nverbose::Bool: print convergence information during the iterations.\n\nReturn values\n\nif log is false\n\nx: approximated solution.\n\nif log is true\n\nx: approximated solution.\nch: convergence history.\n\nConvergenceHistory keys\n\n:atol => ::Real: atol stopping tolerance.\n:btol => ::Real: btol stopping tolerance.\n:ctol => ::Real: ctol stopping tolerance.\n:anorm => ::Real: anorm.\n:rnorm => ::Real: rnorm.\n:cnorm => ::Real: cnorm.\n:resnom => ::Vector: residual norm at each iteration.\n\n\n\n"
 },
 
@@ -492,7 +492,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/lsqr.html#IterativeSolvers.lsqr",
     "page": "LSQR",
     "title": "IterativeSolvers.lsqr",
-    "category": "Function",
+    "category": "function",
     "text": "lsqr(A, b; kwrags...) -> x, [history]\n\nSame as lsqr!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -500,7 +500,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/lsqr.html#IterativeSolvers.lsqr!",
     "page": "LSQR",
     "title": "IterativeSolvers.lsqr!",
-    "category": "Function",
+    "category": "function",
     "text": "lsqr!(x, A, b; kwargs...) -> x, [history]\n\nMinimizes Ax - b^2 + damp*x^2 in the Euclidean norm. If multiple solutions exists returns the minimal norm solution.\n\nThe method is based on the Golub-Kahan bidiagonalization process. It is algebraically equivalent to applying CG to the normal equations  (A^*A + ^2I)x = A^*b but has better numerical properties,  especially if A is ill-conditioned.\n\nArguments\n\nx: Initial guess, will be updated in-place;\nA: linear operator;\nb: right-hand side.\n\nKeywords\n\ndamp::Number = 0: damping parameter.\natol::Number = 1e-6, btol::Number = 1e-6: stopping tolerances. If both are 1.0e-9 (say), the final residual norm should be accurate to about 9 digits. (The final x will usually have fewer correct digits, depending on cond(A) and the size of damp).\nconlim::Number = 1e8: stopping tolerance.  lsmr terminates if an estimate of cond(A) exceeds conlim.  For compatible systems Ax = b, conlim could be as large as 1.0e+12 (say).  For least-squares problems, conlim should be less than 1.0e+8. Maximum precision can be obtained by setting atol = btol = conlim = zero, but the number of iterations may then be excessive.\nmaxiter::Int = maximum(size(A)): maximum number of iterations.\nverbose::Bool = false: print method information.\nlog::Bool = false: output an extra element of type ConvergenceHistory containing extra information of the method execution.\n\nReturn values\n\nif log is false\n\nx: approximated solution.\n\nif log is true\n\nx: approximated solution.\nch: convergence history.\n\nConvergenceHistory keys\n\n:atol => ::Real: atol stopping tolerance.\n:btol => ::Real: btol stopping tolerance.\n:ctol => ::Real: ctol stopping tolerance.\n:anorm => ::Real: anorm.\n:rnorm => ::Real: rnorm.\n:cnorm => ::Real: cnorm.\n:resnom => ::Vector: residual norm at each iteration.\n\n\n\n"
 },
 
@@ -540,7 +540,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.jacobi",
     "page": "Stationary methods",
     "title": "IterativeSolvers.jacobi",
-    "category": "Function",
+    "category": "function",
     "text": "jacobi(A, b) -> x\n\nSame as jacobi!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -548,7 +548,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.jacobi!",
     "page": "Stationary methods",
     "title": "IterativeSolvers.jacobi!",
-    "category": "Function",
+    "category": "function",
     "text": "jacobi!(x, A::AbstractMatrix, b; maxiter=10) -> x\n\nPerforms exactly maxiter Jacobi iterations.\n\nAllocates a single temporary vector and traverses A columnwise.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\njacobi!(x, A::SparseMatrixCSC, b; maxiter=10) -> x\n\nPerforms exactly maxiter Jacobi iterations.\n\nAllocates a temporary vector and precomputes the diagonal indices.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\n"
 },
 
@@ -564,7 +564,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.gauss_seidel",
     "page": "Stationary methods",
     "title": "IterativeSolvers.gauss_seidel",
-    "category": "Function",
+    "category": "function",
     "text": "gauss_seidel(A, b) -> x\n\nSame as gauss_seidel!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -572,7 +572,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.gauss_seidel!",
     "page": "Stationary methods",
     "title": "IterativeSolvers.gauss_seidel!",
-    "category": "Function",
+    "category": "function",
     "text": "gauss_seidel!(x, A::AbstractMatrix, b; maxiter=10) -> x\n\nPerforms exactly maxiter Gauss-Seidel iterations.\n\nWorks fully in-place and traverses A columnwise.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\ngauss_seidel!(x, A::SparseMatrixCSC, b; maxiter=10) -> x\n\nPerforms exactly maxiter Gauss-Seidel iterations.\n\nWorks fully in-place, but precomputes the diagonal indices.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\n"
 },
 
@@ -588,7 +588,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.sor",
     "page": "Stationary methods",
     "title": "IterativeSolvers.sor",
-    "category": "Function",
+    "category": "function",
     "text": "sor(A, b, ω::Real) -> x\n\nSame as sor!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -596,7 +596,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.sor!",
     "page": "Stationary methods",
     "title": "IterativeSolvers.sor!",
-    "category": "Function",
+    "category": "function",
     "text": "sor!(x, A::AbstractMatrix, b, ω::Real; maxiter=10) -> x\n\nPerforms exactly maxiter SOR iterations with relaxation parameter ω.\n\nAllocates a single temporary vector and traverses A columnwise.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\nsor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter=10)\n\nPerforms exactly maxiter SOR iterations with relaxation parameter ω.\n\nAllocates a temporary vector and precomputes the diagonal indices.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\n"
 },
 
@@ -612,7 +612,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.ssor",
     "page": "Stationary methods",
     "title": "IterativeSolvers.ssor",
-    "category": "Function",
+    "category": "function",
     "text": "ssor(A, b, ω::Real) -> x\n\nSame as ssor!, but allocates a solution vector x initialized with zeros.\n\n\n\n"
 },
 
@@ -620,7 +620,7 @@ var documenterSearchIndex = {"docs": [
     "location": "linear_systems/stationary.html#IterativeSolvers.ssor!",
     "page": "Stationary methods",
     "title": "IterativeSolvers.ssor!",
-    "category": "Function",
+    "category": "function",
     "text": "ssor!(x, A::AbstractMatrix, b, ω::Real; maxiter=10) -> x\n\nPerforms exactly maxiter SSOR iterations with relaxation parameter ω. Each iteration  is basically a forward and backward sweep of SOR.\n\nAllocates a single temporary vector and traverses A columnwise.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\nssor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter=10)\n\nPerforms exactly maxiter SSOR iterations with relaxation parameter ω. Each iteration  is basically a forward and backward sweep of SOR.\n\nAllocates a temporary vector and precomputes the diagonal indices.\n\nThrows Base.LinAlg.SingularException when the diagonal has a zero. This check is performed once beforehand.\n\n\n\n"
 },
 
@@ -652,7 +652,7 @@ var documenterSearchIndex = {"docs": [
     "location": "eigenproblems/power_method.html#IterativeSolvers.powm",
     "page": "Power method",
     "title": "IterativeSolvers.powm",
-    "category": "Function",
+    "category": "function",
     "text": "powm(B; kwargs...) -> λ, x, [history]\n\nSee powm!. Calls powm!(B, x0; kwargs...) with  x0 initialized as a random, complex unit vector.\n\n\n\n"
 },
 
@@ -660,15 +660,15 @@ var documenterSearchIndex = {"docs": [
     "location": "eigenproblems/power_method.html#IterativeSolvers.powm!",
     "page": "Power method",
     "title": "IterativeSolvers.powm!",
-    "category": "Function",
-    "text": "powm!(B, x; shift = zero(eltype(B)), inverse::Bool = false, kwargs...) -> λ, x, [history]\n\nBy default finds the approximate eigenpair (λ, x) of B where |λ| is largest.\n\nArguments\n\nB: linear map, see the note below.\nx: normalized initial guess. Don't forget to use complex arithmetic when necessary.\n\nKeywords\n\ntol::Real = eps(real(eltype(B))) * size(B, 2) ^ 3: stopping tolerance for the residual norm;\nmaxiter::Integer = size(B,2): maximum number of iterations;\nlog::Bool: keep track of the residual norm in each iteration;\nverbose::Bool: print convergence information during the iterations.\n\nnote: Shift-and-invert\nWhen applying shift-and-invert to Ax = x with invert = true and shift = ..., note  that the role of B * b becomes computing inv(A - shift I) * b. So rather than  passing the linear map A itself, pass a linear map B that has the action of  shift-and-invert. The eigenvalue is transformed back to an eigenvalue of the actual  matrix A.\n\nReturn values\n\nif log is false\n\nλ::Number approximate eigenvalue computed as the Rayleigh quotient;\nx::Vector approximate eigenvector.\n\nif log is true\n\nλ::Number: approximate eigenvalue computed as the Rayleigh quotient;\nx::Vector: approximate eigenvector;\nhistory: convergence history.\n\nConvergenceHistory keys\n\n:tol => ::Real: stopping tolerance;\n:resnom => ::Vector: residual norm at each iteration.\n\nExamples\n\nusing LinearMaps\nσ = 1.0 + 1.3im\nA = rand(Complex128, 50, 50)\nF = lufact(A - σ * I)\nFmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)\nλ, x = powm(Fmap, inverse = true, shift = σ, tol = 1e-4, maxiter = 200)\n\n\n\n"
+    "category": "function",
+    "text": "powm!(B, x; shift = zero(eltype(B)), inverse::Bool = false, kwargs...) -> λ, x, [history]\n\nBy default finds the approximate eigenpair (λ, x) of B where |λ| is largest.\n\nArguments\n\nB: linear map, see the note below.\nx: normalized initial guess. Don\'t forget to use complex arithmetic when necessary.\n\nKeywords\n\ntol::Real = eps(real(eltype(B))) * size(B, 2) ^ 3: stopping tolerance for the residual norm;\nmaxiter::Integer = size(B,2): maximum number of iterations;\nlog::Bool: keep track of the residual norm in each iteration;\nverbose::Bool: print convergence information during the iterations.\n\nnote: Shift-and-invert\nWhen applying shift-and-invert to Ax = x with invert = true and shift = ..., note  that the role of B * b becomes computing inv(A - shift I) * b. So rather than  passing the linear map A itself, pass a linear map B that has the action of  shift-and-invert. The eigenvalue is transformed back to an eigenvalue of the actual  matrix A.\n\nReturn values\n\nif log is false\n\nλ::Number approximate eigenvalue computed as the Rayleigh quotient;\nx::Vector approximate eigenvector.\n\nif log is true\n\nλ::Number: approximate eigenvalue computed as the Rayleigh quotient;\nx::Vector: approximate eigenvector;\nhistory: convergence history.\n\nConvergenceHistory keys\n\n:tol => ::Real: stopping tolerance;\n:resnom => ::Vector: residual norm at each iteration.\n\nExamples\n\nusing LinearMaps\nσ = 1.0 + 1.3im\nA = rand(Complex128, 50, 50)\nF = lufact(A - σ * I)\nFmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)\nλ, x = powm(Fmap, inverse = true, shift = σ, tol = 1e-4, maxiter = 200)\n\n\n\n"
 },
 
 {
     "location": "eigenproblems/power_method.html#IterativeSolvers.invpowm",
     "page": "Power method",
     "title": "IterativeSolvers.invpowm",
-    "category": "Function",
+    "category": "function",
     "text": "invpowm(B; shift = σ, kwargs...) -> λ, x, [history]\n\nFind the approximate eigenpair (λ, x) of A near shift, where B is a linear map that has the effect B * v = inv(A - σI) * v.\n\nThe method calls powm!(B, x0; inverse = true, shift = σ) with x0 a random, complex unit vector. See powm!\n\nExamples\n\nusing LinearMaps\nσ = 1.0 + 1.3im\nA = rand(Complex128, 50, 50)\nF = lufact(A - σ * I)\nFmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)\nλ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)\n\n\n\n"
 },
 
@@ -676,7 +676,7 @@ var documenterSearchIndex = {"docs": [
     "location": "eigenproblems/power_method.html#IterativeSolvers.invpowm!",
     "page": "Power method",
     "title": "IterativeSolvers.invpowm!",
-    "category": "Function",
+    "category": "function",
     "text": "invpowm!(B, x0; shift = σ, kwargs...) -> λ, x, [history]\n\nFind the approximate eigenpair (λ, x) of A near shift, where B is a linear map that has the effect B * v = inv(A - σI) * v.\n\nThe method calls powm!(B, x0; inverse = true, shift = σ). See powm!.\n\n\n\n"
 },
 
@@ -716,8 +716,8 @@ var documenterSearchIndex = {"docs": [
     "location": "svd/svdl.html#IterativeSolvers.svdl",
     "page": "SVDL",
     "title": "IterativeSolvers.svdl",
-    "category": "Function",
-    "text": "svdl(A) -> Σ, L, [history]\n\nCompute some singular values (and optionally vectors) using Golub-Kahan-Lanczos bidiagonalization [Golub1965] with thick restarting [Wu2000].\n\nIf log is set to true is given, method will output a tuple X, L, ch. Where ch is a ConvergenceHistory object. Otherwise it will only return X, L.\n\nArguments\n\nA : The matrix or matrix-like object whose singular values are desired.\n\nKeywords\n\nnsv::Int = 6: number of singular values requested;\nv0 = random unit vector: starting guess vector in the domain of A. The length of q should be the number of columns in A;\nk::Int = 2nsv: maximum number of Lanczos vectors to compute before restarting;\nj::Int = nsv: number of vectors to keep at the end of the restart.  We don't recommend j < nsv;\nmaxiter::Int = minimum(size(A)): maximum number of iterations to run;\nverbose::Bool = false: print information at each iteration;\ntol::Real = √eps(): maximum absolute error in each desired singular value;\nreltol::Real=√eps(): maximum error in each desired singular value relative to the  estimated norm of the input matrix;\nmethod::Symbol=:ritz: restarting algorithm to use. Valid choices are:\n:ritz: Thick restart with Ritz values [Wu2000].\n:harmonic: Restart with harmonic Ritz values [Baglama2005].\nvecs::Symbol = :none: singular vectors to return.\n:both: Both left and right singular vectors are returned.\n:left: Only the left singular vectors are returned.\n:right: Only the right singular vectors are returned.\n:none: No singular vectors are returned.\ndolock::Bool=false: If true, locks converged Ritz values, removing them from the Krylov subspace being searched in the next macroiteration;\nlog::Bool = false: output an extra element of type ConvergenceHistory containing extra information of the method execution.\n\nReturn values\n\nif log is false\n\nΣ: list of the desired singular values if vecs == :none (the default), otherwise  returns an SVD object with the desired singular vectors filled in;\nL: computed partial factorizations of A.\n\nif log is true\n\nΣ: list of the desired singular values if vecs == :none (the default),\n\notherwise returns an SVD object with the desired singular vectors filled in;\n\nL: computed partial factorizations of A;\nhistory: convergence history.\n\nConvergenceHistory keys\n\n:betas => betas: The history of the computed betas.\n:Bs => Bs: The history of the computed projected matrices.\n:ritz => ritzvalhist: Ritz values computed at each iteration.\n:conv => convhist: Convergence data.\n\n[Golub1965]: Golub, Gene, and William Kahan. \"Calculating the singular values and pseudo-inverse  of a matrix.\" Journal of the Society for Industrial and Applied Mathematics,  Series B: Numerical Analysis 2.2 (1965): 205-224.\n\n[Wu2000]: Wu, Kesheng, and Horst Simon. \"Thick-restart Lanczos method for large symmetric  eigenvalue problems.\" SIAM Journal on Matrix Analysis and Applications 22.2  (2000): 602-616.\n\n\n\n"
+    "category": "function",
+    "text": "svdl(A) -> Σ, L, [history]\n\nCompute some singular values (and optionally vectors) using Golub-Kahan-Lanczos bidiagonalization [Golub1965] with thick restarting [Wu2000].\n\nIf log is set to true is given, method will output a tuple X, L, ch. Where ch is a ConvergenceHistory object. Otherwise it will only return X, L.\n\nArguments\n\nA : The matrix or matrix-like object whose singular values are desired.\n\nKeywords\n\nnsv::Int = 6: number of singular values requested;\nv0 = random unit vector: starting guess vector in the domain of A. The length of q should be the number of columns in A;\nk::Int = 2nsv: maximum number of Lanczos vectors to compute before restarting;\nj::Int = nsv: number of vectors to keep at the end of the restart.  We don\'t recommend j < nsv;\nmaxiter::Int = minimum(size(A)): maximum number of iterations to run;\nverbose::Bool = false: print information at each iteration;\ntol::Real = √eps(): maximum absolute error in each desired singular value;\nreltol::Real=√eps(): maximum error in each desired singular value relative to the  estimated norm of the input matrix;\nmethod::Symbol=:ritz: restarting algorithm to use. Valid choices are:\n:ritz: Thick restart with Ritz values [Wu2000].\n:harmonic: Restart with harmonic Ritz values [Baglama2005].\nvecs::Symbol = :none: singular vectors to return.\n:both: Both left and right singular vectors are returned.\n:left: Only the left singular vectors are returned.\n:right: Only the right singular vectors are returned.\n:none: No singular vectors are returned.\ndolock::Bool=false: If true, locks converged Ritz values, removing them from the Krylov subspace being searched in the next macroiteration;\nlog::Bool = false: output an extra element of type ConvergenceHistory containing extra information of the method execution.\n\nReturn values\n\nif log is false\n\nΣ: list of the desired singular values if vecs == :none (the default), otherwise  returns an SVD object with the desired singular vectors filled in;\nL: computed partial factorizations of A.\n\nif log is true\n\nΣ: list of the desired singular values if vecs == :none (the default),\n\notherwise returns an SVD object with the desired singular vectors filled in;\n\nL: computed partial factorizations of A;\nhistory: convergence history.\n\nConvergenceHistory keys\n\n:betas => betas: The history of the computed betas.\n:Bs => Bs: The history of the computed projected matrices.\n:ritz => ritzvalhist: Ritz values computed at each iteration.\n:conv => convhist: Convergence data.\n\n[Golub1965]: Golub, Gene, and William Kahan. \"Calculating the singular values and pseudo-inverse  of a matrix.\" Journal of the Society for Industrial and Applied Mathematics,  Series B: Numerical Analysis 2.2 (1965): 205-224.\n\n[Wu2000]: Wu, Kesheng, and Horst Simon. \"Thick-restart Lanczos method for large symmetric  eigenvalue problems.\" SIAM Journal on Matrix Analysis and Applications 22.2  (2000): 602-616.\n\n\n\n"
 },
 
 {
@@ -797,7 +797,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Contributing",
     "title": "Setting workspace up",
     "category": "section",
-    "text": "Julia's internal package manager makes it easy to install and modify packages from Github. Any package hosted on Github can be installed via Pkg.clone by providing the repository's URL, so installing a fork on your system is a simple task.Pkg.clone(\"https://github.com/johndoe/IterativeSolvers.jl\")It is to note here if you have the original package installed the fork will replace it, this is not a problem.Now find your fork's location.Pkg.dir(\"IterativeSolvers\")Once there you will notice you are on the master branch, whenever a package is imported Julia will use the code in the current branch, this means checking out other git branches will let you use/test whatever there is."
+    "text": "Julia\'s internal package manager makes it easy to install and modify packages from Github. Any package hosted on Github can be installed via Pkg.clone by providing the repository\'s URL, so installing a fork on your system is a simple task.Pkg.clone(\"https://github.com/johndoe/IterativeSolvers.jl\")It is to note here if you have the original package installed the fork will replace it, this is not a problem.Now find your fork\'s location.Pkg.dir(\"IterativeSolvers\")Once there you will notice you are on the master branch, whenever a package is imported Julia will use the code in the current branch, this means checking out other git branches will let you use/test whatever there is."
 },
 
 {
