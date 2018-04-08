@@ -21,7 +21,7 @@ end
 
 @inline converged(p::PowerMethodIterable) = p.residual ≤ p.tol
 
-@inline start(p::PowerMethodIterable) = 0
+@inline start(p::PowerMethodIterable) = 1
 
 @inline done(p::PowerMethodIterable, iteration::Int) = iteration > p.maxiter || converged(p)
 
@@ -132,6 +132,7 @@ function powm!(B, x;
 
     for (iteration, residual) = enumerate(iterable)
         nextiter!(history, mvps = 1)
+        push!(history, :resnorm, residual)
         verbose && @printf("%3d\t%1.2e\n", iteration, residual)
     end
 
