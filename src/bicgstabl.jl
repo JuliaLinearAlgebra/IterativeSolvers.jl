@@ -1,5 +1,5 @@
 export bicgstabl, bicgstabl!, bicgstabl_iterator, bicgstabl_iterator!, BiCGStabIterable
-
+using Printf
 import Base: start, next, done
 
 mutable struct BiCGStabIterable{precT, matT, solT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
@@ -40,11 +40,11 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
     us = zeros(T, n, l + 1)
 
     residual = view(rs, :, 1)
-    
+
     # Compute the initial residual rs[:, 1] = b - A * x
     # Avoid computing A * 0.
     if initial_zero
-        copy!(residual, b)
+        copyto!(residual, b)
     else
         A_mul_B!(residual, A, x)
         residual .= b .- residual
@@ -81,12 +81,12 @@ function next(it::BiCGStabIterable, iteration::Int)
     L = 2 : it.l + 1
 
     it.σ = -it.ω * it.σ
-    
+
     ## BiCG part
     for j = 1 : it.l
         ρ = dot(it.r_shadow, view(it.rs, :, j))
         β = ρ / it.σ
-        
+
         # us[:, 1 : j] .= rs[:, 1 : j] - β * us[:, 1 : j]
         it.us[:, 1 : j] .= it.rs[:, 1 : j] .- β .* it.us[:, 1 : j]
 
@@ -99,12 +99,12 @@ function next(it::BiCGStabIterable, iteration::Int)
         α = ρ / it.σ
 
         it.rs[:, 1 : j] .-= α .* it.us[:, 2 : j + 1]
-        
+
         # rs[:, j + 1] = Pl \ (A * rs[:, j])
         next_r = view(it.rs, :, j + 1)
         A_mul_B!(next_r, it.A , view(it.rs, :, j))
         A_ldiv_B!(it.Pl, next_r)
-        
+
         # x = x + α * us[:, 1]
         it.x .+= α .* view(it.us, :, 1)
     end
@@ -113,11 +113,11 @@ function next(it::BiCGStabIterable, iteration::Int)
     it.mv_products += 2 * it.l
 
     ## MR part
-    
+
     # M = rs' * rs
     Ac_mul_B!(it.M, it.rs, it.rs)
 
-    # γ = M[L, L] \ M[L, 1] 
+    # γ = M[L, L] \ M[L, 1]
     F = lufact!(view(it.M, L, L))
     A_ldiv_B!(it.γ, F, view(it.M, L, 1))
 
@@ -155,9 +155,9 @@ bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zerox(A, b), A, b, l; initial_zer
 - `max_mv_products::Int = size(A, 2)`: maximum number of matrix vector products.
 For BiCGStab(l) this is a less dubious term than "number of iterations";
 - `Pl = Identity()`: left preconditioner of the method;
-- `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`. 
-   Note that (1) the true residual norm is never computed during the iterations, 
-   only an approximation; and (2) if a preconditioner is given, the stopping condition is based on the 
+- `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`.
+   Note that (1) the true residual norm is never computed during the iterations,
+   only an approximation; and (2) if a preconditioner is given, the stopping condition is based on the
    *preconditioned residual*.
 
 # Return values
@@ -184,10 +184,10 @@ function bicgstabl!(x, A, b, l = 2;
 
     # This doesn't yet make sense: the number of iters is smaller.
     log && reserve!(history, :resnorm, max_mv_products)
-    
+
     # Actually perform CG
     iterable = bicgstabl_iterator!(x, A, b, l; Pl = Pl, tol = tol, max_mv_products = max_mv_products, kwargs...)
-    
+
     if log
         history.mvps = iterable.mv_products
     end
@@ -200,10 +200,10 @@ function bicgstabl!(x, A, b, l = 2;
         end
         verbose && @printf("%3d\t%1.2e\n", iteration, iterable.residual)
     end
-    
+
     verbose && println()
     log && setconv(history, converged(iterable))
     log && shrink!(history)
-    
+
     log ? (iterable.x, history) : iterable.x
 end

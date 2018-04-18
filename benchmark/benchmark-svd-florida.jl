@@ -78,10 +78,10 @@ function runbenchmark(filename, benchmarkfilename)
     #Choose the same normalized unit vector to start with
     q = randn(n)
     eltype(A) <: Complex && (q += im*randn(n))
-    scale!(q, inv(norm(q)))
+    rmul!(q, inv(norm(q)))
     qm = randn(m)
     eltype(A) <: Complex && (q += im*randn(m))
-    scale!(qm, inv(norm(qm)))
+    rmul!(qm, inv(norm(qm)))
 
     #Number of singular values to request
     nv = min(m, n, 10)

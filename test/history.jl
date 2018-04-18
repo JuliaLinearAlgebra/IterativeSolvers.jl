@@ -1,6 +1,6 @@
 using IterativeSolvers
 using RecipesBase
-using Base.Test
+using Test
 
 @testset "ConvergenceHistory" begin
 

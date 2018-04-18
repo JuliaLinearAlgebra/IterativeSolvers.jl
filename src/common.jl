@@ -1,4 +1,4 @@
-import Base: A_ldiv_B!, \
+import LinearAlgebra: A_ldiv_B!, \
 
 export Identity
 
@@ -23,4 +23,4 @@ struct Identity end
 
 \(::Identity, x) = copy(x)
 A_ldiv_B!(::Identity, x) = x
-A_ldiv_B!(y, ::Identity, x) = copy!(y, x)
+A_ldiv_B!(y, ::Identity, x) = copyto!(y, x)

@@ -33,7 +33,7 @@ function next(cheb::ChebyshevIterable, iteration::Int)
 
     if iteration == 1
         cheb.α = T(2) / cheb.λ_avg
-        copy!(cheb.u, cheb.c)
+        copyto!(cheb.u, cheb.c)
     else
         β = (cheb.λ_diff * cheb.α / 2) ^ 2
         cheb.α = inv(cheb.λ_avg - β)
@@ -59,7 +59,7 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
 
     T = eltype(x)
     r = similar(x)
-    copy!(r, b)
+    copyto!(r, b)
     u = zeros(x)
     c = similar(x)
 

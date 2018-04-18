@@ -5,6 +5,8 @@ eigensystems, and singular value problems.
 """
 module IterativeSolvers
 
+include("linearmaps_compat.jl")
+
 include("common.jl")
 include("orthogonalize.jl")
 include("history.jl")

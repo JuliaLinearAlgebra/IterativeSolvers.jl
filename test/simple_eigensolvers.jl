@@ -1,5 +1,5 @@
 using IterativeSolvers
-using Base.Test
+using Test
 using LinearMaps
 
 @testset "Simple Eigensolvers" begin
@@ -7,7 +7,7 @@ using LinearMaps
 srand(1234321)
 n = 10
 
-@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+@testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
 
     A = rand(T, n, n)
     A = A' * A

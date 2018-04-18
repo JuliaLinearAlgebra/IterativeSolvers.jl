@@ -43,4 +43,3 @@ include("history.jl")
 #Expensive tests - don't run by default
 #include("matrixmarket.jl")
 #include("matrixcollection.jl")
-

@@ -1,6 +1,8 @@
 export svdl
 
-import Base: size, getindex, full, svdfact
+import Base: size, getindex, full
+import LinearAlgebra.svdfact
+using LinearAlgebra
 
 """
 Matrix of the form
@@ -101,12 +103,12 @@ If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 - `v0 = random unit vector`: starting guess vector in the domain of `A`.
   The length of `q` should be the number of columns in `A`;
 - `k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting;
-- `j::Int = nsv`: number of vectors to keep at the end of the restart. 
+- `j::Int = nsv`: number of vectors to keep at the end of the restart.
   We don't recommend j < nsv;
 - `maxiter::Int = minimum(size(A))`: maximum number of iterations to run;
 - `verbose::Bool = false`: print information at each iteration;
 - `tol::Real = √eps()`: maximum absolute error in each desired singular value;
-- `reltol::Real=√eps()`: maximum error in each desired singular value relative to the 
+- `reltol::Real=√eps()`: maximum error in each desired singular value relative to the
   estimated norm of the input matrix;
 - `method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
   1. `:ritz`: Thick restart with Ritz values [Wu2000].
@@ -125,7 +127,7 @@ If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 
 **if `log` is `false`**
 
-- `Σ`: list of the desired singular values if `vecs == :none` (the default), otherwise 
+- `Σ`: list of the desired singular values if `vecs == :none` (the default), otherwise
   returns an `SVD` object with the desired singular vectors filled in;
 - `L`: computed partial factorizations of A.
 
@@ -144,12 +146,12 @@ otherwise returns an `SVD` object with the desired singular vectors filled in;
 - `:conv` => `convhist`: Convergence data.
 
 [^Golub1965]:
-    Golub, Gene, and William Kahan. "Calculating the singular values and pseudo-inverse 
-    of a matrix." Journal of the Society for Industrial and Applied Mathematics, 
+    Golub, Gene, and William Kahan. "Calculating the singular values and pseudo-inverse
+    of a matrix." Journal of the Society for Industrial and Applied Mathematics,
     Series B: Numerical Analysis 2.2 (1965): 205-224.
 [^Wu2000]:
-    Wu, Kesheng, and Horst Simon. "Thick-restart Lanczos method for large symmetric 
-    eigenvalue problems." SIAM Journal on Matrix Analysis and Applications 22.2 
+    Wu, Kesheng, and Horst Simon. "Thick-restart Lanczos method for large symmetric
+    eigenvalue problems." SIAM Journal on Matrix Analysis and Applications 22.2
     (2000): 602-616.
 """
 function svdl(A;
@@ -253,7 +255,7 @@ Determine if any singular values in a partial factorization have converged.
 
 - `L::PartialFactorization`: a `PartialFactorization` computed by an iterative
 method such as `svdl`;
-- `F::Base.LinAlg.SVD`: a `SVD` factorization computed for `L.B`;
+- `F::LinearAlgebra.SVD`: a `SVD` factorization computed for `L.B`;
 - `k::Int` : number of singular values to check;
 - `tol::Real`: absolute tolerance for a Ritz value to be considered converged;
 - `reltol::Real`: relative tolerance for a Ritz value to be considered converged;
@@ -270,22 +272,22 @@ described in [^Wilkinson1965] Ch.3 §54-55 p.173, [^Yamamoto1980], [^Ortega1990]
 [^Geurts1982] and [^Deif1989].
 
 [^Wilkinson1965]:
-    Wilkinson, James Hardy. The algebraic eigenvalue problem. 
+    Wilkinson, James Hardy. The algebraic eigenvalue problem.
     Vol. 87. Oxford: Clarendon Press, 1965.
-[^Yamamoto1980]: 
-    Yamamoto, Tetsuro. "Error bounds for computed eigenvalues 
+[^Yamamoto1980]:
+    Yamamoto, Tetsuro. "Error bounds for computed eigenvalues
     and eigenvectors." Numerische Mathematik 34.2 (1980): 189-199.
 [^Ortega1990]:
-    Ortega, James M. Numerical analysis: a second course. 
+    Ortega, James M. Numerical analysis: a second course.
     Society for Industrial and Applied Mathematics, 1990.
 [^Geurts1982]:
-    Geurts, A. J. "A contribution to the theory of condition." 
+    Geurts, A. J. "A contribution to the theory of condition."
     Numerische Mathematik 39.1 (1982): 85-96.
 [^Deif1989]:
-    Deif, A. "A relative backward perturbation theorem for the eigenvalue 
+    Deif, A. "A relative backward perturbation theorem for the eigenvalue
     problem." Numerische Mathematik 56.6 (1989): 625-626.
 """
-function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::Real,
+function isconverged(L::PartialFactorization, F::LinearAlgebra.SVD, k::Int, tol::Real,
     reltol::Real, log::ConvergenceHistory, verbose::Bool=false
     )
 
@@ -371,9 +373,8 @@ Thick restart (with ordinary Ritz values)
 [^Hernandez2008]
 
 """
-#Hernandez2008
 function thickrestart!(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, l::Int) where {T,Tr}
+        F::LinearAlgebra.SVD{Tr,Tr}, l::Int) where {T,Tr}
 
     k = size(F[:V], 1)
     m, n = size(A)
@@ -406,22 +407,22 @@ end
 """
     harmonicrestart!(A, L, F, k) -> L
 
-Thick restart with harmonic Ritz values. See [^Baglama2005] but note that 
-they have P and Q swapped relative to our notation, which follows that 
+Thick restart with harmonic Ritz values. See [^Baglama2005] but note that
+they have P and Q swapped relative to our notation, which follows that
 of [^Hernandez2008]
 
-[^Baglama2005]: 
-    Baglama, James, and Lothar Reichel. "Augmented implicitly restarted 
-    Lanczos bidiagonalization methods." SIAM Journal on Scientific 
+[^Baglama2005]:
+    Baglama, James, and Lothar Reichel. "Augmented implicitly restarted
+    Lanczos bidiagonalization methods." SIAM Journal on Scientific
     Computing 27.1 (2005): 19-42.
-[^Hernandez2008]: 
-    Vicente Hernández, José E. Román, and Andrés Tomás. "A robust and 
-    efficient parallel SVD solver based on restarted Lanczos bidiagonalization." 
+[^Hernandez2008]:
+    Vicente Hernández, José E. Román, and Andrés Tomás. "A robust and
+    efficient parallel SVD solver based on restarted Lanczos bidiagonalization."
     Electronic Transactions on Numerical Analysis 31 (2008): 68-85.
 
 """
 function harmonicrestart!(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, k::Int) where {T,Tr}
+        F::LinearAlgebra.SVD{Tr,Tr}, k::Int) where {T,Tr}
 
     m = size(L.B, 1)::Int
     #@assert size(L.P,2)==m==size(L.Q,2)-1
@@ -438,7 +439,7 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     Σ = (F2[:S]::Vector{Tr})[1:k]
     U = F0[:U]*view(F2[:U],:,1:k)
     M = eye(T, m+1)
-    M[1:m, 1:m] = F0[:V]::Matrix{T}
+    M[1:m, 1:m] = F0[:V]::Union{Matrix{T}, Adjoint{T,Matrix{T}}}
     M = M * F2[:V]
     Mend = M[end, 1:k]
     #Compute scaled residual from the harmonic Ritz problem
@@ -524,17 +525,17 @@ right vectors, except when the matrix norm exceeds `1/√eps(eltype(A))`, in
 which case it will be necessary to orthogonalize both sets of vectors. See
 [^Simon2000].
 
-[^Bjorck2015]: 
-    Björck, Åke. Numerical methods in matrix computations. 
+[^Bjorck2015]:
+    Björck, Åke. Numerical methods in matrix computations.
     New York: Springer, 2015.
-[^Simon2000]: 
-    Simon, Horst D., and Hongyuan Zha. "Low-rank matrix approximation 
-    using the Lanczos bidiagonalization process with applications." 
-    SIAM Journal on Scientific Computing 21.6 (2000): 2257-2274. 
+[^Simon2000]:
+    Simon, Horst D., and Hongyuan Zha. "Low-rank matrix approximation
+    using the Lanczos bidiagonalization process with applications."
+    SIAM Journal on Scientific Computing 21.6 (2000): 2257-2274.
 
 [^Daniel1976]:
-    Daniel, James W., et al. "Reorthogonalization and stable algorithms 
-    for updating the Gram-Schmidt QR factorization." Mathematics of 
+    Daniel, James W., et al. "Reorthogonalization and stable algorithms
+    for updating the Gram-Schmidt QR factorization." Mathematics of
     Computation 30.136 (1976): 772-795.
 ```
 """

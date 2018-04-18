@@ -1,5 +1,5 @@
 using IterativeSolvers
-using Base.Test
+using Test
 
 @testset "SVD Lanczos" begin
 

@@ -1,12 +1,12 @@
 using IterativeSolvers
-using Base.Test
+using Test
 
 @testset ("BiCGStab(l)") begin
 
 srand(1234321)
 n = 20
 
-@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+@testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = rand(T, n, n) + 15I
     x = ones(T, n)
     b = A * x
@@ -18,7 +18,7 @@ n = 20
         x1, his1 = bicgstabl(A, b, l, max_mv_products = 100, log = true, tol = tol)
         @test isa(his1, ConvergenceHistory)
         @test norm(A * x1 - b) / norm(b) ≤ tol
-        
+
         # With an initial guess
         x_guess = rand(T, n)
         x2, his2 = bicgstabl!(x_guess, A, b, l, max_mv_products = 100, log = true, tol = tol)
