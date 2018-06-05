@@ -30,6 +30,7 @@ include("chebyshev.jl")
 
 #Simple Eigensolvers
 include("simple_eigensolvers.jl")
+include("lobpcg.jl")
 
 #Golub-Kahan-Lanczos singular values computation
 include("svdl.jl")
