@@ -640,8 +640,8 @@ Finds the k extremal eigenvalues and their corresponding eigenvectors satisfying
 - `X`: approximated eigenvectors
 - `history`: residual norm history
 """
-function lobpcg(A, largest::Bool, X0::Union{AbstractMatrix, AbstractVector}; log=false, P=nothing, C=nothing, maxiter=200, tol=nothing)
-    lobpcg(A, nothing, largest, X0; log=log, tol=tol, maxiter=maxiter, P=P, C=C)
+function lobpcg(A, largest::Bool, X0::Union{AbstractMatrix, AbstractVector}; kwargs...)
+    lobpcg(A, nothing, largest, X0; kwargs...)
 end
 function lobpcg(A, B, largest, X0;
                 log=false, P=nothing, C=nothing, 
