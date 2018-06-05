@@ -384,7 +384,7 @@ end
 function update_mask!(iterator, residualTolerance)
     sizeX = size(iterator.XBlocks.block, 2)
     # Update active vectors mask
-    iterator.activeMask .*= view(iterator.residuals, 1:sizeX) .> residualTolerance
+    iterator.activeMask .= view(iterator.residuals, 1:sizeX) .> residualTolerance
     iterator.currentBlockSize[] = sum(iterator.activeMask)
     return 
 end
@@ -585,7 +585,8 @@ end
 function dense_solver(A, B, X, largest)
     warn("The problem size is small compared to the block size. Using dense eigensolver instead of LOBPCG.")
     # Define the closed range of indices of eigenvalues to return.
-    n, sizeX = size(X)
+    n = size(X, 1)
+    sizeX = size(X, 2)
     eigvals = largest ? (n - sizeX + 1, n) : (1, sizeX)
     A_dense = A*eye(n)
     if B isa Void
@@ -650,7 +651,8 @@ function lobpcg(A, B, largest, X0;
     T = eltype(X)
     M = P
     Y = C
-    n, sizeX = size(X)
+    n = size(X, 1)
+    sizeX = size(X, 2)
     if Y isa Void
         n < 5 * sizeX && return dense_solver(A, B, X, largest)
     else
@@ -709,7 +711,8 @@ function lobpcg!(λ::AbstractVector, X, A, B, largest=true; log=false,
     T = eltype(X)
     M = P
     Y = C
-    n, sizeX = size(X)
+    n = size(X, 1)
+    sizeX = size(X, 2)
     if Y isa Void
         if n < 5 * sizeX
             lambda, vectors = dense_solver(A, B, X, largest)
@@ -777,12 +780,12 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200)
     end
     n = size(iterator.XBlocks.block, 1)
     sizeX = size(iterator.XBlocks.block, 2)
-    residualTolerance = (tol isa Void) ? sqrt(eps(T)) : tol
-    maxiter = min(n, maxiter)
-    for iteration in 1:maxiter
-        iterator.iteration[] = iteration
+    residualTolerance = (tol isa Void) ? sqrt(eps(real(T))) : tol
+    iterator.iteration[] = 1
+    while iterator.iteration[] <= maxiter 
         iterator(residualTolerance, log)
         iterator.currentBlockSize[] == 0 && break
+        iterator.iteration[] += 1
     end
     iterator.λ .= view(iterator.int_λ, 1:sizeX)
     if log
