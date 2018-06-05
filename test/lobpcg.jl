@@ -19,7 +19,7 @@ end
     srand(1234321)
     @testset "Single eigenvalue" begin
         @testset "Small full system" begin
-            n = 50
+            n = 10
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
                     @testset "largest = $largest" for largest in (true, false)
@@ -76,7 +76,7 @@ end
     end
     @testset "Two eigenvalues" begin
         @testset "Small full system" begin
-            n = 50
+            n = 10
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
                     @testset "largest = $largest" for largest in (true, false)
