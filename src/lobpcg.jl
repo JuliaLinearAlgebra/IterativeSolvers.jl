@@ -549,7 +549,7 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
             push!(iterator.residualNormsHistory, iterator.residuals[1:sizeX])
         end
         update_mask!(iterator, residualTolerance)
-        iterator.currentBlockSize[] == 0 && return 
+        iterator.currentBlockSize[] == 0 && return
         bs = iterator.currentBlockSize[]
         # Update active R blocks
         update_active!(iterator.activeMask, bs, (iterator.activeRBlocks.block, iterator.RBlocks.block))
@@ -594,24 +594,6 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
     end
 
     return
-end
-
-function dense_solver(A, B, X, largest)
-    warn("The problem size is small compared to the block size. Using dense eigensolver instead of LOBPCG.")
-    # Define the closed range of indices of eigenvalues to return.
-    n = size(X, 1)
-    sizeX = size(X, 2)
-    eigvals = largest ? (n - sizeX + 1, n) : (1, sizeX)
-    A_dense = A*eye(n)
-    if B isa Void
-        realdiag!(A_dense)
-        return eig(Hermitian(A_dense))
-    else
-        B_dense = B*eye(n)
-        realdiag!(A_dense)
-        realdiag!(B_dense)
-        return eig(Hermitian(A_dense), Hermitian(B_dense))
-    end
 end
 
 """
@@ -670,12 +652,6 @@ function lobpcg(A, B, largest, X0;
     Y = C
     n = size(X, 1)
     sizeX = size(X, 2)
-    if Y isa Void
-        n < 5 * sizeX && return dense_solver(A, B, X, largest)
-    else
-        sizeY = size(Y, 2)
-        (n - sizeY) < 5 * sizeX && throw("The dense eigensolver does not support constraints.")
-    end
     sizeX > n && throw("X column dimension exceeds the row dimension")
 
     iterator = LOBPCGIterator(A, B, X, largest, M, Y)
@@ -730,17 +706,6 @@ function lobpcg!(λ::AbstractVector, X, A, B, largest=true; log=false,
     Y = C
     n = size(X, 1)
     sizeX = size(X, 2)
-    if Y isa Void
-        if n < 5 * sizeX
-            lambda, vectors = dense_solver(A, B, X, largest)
-            λ .= lambda
-            X .= vectors
-            return λ, X
-        end
-    else
-        sizeY = size(Y, 2)
-        (n - sizeY) < 5 * sizeX && throw("The dense eigensolver does not support constraints.")
-    end
     sizeX > n && throw("X column dimension exceeds the row dimension")
 
     iterator = LOBPCGIterator(A, B, X, largest, M, Y)
