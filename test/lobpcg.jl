@@ -48,12 +48,10 @@ end
                         tol = √eps(real(T))
 
                         λ, x, ch = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
-                        @show max_err(A*x - B*x*diagm(λ)), tol
                         @test max_err(A*x - B*x*diagm(λ)) ≤ tol
 
                         # If you start from the exact solution, you should converge immediately
                         λ, x, ch = lobpcg(A, B, largest, x; tol=10tol, log=true)
-                        @show length(ch)
                         @test length(ch) ≤ 1
                     end
                 end
@@ -105,12 +103,10 @@ end
                         tol = √eps(real(T))
 
                         λ, x, ch = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
-                        @show max_err(A*x - B*x*diagm(λ)), tol
                         @test max_err(A*x - B*x*diagm(λ)) ≤ tol
 
                         # If you start from the exact solution, you should converge immediately
                         λ, x, ch = lobpcg(A, B, largest, x; tol=10tol, log=true)
-                        @show length(ch)
                         @test length(ch) ≤ 1
                     end
                 end

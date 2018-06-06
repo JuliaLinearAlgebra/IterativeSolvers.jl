@@ -75,7 +75,8 @@ function Constraint(Y, B, X)
         BY = similar(B)
         A_mul_B!(BY, B, Y)
     end
-    gramYBY = At_mul_B(Y, BY)
+    gramYBY = Ac_mul_B(Y, BY)
+    realdiag!(gramYBY)
     gramYBY_chol = cholfact!(Hermitian(gramYBY))
     gramYBV = zeros(T, size(Y, 2), size(X, 2))
     tmp = similar(gramYBV)
@@ -91,7 +92,7 @@ function (constr!::Constraint)(X)
     sizeX = size(X, 2)
     sizeY = size(constr!.Y, 2)
     gramYBV_view = view(constr!.gramYBV, 1:sizeY, 1:sizeX)
-    At_mul_B!(gramYBV_view, constr!.BY, X)
+    Ac_mul_B!(gramYBV_view, constr!.BY, X)
     tmp_view = view(constr!.tmp, 1:sizeY, 1:sizeX)
     A_ldiv_B!(tmp_view, gram_chol, gramYBV_view)
     A_mul_B!(X, constr!.Y, tmp_view)
@@ -135,18 +136,18 @@ function BlockGram(XBlocks::Blocks{Generalized, T}) where {Generalized, T}
     PAP = zeros(T, sizeX, sizeX)
     return BlockGram{Generalized, Matrix{T}}(XAX, XAR, XAP, RAR, RAP, PAP)
 end
-XAX!(BlockGram, XBlocks) = At_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.A_block)
-XAP!(BlockGram, XBlocks, PBlocks, n) = At_mul_B!(view(BlockGram.XAP, :, 1:n), XBlocks.block, view(PBlocks.A_block, :, 1:n))
-XAR!(BlockGram, XBlocks, RBlocks, n) = At_mul_B!(view(BlockGram.XAR, :, 1:n), XBlocks.block, view(RBlocks.A_block, :, 1:n))
-RAR!(BlockGram, RBlocks, n) = At_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.A_block, :, 1:n))
-RAP!(BlockGram, RBlocks, PBlocks, n) = At_mul_B!(view(BlockGram.RAP, 1:n, 1:n), view(RBlocks.A_block, :, 1:n), view(PBlocks.block, :, 1:n))
-PAP!(BlockGram, PBlocks, n) = At_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.A_block, :, 1:n))
-XBP!(BlockGram, XBlocks, PBlocks, n) = At_mul_B!(view(BlockGram.XAP, :, 1:n), XBlocks.block, view(PBlocks.B_block, :, 1:n))
-XBR!(BlockGram, XBlocks, RBlocks, n) = At_mul_B!(view(BlockGram.XAR, :, 1:n), XBlocks.block, view(RBlocks.B_block, :, 1:n))
-RBP!(BlockGram, RBlocks, PBlocks, n) = At_mul_B!(view(BlockGram.RAP, 1:n, 1:n), view(RBlocks.B_block, :, 1:n), view(PBlocks.block, :, 1:n))
-XBX!(BlockGram, XBlocks) = At_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.B_block)
-RBR!(BlockGram, RBlocks, n) = At_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.B_block, :, 1:n))
-PBP!(BlockGram, PBlocks, n) = At_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.B_block, :, 1:n))
+XAX!(BlockGram, XBlocks) = Ac_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.A_block)
+XAP!(BlockGram, XBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.XAP, :, 1:n), XBlocks.block, view(PBlocks.A_block, :, 1:n))
+XAR!(BlockGram, XBlocks, RBlocks, n) = Ac_mul_B!(view(BlockGram.XAR, :, 1:n), XBlocks.block, view(RBlocks.A_block, :, 1:n))
+RAR!(BlockGram, RBlocks, n) = Ac_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.A_block, :, 1:n))
+RAP!(BlockGram, RBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.RAP, 1:n, 1:n), view(RBlocks.A_block, :, 1:n), view(PBlocks.block, :, 1:n))
+PAP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.A_block, :, 1:n))
+XBP!(BlockGram, XBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.XAP, :, 1:n), XBlocks.block, view(PBlocks.B_block, :, 1:n))
+XBR!(BlockGram, XBlocks, RBlocks, n) = Ac_mul_B!(view(BlockGram.XAR, :, 1:n), XBlocks.block, view(RBlocks.B_block, :, 1:n))
+RBP!(BlockGram, RBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.RAP, 1:n, 1:n), view(RBlocks.B_block, :, 1:n), view(PBlocks.block, :, 1:n))
+XBX!(BlockGram, XBlocks) = Ac_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.B_block)
+RBR!(BlockGram, RBlocks, n) = Ac_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.B_block, :, 1:n))
+PBP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.B_block, :, 1:n))
 
 function I!(G, xr)
     for j in xr, i in xr
@@ -228,6 +229,15 @@ function A_rdiv_B!(A, B::UpperTriangular)
     return
 end
 
+realdiag!(M) = nothing
+function realdiag!(M::AbstractMatrix{TC}) where TC <: Complex
+    T = real(eltype(M))
+    for i in 1:size(M, 1)
+        M[i,i] = Complex(real(M[i,i]), zero(T))
+    end
+    return
+end
+
 function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=false, update_BX=false) where Generalized
     useview = sizeX != -1
     if sizeX == -1
@@ -238,10 +248,11 @@ function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=fa
     AX = XBlocks.A_block
     gram_view = view(ortho!.gramVBV, 1:sizeX, 1:sizeX)
     if useview
-        At_mul_B!(gram_view, view(X, :, 1:sizeX), view(BX, :, 1:sizeX))
+        Ac_mul_B!(gram_view, view(X, :, 1:sizeX), view(BX, :, 1:sizeX))
     else
-        At_mul_B!(gram_view, X, BX)
+        Ac_mul_B!(gram_view, X, BX)
     end
+    realdiag!(gram_view)
     cholf = cholfact!(Hermitian(gram_view))
     R = cholf.factors
     if useview
@@ -384,7 +395,7 @@ end
 function update_mask!(iterator, residualTolerance)
     sizeX = size(iterator.XBlocks.block, 2)
     # Update active vectors mask
-    iterator.activeMask .= view(iterator.residuals, 1:sizeX) .> residualTolerance
+    iterator.activeMask .= norm.(view(iterator.residuals, 1:sizeX)) .> residualTolerance
     iterator.currentBlockSize[] = sum(iterator.activeMask)
     return 
 end
@@ -444,11 +455,14 @@ function sub_problem!(iterator, sizeX, bs1, bs2)
     if bs1 == 0
         gramAview = view(iterator.gramABlock.XAX, 1:subdim, 1:subdim)
         # Source of type instability
+        realdiag!(gramAview)
         eigf = eigfact!(Hermitian(gramAview))
     else
         gramAview = view(iterator.gramA, 1:subdim, 1:subdim)
         gramBview = view(iterator.gramB, 1:subdim, 1:subdim)
         # Source of type instability
+        realdiag!(gramAview)
+        realdiag!(gramBview)
         eigf = eigfact!(Hermitian(gramAview), Hermitian(gramBview))
     end
     # Selects extremal eigenvalues and corresponding vectors
@@ -590,9 +604,12 @@ function dense_solver(A, B, X, largest)
     eigvals = largest ? (n - sizeX + 1, n) : (1, sizeX)
     A_dense = A*eye(n)
     if B isa Void
+        realdiag!(A_dense)
         return eig(Hermitian(A_dense))
     else
         B_dense = B*eye(n)
+        realdiag!(A_dense)
+        realdiag!(B_dense)
         return eig(Hermitian(A_dense), Hermitian(B_dense))
     end
 end
