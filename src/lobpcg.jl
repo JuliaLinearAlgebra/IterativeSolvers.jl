@@ -281,7 +281,7 @@ function A_rdiv_B!(A, B::UpperTriangular)
         end
         A[:,i] .= view(A, :, i) ./ B[i,i]
     end
-    return
+    return A
 end
 
 realdiag!(M) = nothing
@@ -290,7 +290,7 @@ function realdiag!(M::AbstractMatrix{TC}) where TC <: Complex
     for i in 1:size(M, 1)
         M[i,i] = Complex(real(M[i,i]), zero(T))
     end
-    return
+    return M
 end
 
 function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=false, update_BX=false) where Generalized
