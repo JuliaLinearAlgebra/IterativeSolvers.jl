@@ -169,7 +169,7 @@ function (precond!::RPreconditioner)(X)
     bs = size(X, 2)
     A_ldiv_B!(view(precond!.buffer, :, 1:bs), precond!.M, X)
     # Just returning buffer would be cheaper but struct at call site must be mutable
-    X .= view(precond!.buffer, :, 1:bs)
+    @inbounds X .= view(precond!.buffer, :, 1:bs)
     nothing
 end
 
@@ -205,7 +205,7 @@ RBR!(BlockGram, RBlocks, n) = Ac_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlo
 PBP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.B_block, :, 1:n))
 
 function I!(G, xr)
-    for j in xr, i in xr
+    @inbounds for j in xr, i in xr
         G[i, j] = ifelse(i==j, 1, 0)
     end
     return
@@ -215,21 +215,23 @@ function (g::BlockGram)(gram, lambda, n1::Int, n2::Int, n3::Int)
     xr = 1:n1
     rr = n1+1:n1+n2
     pr = n1+n2+1:n1+n2+n3
-    if n1 > 0
-        #gram[xr, xr] .= view(g.XAX, 1:n1, 1:n1)
-        gram[xr, xr] .= Diagonal(view(lambda, 1:n1))
-    end
-    if n2 > 0
-        gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
-        gram[xr, rr] .= view(g.XAR, 1:n1, 1:n2)
-        conj!(transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2)))
-    end
-    if n3 > 0
-        gram[pr, pr] .= view(g.PAP, 1:n3, 1:n3)
-        gram[rr, pr] .= view(g.RAP, 1:n2, 1:n3)
-        gram[xr, pr] .= view(g.XAP, 1:n1, 1:n3)
-        conj!(transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3)))
-        conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
+    @inbounds begin
+        if n1 > 0
+            #gram[xr, xr] .= view(g.XAX, 1:n1, 1:n1)
+            gram[xr, xr] .= Diagonal(view(lambda, 1:n1))
+        end
+        if n2 > 0
+            gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
+            gram[xr, rr] .= view(g.XAR, 1:n1, 1:n2)
+            conj!(transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2)))
+        end
+        if n3 > 0
+            gram[pr, pr] .= view(g.PAP, 1:n3, 1:n3)
+            gram[rr, pr] .= view(g.RAP, 1:n2, 1:n3)
+            gram[xr, pr] .= view(g.XAP, 1:n1, 1:n3)
+            conj!(transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3)))
+            conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
+        end
     end
     return 
 end
@@ -241,28 +243,28 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
         if normalized
             I!(gram, xr)
         else
-            gram[xr, xr] .= view(g.XAX, 1:n1, 1:n1)
+            @inbounds gram[xr, xr] .= view(g.XAX, 1:n1, 1:n1)
         end
     end
     if n2 > 0
         if normalized
             I!(gram, rr)
         else
-            gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
+            @inbounds gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
         end
-        gram[xr, rr] .= view(g.XAR, 1:n1, 1:n2)
-        conj!(transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2)))
+        @inbounds gram[xr, rr] .= view(g.XAR, 1:n1, 1:n2)
+        @inbounds conj!(transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2)))
     end
     if n3 > 0
         if normalized
             I!(gram, pr)
         else
-            gram[pr, pr] .= view(g.PAP, 1:n3, 1:n3)
+            @inbounds gram[pr, pr] .= view(g.PAP, 1:n3, 1:n3)
         end
-        gram[rr, pr] .= view(g.RAP, 1:n2, 1:n3)
-        gram[xr, pr] .= view(g.XAP, 1:n1, 1:n3)
-        conj!(transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3)))
-        conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
+        @inbounds gram[rr, pr] .= view(g.RAP, 1:n2, 1:n3)
+        @inbounds gram[xr, pr] .= view(g.XAP, 1:n1, 1:n3)
+        @inbounds conj!(transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3)))
+        @inbounds conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
     end
     return 
 end
@@ -274,10 +276,10 @@ end
 
 function A_rdiv_B!(A, B::UpperTriangular)
     s = size(A, 2)
-    A[:,1] .= view(A, :, 1) ./ B[1,1]
-    for i in 2:s
+    @inbounds A[:,1] .= view(A, :, 1) ./ B[1,1]
+    @inbounds for i in 2:s
         for j in 1:i-1
-            A[:,i] .= view(A, :, i) - view(A, :, j) .* B[j,i]
+            A[:,i] .= view(A, :, i) .- view(A, :, j) .* B[j,i]
         end
         A[:,i] .= view(A, :, i) ./ B[i,i]
     end
@@ -286,9 +288,8 @@ end
 
 realdiag!(M) = nothing
 function realdiag!(M::AbstractMatrix{TC}) where TC <: Complex
-    T = real(eltype(M))
-    for i in 1:size(M, 1)
-        M[i,i] = Complex(real(M[i,i]), zero(T))
+    @inbounds for i in 1:size(M, 1)
+        M[i,i] = real(M[i,i])
     end
     return M
 end
@@ -434,9 +435,9 @@ end
 function residuals!(iterator)
     sizeX = size(iterator.XBlocks.block, 2)
     A_mul_B!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(view(iterator.ritz_values, 1:sizeX)))
-    iterator.RBlocks.block .= iterator.XBlocks.A_block .- iterator.RBlocks.block
+    @inbounds iterator.RBlocks.block .= iterator.XBlocks.A_block .- iterator.RBlocks.block
     # Finds residual norms
-    for j in 1:size(iterator.RBlocks.block, 2)
+    @inbounds for j in 1:size(iterator.RBlocks.block, 2)
         iterator.residuals[j] = 0
         for i in 1:size(iterator.RBlocks.block, 1)
             x = iterator.RBlocks.block[i,j]
@@ -450,13 +451,13 @@ end
 function update_mask!(iterator, residualTolerance)
     sizeX = size(iterator.XBlocks.block, 2)
     # Update active vectors mask
-    iterator.activeMask .= view(iterator.residuals, 1:sizeX) .> residualTolerance
+    @inbounds iterator.activeMask .= view(iterator.residuals, 1:sizeX) .> residualTolerance
     iterator.currentBlockSize[] = sum(iterator.activeMask)
     return 
 end
 
 function update_active!(mask, bs::Int, blockPairs...)
-    for (activeblock, block) in blockPairs
+    @inbounds for (activeblock, block) in blockPairs
         activeblock[:, 1:bs] .= view(block, :, mask)
     end
     return
@@ -522,8 +523,8 @@ function sub_problem!(iterator, sizeX, bs1, bs2)
     end
     # Selects extremal eigenvalues and corresponding vectors
     selectperm!(view(iterator.λperm, 1:subdim), eigf.values, 1:subdim, rev=iterator.largest)
-    iterator.ritz_values[1:sizeX] .= view(eigf.values, view(iterator.λperm, 1:sizeX))
-    iterator.V[1:subdim, 1:sizeX] .= view(eigf.vectors, :, view(iterator.λperm, 1:sizeX))
+    @inbounds iterator.ritz_values[1:sizeX] .= view(eigf.values, view(iterator.λperm, 1:sizeX))
+    @inbounds iterator.V[1:subdim, 1:sizeX] .= view(eigf.vectors, :, view(iterator.λperm, 1:sizeX))
 
     return
 end
@@ -554,10 +555,10 @@ function update_X_P!(iterator::LOBPCGIterator{Generalized}, bs1, bs2) where Gene
         if Generalized
             A_mul_B!(iterator.tempXBlocks.B_block, pb_blockview, p_eigview)
         end
-        iterator.PBlocks.block .= iterator.PBlocks.block .+ iterator.tempXBlocks.block
-        iterator.PBlocks.A_block .= iterator.PBlocks.A_block .+ iterator.tempXBlocks.A_block
+        @inbounds iterator.PBlocks.block .= iterator.PBlocks.block .+ iterator.tempXBlocks.block
+        @inbounds iterator.PBlocks.A_block .= iterator.PBlocks.A_block .+ iterator.tempXBlocks.A_block
         if Generalized
-            iterator.PBlocks.B_block .= iterator.PBlocks.B_block .+ iterator.tempXBlocks.B_block
+            @inbounds iterator.PBlocks.B_block .= iterator.PBlocks.B_block .+ iterator.tempXBlocks.B_block
         end
     end
     block = iterator.XBlocks.block
@@ -571,19 +572,21 @@ function update_X_P!(iterator::LOBPCGIterator{Generalized}, bs1, bs2) where Gene
         tempblock = iterator.tempXBlocks.B_block
         A_mul_B!(tempblock, block, x_eigview)
     end
-    if bs1 > 0
-        iterator.XBlocks.block .= iterator.tempXBlocks.block .+ iterator.PBlocks.block
-        iterator.XBlocks.A_block .= iterator.tempXBlocks.A_block .+ iterator.PBlocks.A_block
-        if Generalized
-            iterator.XBlocks.B_block .= iterator.tempXBlocks.B_block .+ iterator.PBlocks.B_block
+    @inbounds begin
+        if bs1 > 0
+            iterator.XBlocks.block .= iterator.tempXBlocks.block .+ iterator.PBlocks.block
+            iterator.XBlocks.A_block .= iterator.tempXBlocks.A_block .+ iterator.PBlocks.A_block
+            if Generalized
+                iterator.XBlocks.B_block .= iterator.tempXBlocks.B_block .+ iterator.PBlocks.B_block
+            end
+        else
+            iterator.XBlocks.block .= iterator.tempXBlocks.block
+            iterator.XBlocks.A_block .= iterator.tempXBlocks.A_block
+            if Generalized
+                iterator.XBlocks.B_block .= iterator.tempXBlocks.B_block
+            end
         end
-    else
-        iterator.XBlocks.block .= iterator.tempXBlocks.block
-        iterator.XBlocks.A_block .= iterator.tempXBlocks.A_block
-        if Generalized
-            iterator.XBlocks.B_block .= iterator.tempXBlocks.B_block
-        end
-    end    
+    end
     return
 end
 
@@ -732,8 +735,8 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
     T = eltype(iterator.XBlocks.block)
     X = iterator.XBlocks.block
     if !not_zeros
-    for j in 1:size(X,2)
-        if all(x -> x==0, view(X, :, j))
+        for j in 1:size(X,2)
+            if all(x -> x==0, view(X, :, j))
                 @inbounds X[:,j] .= rand.()
             end
         end
@@ -750,7 +753,7 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
         iterator.currentBlockSize[] == 0 && break
         iterator.iteration[] += 1
     end
-    iterator.λ .= view(iterator.ritz_values, 1:sizeX)
+    @inbounds iterator.λ .= view(iterator.ritz_values, 1:sizeX)
 
     results = LOBPCGResults(iterator.λ, X, iterator.iteration[], iterator.residuals[1:sizeX], residualTolerance, all((x)->(norm(x)<=residualTolerance), view(iterator.residuals, 1:sizeX)), maxiter, iterator.trace)
 
