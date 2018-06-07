@@ -66,13 +66,13 @@ function Base.show(io::IO, r::LOBPCGResults)
     @printf io "Results of LOBPCG Algorithm\n"
     @printf io " * Algorithm: LOBPCG - CholQR\n"
 
-    if length(join(r.λ, ",")) < 40
+    if length(join(r.λ, ",")) < 40 || length(r.λ) <= 2
         @printf io " * λ: [%s]\n" join(r.λ, ",")
     else
         @printf io " * λ: [%s, ...]\n" join(first_two(r.λ), ",")
     end
 
-    if length(join(r.residual_norms, ",")) < 40
+    if length(join(r.residual_norms, ",")) < 40 || length(r.residual_norms) <= 2
         @printf io " * Residual norm(s): [%s]\n" join(r.residual_norms, ",")
     else
         @printf io " * Residual norm(s): [%s, ...]\n" join(first_two(r.residual_norms), ",")
@@ -81,7 +81,6 @@ function Base.show(io::IO, r::LOBPCGResults)
     @printf io "   * Iterations: %s\n" r.iterations
     @printf io "   * Converged: %s\n" r.converged
     @printf io "   * Iterations limit: %s\n" r.maxiter
-    @printf io "   * Reached Maximum Number of Iterations: %s\n" r.iterations >= r.maxiter
 
     return
 end
@@ -685,6 +684,12 @@ Finds the k extremal eigenvalues and their corresponding eigenvectors satisfying
 """
 function lobpcg(A, largest::Bool, X0::Union{AbstractMatrix, AbstractVector}; kwargs...)
     lobpcg(A, nothing, largest, X0; kwargs...)
+end
+function lobpcg(A, largest::Bool, nev::Int=1; kwargs...)
+    lobpcg(A, nothing, largest, nev; kwargs...)
+end
+function lobpcg(A, B, largest::Bool, nev::Int=1; kwargs...)
+    lobpcg(A, B, largest, rand(size(A, 1), nev); kwargs...)
 end
 function lobpcg(A, B, largest, X0;
                 log=false, P=nothing, C=nothing, 
