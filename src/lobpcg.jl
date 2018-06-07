@@ -286,7 +286,7 @@ function A_rdiv_B!(A, B::UpperTriangular)
     return A
 end
 
-realdiag!(M) = nothing
+realdiag!(M) = M
 function realdiag!(M::AbstractMatrix{TC}) where TC <: Complex
     @inbounds for i in 1:minimum(size(M))
         M[i,i] = real(M[i,i])
