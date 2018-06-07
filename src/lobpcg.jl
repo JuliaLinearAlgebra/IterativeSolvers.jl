@@ -30,6 +30,62 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 export lobpcg, lobpcg!, LOBPCGIterator
 
+struct LOBPCGState{TR,TL}
+    iteration::Int
+    residual_norms::TR
+    ritz_values::TL
+end
+function Base.show(io::IO, t::LOBPCGState)
+    @printf io "%8d    %14e\n" t.iteration maximum(t.residual_norms)
+    return
+end
+
+const LOBPCGTrace{TR,TL} = Vector{LOBPCGState{TR,TL}}
+function Base.show(io::IO, tr::LOBPCGTrace)
+    @printf io "Iteration    Maximum residual norm \n"
+    @printf io "---------    ---------------------\n"
+    for state in tr
+        show(io, state)
+    end
+    return
+end
+
+struct LOBPCGResults{T, TL, TR, TX, TI, TTrace <: LOBPCGTrace}
+    λ::TL
+    X::TX
+    iterations::Int
+    residual_norms::TR
+    tolerance::T
+    converged::Bool
+    maxiter::TI
+    trace::TTrace
+end
+function Base.show(io::IO, r::LOBPCGResults)
+    first_two(fr) = [x for (i, x) in enumerate(fr)][1:2]
+
+    @printf io "Results of LOBPCG Algorithm\n"
+    @printf io " * Algorithm: LOBPCG - CholQR\n"
+
+    if length(join(r.λ, ",")) < 40
+        @printf io " * λ: [%s]\n" join(r.λ, ",")
+    else
+        @printf io " * λ: [%s, ...]\n" join(first_two(r.λ), ",")
+    end
+
+    if length(join(r.residual_norms, ",")) < 40
+        @printf io " * Residual norm(s): [%s]\n" join(r.residual_norms, ",")
+    else
+        @printf io " * Residual norm(s): [%s, ...]\n" join(first_two(r.residual_norms), ",")
+    end
+    @printf io " * Convergence\n"
+    @printf io "   * Iterations: %s\n" r.iterations
+    @printf io "   * Converged: %s\n" r.converged
+    @printf io "   * Iterations limit: %s\n" r.maxiter
+    @printf io "   * Reached Maximum Number of Iterations: %s\n" r.iterations >= r.maxiter
+
+    return
+end
+
 struct Blocks{Generalized, T, TA<:AbstractArray{T}}
     block::TA # X, R or P
     A_block::TA # AX, AR or AP
@@ -268,14 +324,14 @@ function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=fa
     return 
 end
 
-struct LOBPCGIterator{Generalized, T, TA, TB, TL<:AbstractVector{T}, TVec<:AbstractVector{Int}, TV<:AbstractArray{T}, TBlocks<:Blocks{Generalized, T}, TO<:AbstractOrtho, TP, TC, TG, TH, TM}
+struct LOBPCGIterator{Generalized, T, TA, TB, TL<:AbstractVector{T}, TR<:AbstractVector, TPerm<:AbstractVector{Int}, TV<:AbstractArray{T}, TBlocks<:Blocks{Generalized, T}, TO<:AbstractOrtho, TP, TC, TG, TM, TTrace}
     A::TA
     B::TB
-    int_λ::TL
-    λperm::TVec
+    ritz_values::TL
+    λperm::TPerm
     λ::TL
     V::TV
-    residuals::TL
+    residuals::TR
     largest::Bool
     XBlocks::TBlocks
     tempXBlocks::TBlocks
@@ -292,8 +348,8 @@ struct LOBPCGIterator{Generalized, T, TA, TB, TL<:AbstractVector{T}, TVec<:Abstr
     gramBBlock::TG
     gramA::TV
     gramB::TV
-    residualNormsHistory::TH
     activeMask::TM
+    trace::TTrace
 end
 
 """
@@ -345,11 +401,11 @@ function LOBPCGIterator(A, B, X, largest::Bool, P=nothing, C=nothing)
         PBlocks = Blocks(similar(X), similar(X), similar(X))
         activePBlocks = Blocks(similar(X), similar(X), similar(X))
     end
-    int_λ = zeros(T, nev*3)
+    ritz_values = zeros(T, nev*3)
     λ = zeros(T, nev)
     λperm = zeros(Int, nev*3)
     V = zeros(T, nev*3, nev*3)
-    residuals = zeros(T, nev)
+    residuals = fill(real(T)(NaN), nev)
     iteration = Ref(1)
     currentBlockSize = Ref(nev)
     generalized = !(B isa Void)
@@ -358,13 +414,13 @@ function LOBPCGIterator(A, B, X, largest::Bool, P=nothing, C=nothing)
     gramABlock = BlockGram(XBlocks)
     gramBBlock = BlockGram(XBlocks)
 
-    residualNormsHistory = Vector{Float64}[]
-    activeMask = ones(Bool, nev)
-
     gramA = zeros(T, 3*nev, 3*nev)
     gramB = zeros(T, 3*nev, 3*nev)
 
-    return LOBPCGIterator{generalized, T, typeof(A), typeof(B), typeof(λ), typeof(λperm), typeof(V), typeof(XBlocks), typeof(ortho!), typeof(precond!), typeof(constr!), typeof(gramABlock), typeof(residualNormsHistory), typeof(activeMask)}(A, B, int_λ, λperm, λ, V, residuals, largest, XBlocks, tempXBlocks, PBlocks, activePBlocks, RBlocks, activeRBlocks, iteration, currentBlockSize, ortho!, precond!, constr!, gramABlock, gramBBlock, gramA, gramB, residualNormsHistory, activeMask)
+    activeMask = ones(Bool, nev)
+    trace = LOBPCGTrace{Vector{real(T)},Vector{T}}()
+
+    return LOBPCGIterator{generalized, T, typeof(A), typeof(B), typeof(λ), typeof(residuals), typeof(λperm), typeof(V), typeof(XBlocks), typeof(ortho!), typeof(precond!), typeof(constr!), typeof(gramABlock), typeof(activeMask), typeof(trace)}(A, B, ritz_values, λperm, λ, V, residuals, largest, XBlocks, tempXBlocks, PBlocks, activePBlocks, RBlocks, activeRBlocks, iteration, currentBlockSize, ortho!, precond!, constr!, gramABlock, gramBBlock, gramA, gramB, activeMask, trace)
 end
 
 function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
@@ -378,14 +434,14 @@ function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
 end
 function residuals!(iterator)
     sizeX = size(iterator.XBlocks.block, 2)
-    A_mul_B!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(view(iterator.int_λ, 1:sizeX)))
+    A_mul_B!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(view(iterator.ritz_values, 1:sizeX)))
     iterator.RBlocks.block .= iterator.XBlocks.A_block .- iterator.RBlocks.block
     # Finds residual norms
     for j in 1:size(iterator.RBlocks.block, 2)
         iterator.residuals[j] = 0
         for i in 1:size(iterator.RBlocks.block, 1)
             x = iterator.RBlocks.block[i,j]
-            iterator.residuals[j] += conj(x)*x
+            iterator.residuals[j] += real(x*conj(x))
         end
         iterator.residuals[j] = sqrt(iterator.residuals[j])
     end
@@ -395,7 +451,7 @@ end
 function update_mask!(iterator, residualTolerance)
     sizeX = size(iterator.XBlocks.block, 2)
     # Update active vectors mask
-    iterator.activeMask .= norm.(view(iterator.residuals, 1:sizeX)) .> residualTolerance
+    iterator.activeMask .= view(iterator.residuals, 1:sizeX) .> residualTolerance
     iterator.currentBlockSize[] = sum(iterator.activeMask)
     return 
 end
@@ -424,7 +480,7 @@ function block_grams_2x2!(iterator, bs)
     XAR!(iterator.gramABlock, iterator.XBlocks, iterator.activeRBlocks, bs)
     RAR!(iterator.gramABlock, iterator.activeRBlocks, bs)
     XBR!(iterator.gramBBlock, iterator.XBlocks, iterator.activeRBlocks, bs)        
-    iterator.gramABlock(iterator.gramA, view(iterator.int_λ, 1:sizeX), sizeX, bs, 0)
+    iterator.gramABlock(iterator.gramA, view(iterator.ritz_values, 1:sizeX), sizeX, bs, 0)
     iterator.gramBBlock(iterator.gramB, sizeX, bs, 0, true)
 
     return
@@ -443,7 +499,7 @@ function block_grams_3x3!(iterator, bs)
     XBP!(iterator.gramBBlock, iterator.XBlocks, iterator.activePBlocks, bs)
     RBP!(iterator.gramBBlock, iterator.activeRBlocks, iterator.activePBlocks, bs)    
     # Update the gram matrix [X R P]' A [X R P]
-    iterator.gramABlock(iterator.gramA, view(iterator.int_λ, 1:sizeX), sizeX, bs, bs)
+    iterator.gramABlock(iterator.gramA, view(iterator.ritz_values, 1:sizeX), sizeX, bs, bs)
     # Update the gram matrix [X R P]' B [X R P]
     iterator.gramBBlock(iterator.gramB, sizeX, bs, bs, true)
 
@@ -467,7 +523,7 @@ function sub_problem!(iterator, sizeX, bs1, bs2)
     end
     # Selects extremal eigenvalues and corresponding vectors
     selectperm!(view(iterator.λperm, 1:subdim), eigf.values, 1:subdim, rev=iterator.largest)
-    iterator.int_λ[1:sizeX] .= view(eigf.values, view(iterator.λperm, 1:sizeX))
+    iterator.ritz_values[1:sizeX] .= view(eigf.values, view(iterator.λperm, 1:sizeX))
     iterator.V[1:subdim, 1:sizeX] .= view(eigf.vectors, :, view(iterator.λperm, 1:sizeX))
 
     return
@@ -536,20 +592,16 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
     sizeX = size(iterator.XBlocks.block, 2)
     iteration = iterator.iteration[]
     if iteration == 1
+        iterator.constr!(iterator.XBlocks.block)
         ortho_AB_mul_X!(iterator.XBlocks, iterator.ortho!, iterator.A, iterator.B)
         # Finds gram matrix X'AX
         block_grams_1x1!(iterator)
         sub_problem!(iterator, sizeX, 0, 0)
         # Updates Ritz vectors X and updates AX and BX accordingly
         update_X_P!(iterator, 0, 0)
-    elseif iteration == 2
         residuals!(iterator)
-        # Store history of norms
-        if log
-            push!(iterator.residualNormsHistory, iterator.residuals[1:sizeX])
-        end
         update_mask!(iterator, residualTolerance)
-        iterator.currentBlockSize[] == 0 && return
+    elseif iteration == 2
         bs = iterator.currentBlockSize[]
         # Update active R blocks
         update_active!(iterator.activeMask, bs, (iterator.activeRBlocks.block, iterator.RBlocks.block))
@@ -562,14 +614,9 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
         # Solve the Rayleigh-Ritz sub-problem
         sub_problem!(iterator, sizeX, bs, 0)
         update_X_P!(iterator, bs, 0)
-    else
         residuals!(iterator)
-        # Store history of norms
-        if log
-            push!(iterator.residualNormsHistory, iterator.residuals[1:sizeX])
-        end
         update_mask!(iterator, residualTolerance)
-        iterator.currentBlockSize[] == 0 && return
+    else
         # Update active blocks
         bs = iterator.currentBlockSize[]
         # Update active R and P blocks
@@ -591,9 +638,14 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
         # Updates Ritz vectors X and updates AX and BX accordingly
         # And updates P, AP and BP
         update_X_P!(iterator, bs, bs)
+        residuals!(iterator)
+        update_mask!(iterator, residualTolerance)
     end
-
-    return
+    if log
+        return LOBPCGState(iteration, iterator.residuals[1:sizeX], iterator.ritz_values[1:sizeX])
+    else
+        return LOBPCGState(iteration, nothing, nothing)
+    end
 end
 
 """
@@ -603,7 +655,7 @@ Finds the k extremal eigenvalues and their corresponding eigenvectors satisfying
 
 `A` and `B` may be generic types but `Base.A_mul_B!(C, AorB, X)` and `AorB * X` must be defined for vectors and strided matrices `X` and `C`.
 
-    lobpcg(A, [B,] largest, X0; kwargs...) -> λ, X, [history]
+    lobpcg(A, [B,] largest, X0; kwargs...) -> results
 
 # Arguments
 
@@ -614,30 +666,22 @@ Finds the k extremal eigenvalues and their corresponding eigenvectors satisfying
 
 ## Keywords
 
-- `log::Bool`: default is `false`; if `true` the function will return `history` 
-    of residual norms; if `false` only `λ` and `X` are returned;
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+    states; if `false` only `results.trace` will be empty;
 
 - `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
 
 - `C`: constraint to deflate the residual and solution vectors orthogonal
     to a subspace; must overload `A_mul_B!`;
 
-- `maxiter`: maximum number of iteraitons; default is 200;
+- `maxiter`: maximum number of iterations; default is 200;
 
 - `tol::Number`: tolerance to which residual vector norms must be under.
 
 # Output
 
-**if `log` is `false`**
+- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
 
-- `λ`: approximated eigenvalues
-- `X`: approximated eigenvectors
-
-**if `log` is `true`**
-
-- `λ`: approximated eigenvalues
-- `X`: approximated eigenvectors
-- `history`: residual norm history
 """
 function lobpcg(A, largest::Bool, X0::Union{AbstractMatrix, AbstractVector}; kwargs...)
     lobpcg(A, nothing, largest, X0; kwargs...)
@@ -648,81 +692,17 @@ function lobpcg(A, B, largest, X0;
 
     X = copy(X0)
     T = eltype(X)
-    M = P
-    Y = C
     n = size(X, 1)
     sizeX = size(X, 2)
     sizeX > n && throw("X column dimension exceeds the row dimension")
 
-    iterator = LOBPCGIterator(A, B, X, largest, M, Y)
+    iterator = LOBPCGIterator(A, B, X, largest, P, C)
     
     return lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter)
 end
 
 """
-    lobpcg!(λ, X, A, [B,] largest=true; kwargs...) -> λ, X, [history]
-
-# Arguments
-
-- `λ`: vector to store the eigenvalues;
-- `X`: initial guess of the Ritz vectors; to be overwritten with the eigenvectors;
-- `A`: linear operator;
-- `B`: linear operator;
-- `largest`: `true` if largest eigenvalues are desired and false if smallest.
-
-## Keywords
-
-- `log::Bool`: default is `false`; if `true` the function will return `history` 
-    of residual norms; if `false` only `λ` and `X` are returned;
-
-- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
-
-- `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `A_mul_B!`;
-
-- `maxiter`: maximum number of iteraitons; default is 200;
-
-- `tol::Number`: tolerance to which residual vector norms must be under.
-
-# Output
-
-**if `log` is `false`**
-
-- `λ`: approximated eigenvalues
-- `X`: approximated eigenvectors
-
-**if `log` is `true`**
-
-- `λ`: approximated eigenvalues
-- `X`: approximated eigenvectors
-- `history`: residual norm history
-
-"""
-function lobpcg!(λ::AbstractVector, X, A, B, largest=true; log=false,
-                P=nothing, C=nothing, tol=nothing, maxiter=200) 
-
-    T = eltype(X)
-    M = P
-    Y = C
-    n = size(X, 1)
-    sizeX = size(X, 2)
-    sizeX > n && throw("X column dimension exceeds the row dimension")
-
-    iterator = LOBPCGIterator(A, B, X, largest, M, Y)
-
-    if log
-        _λ, X, history = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter)
-        λ .= _λ
-        return λ, X, history
-    else
-        _λ, X = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter)
-        λ .= _λ
-        return λ, X
-    end
-end
-
-"""
-    lobpcg!(iterator::LOBPCGIterator; kwargs...) -> λ, X, [history]
+    lobpcg!(iterator::LOBPCGIterator; kwargs...) -> results
     
 # Arguments
 
@@ -731,25 +711,16 @@ end
 
 ## Keywords
 
-- `log::Bool`: default is `false`; if `true` the function will return `history` 
-    of residual norms; if `false` only `λ` and `X` are returned;
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+    states; if `false` only `results.trace` will be empty;
 
-- `maxiter`: maximum number of iteraitons; default is 200;
+- `maxiter`: maximum number of iterations; default is 200;
 
 - `tol::Number`: tolerance to which residual vector norms must be under.
 
 # Output
 
-**if `log` is `false`**
-
-- `λ`: approximated eigenvalues
-- `X`: approximated eigenvectors
-
-**if `log` is `true`**
-
-- `λ`: approximated eigenvalues
-- `X`: approximated eigenvectors
-- `history`: residual norm history
+- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
 
 """
 function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200)
@@ -760,19 +731,21 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200)
             X[:,j] .= rand.()
         end
     end
-    n = size(iterator.XBlocks.block, 1)
-    sizeX = size(iterator.XBlocks.block, 2)
+    n = size(X, 1)
+    sizeX = size(X, 2)
     residualTolerance = (tol isa Void) ? sqrt(eps(real(T))) : tol
     iterator.iteration[] = 1
     while iterator.iteration[] <= maxiter 
-        iterator(residualTolerance, log)
+        state = iterator(residualTolerance, log)
+        if log
+            push!(iterator.trace, state)
+        end
         iterator.currentBlockSize[] == 0 && break
         iterator.iteration[] += 1
     end
-    iterator.λ .= view(iterator.int_λ, 1:sizeX)
-    if log
-        return iterator.λ, X, iterator.residualNormsHistory
-    else
-        return iterator.λ, X
-    end    
+    iterator.λ .= view(iterator.ritz_values, 1:sizeX)
+
+    results = LOBPCGResults(iterator.λ, X, iterator.iteration[], iterator.residuals[1:sizeX], residualTolerance, all((x)->(norm(x)<=residualTolerance), view(iterator.residuals, 1:sizeX)), maxiter, iterator.trace)
+
+    return results
 end
