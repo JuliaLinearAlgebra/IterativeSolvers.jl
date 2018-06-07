@@ -28,12 +28,13 @@ end
                         b = rand(T, n, 1)
                         tol = √eps(real(T))
 
-                        λ, x  = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
-                        @test norm(A*x - x*λ) ≤ tol
+                        r = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
+                        λ, X = r.λ, r.X
+                        @test norm(A*X - X*λ) ≤ tol
                         
                         # If you start from the exact solution, you should converge immediately
-                        λ, x, ch = lobpcg(A, largest, x; tol=10tol, log=true)
-                        @test length(ch) ≤ 1
+                        r = lobpcg(A, largest, X; tol=10tol, log=true)
+                        @test length(r.trace) == 1
                     end
                 end
             end
@@ -47,12 +48,13 @@ end
                         b = rand(T, n, 1)
                         tol = √eps(real(T))
 
-                        λ, x, ch = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
-                        @test max_err(A*x - B*x*diagm(λ)) ≤ tol
+                        r = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
+                        λ, X = r.λ, r.X
+                        @test max_err(A*X - B*X*λ) ≤ tol
 
                         # If you start from the exact solution, you should converge immediately
-                        λ, x, ch = lobpcg(A, B, largest, x; tol=10tol, log=true)
-                        @test length(ch) ≤ 1
+                        r = lobpcg(A, B, largest, X; tol=10tol, log=true)
+                        @test length(r.trace) == 1
                     end
                 end
             end
@@ -66,8 +68,9 @@ end
 
             @testset "Matrix" begin
                 @testset "largest = $largest" for largest in (true, false)
-                    λ, xLOBPCG = lobpcg(A, largest, rhs; tol=tol, maxiter=Inf)
-                    @test norm(A * xLOBPCG - xLOBPCG * λ) ≤ tol
+                    r = lobpcg(A, largest, rhs; tol=tol, maxiter=Inf)
+                    λ, X = r.λ, r.X
+                    @test norm(A*X - X*λ) ≤ tol
                 end
             end
         end
@@ -83,12 +86,13 @@ end
                         b = rand(T, n, 2)
                         tol = √eps(real(T))
 
-                        λ, x  = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
-                        @test max_err(A*x - x*diagm(λ)) ≤ tol
+                        r  = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
+                        λ, X = r.λ, r.X
+                        @test max_err(A*X - X*diagm(λ)) ≤ tol
                         
                         # If you start from the exact solution, you should converge immediately
-                        λ, x, ch = lobpcg(A, largest, x; tol=10tol, log=true)
-                        @test length(ch) ≤ 1
+                        r = lobpcg(A, largest, X; tol=10tol, log=true)
+                        @test length(r.trace) == 1
                     end
                 end
             end
@@ -102,12 +106,13 @@ end
                         b = rand(T, n, 2)
                         tol = √eps(real(T))
 
-                        λ, x, ch = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
-                        @test max_err(A*x - B*x*diagm(λ)) ≤ tol
+                        r = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
+                        λ, X = r.λ, r.X
+                        @test max_err(A*X - B*X*diagm(λ)) ≤ tol
 
                         # If you start from the exact solution, you should converge immediately
-                        λ, x, ch = lobpcg(A, B, largest, x; tol=10tol, log=true)
-                        @test length(ch) ≤ 1
+                        r = lobpcg(A, B, largest, X; tol=10tol, log=true)
+                        @test length(r.trace) == 1
                     end
                 end
             end
