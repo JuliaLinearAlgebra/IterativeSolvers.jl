@@ -288,7 +288,7 @@ end
 
 realdiag!(M) = nothing
 function realdiag!(M::AbstractMatrix{TC}) where TC <: Complex
-    @inbounds for i in 1:size(M, 1)
+    @inbounds for i in 1:minimum(size(M))
         M[i,i] = real(M[i,i])
     end
     return M
