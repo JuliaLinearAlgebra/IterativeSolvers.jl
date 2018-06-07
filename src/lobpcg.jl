@@ -689,11 +689,11 @@ function lobpcg(A, largest::Bool, nev::Int=1; kwargs...)
     lobpcg(A, nothing, largest, nev; kwargs...)
 end
 function lobpcg(A, B, largest::Bool, nev::Int=1; kwargs...)
-    lobpcg(A, B, largest, rand(size(A, 1), nev); kwargs...)
+    lobpcg(A, B, largest, rand(eltype(A), size(A, 1), nev); not_zeros=true, kwargs...)
 end
 function lobpcg(A, B, largest, X0;
-                log=false, P=nothing, C=nothing, 
-                tol=nothing, maxiter=200)
+                not_zeros=false, log=false, P=nothing, 
+                C=nothing, tol=nothing, maxiter=200)
 
     X = copy(X0)
     T = eltype(X)
@@ -703,7 +703,7 @@ function lobpcg(A, B, largest, X0;
 
     iterator = LOBPCGIterator(A, B, X, largest, P, C)
     
-    return lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter)
+    return lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
 end
 
 """
@@ -728,12 +728,14 @@ end
 - `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
 
 """
-function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200)
+function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, not_zeros=false)
     T = eltype(iterator.XBlocks.block)
     X = iterator.XBlocks.block
+    if !not_zeros
     for j in 1:size(X,2)
         if all(x -> x==0, view(X, :, j))
-            X[:,j] .= rand.()
+                @inbounds X[:,j] .= rand.()
+            end
         end
     end
     n = size(X, 1)
