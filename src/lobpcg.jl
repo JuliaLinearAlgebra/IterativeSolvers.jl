@@ -653,18 +653,18 @@ end
 """
 The Locally Optimal Block Preconditioned Conjugate Gradient Method (LOBPCG)
 
-Finds the k extremal eigenvalues and their corresponding eigenvectors satisfying `AX = λBX` returning `λ` and `X`, using `X` as an initial guess, where `k = size(X,2)`. The input `X` is overwritten with the solution.
+Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisfying `AX = λBX`.
 
-`A` and `B` may be generic types but `Base.A_mul_B!(C, AorB, X)` and `AorB * X` must be defined for vectors and strided matrices `X` and `C`.
+`A` and `B` may be generic types but `Base.A_mul_B!(C, AorB, X)` must be defined for vectors and strided matrices `X` and `C`. `size(A, i::Int)` and `eltype(A)` must also be defined for `A`.
 
-    lobpcg(A, [B,] largest, X0; kwargs...) -> results
+    lobpcg(A, [B,] largest, nev; kwargs...) -> results
 
 # Arguments
 
 - `A`: linear operator;
 - `B`: linear operator;
 - `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `X0`: Initial guess, will not be modified. The number of columns is the number of eigenvectors desired.
+- `nev`: number of eigenvalues desired.
 
 ## Keywords
 
@@ -683,16 +683,46 @@ Finds the k extremal eigenvalues and their corresponding eigenvectors satisfying
 # Output
 
 - `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
-
 """
-function lobpcg(A, largest::Bool, X0::Union{AbstractMatrix, AbstractVector}; kwargs...)
-    lobpcg(A, nothing, largest, X0; kwargs...)
-end
 function lobpcg(A, largest::Bool, nev::Int=1; kwargs...)
     lobpcg(A, nothing, largest, nev; kwargs...)
 end
 function lobpcg(A, B, largest::Bool, nev::Int=1; kwargs...)
     lobpcg(A, B, largest, rand(eltype(A), size(A, 1), nev); not_zeros=true, kwargs...)
+end
+
+"""
+    lobpcg(A, [B,] largest, X0; kwargs...) -> results
+
+# Arguments
+
+- `A`: linear operator;
+- `B`: linear operator;
+- `largest`: `true` if largest eigenvalues are desired and false if smallest;
+- `X0`: Initial guess, will not be modified. The number of columns is the number of eigenvectors desired.
+
+## Keywords
+
+- `not_zeros`: default is `false`. If `true`, `X0` will be assumed to not have any all-zeros column.
+
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+    states; if `false` only `results.trace` will be empty;
+
+- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
+
+- `C`: constraint to deflate the residual and solution vectors orthogonal
+    to a subspace; must overload `A_mul_B!`;
+
+- `maxiter`: maximum number of iterations; default is 200;
+
+- `tol::Number`: tolerance to which residual vector norms must be under.
+
+# Output
+
+- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
+"""
+function lobpcg(A, largest::Bool, X0::Union{AbstractMatrix, AbstractVector}; kwargs...)
+    lobpcg(A, nothing, largest, X0; kwargs...)
 end
 function lobpcg(A, B, largest, X0;
                 not_zeros=false, log=false, P=nothing, 
@@ -718,6 +748,8 @@ end
     for the LOBPCG algorithm.
 
 ## Keywords
+
+- `not_zeros`: default is `false`. If `true`, the initial Ritz vectors will be assumed to not have any all-zeros column.
 
 - `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
     states; if `false` only `results.trace` will be empty;
