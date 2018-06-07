@@ -223,14 +223,14 @@ function (g::BlockGram)(gram, lambda, n1::Int, n2::Int, n3::Int)
     if n2 > 0
         gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
         gram[xr, rr] .= view(g.XAR, 1:n1, 1:n2)
-        transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2))
+        conj!(transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2)))
     end
     if n3 > 0
         gram[pr, pr] .= view(g.PAP, 1:n3, 1:n3)
         gram[rr, pr] .= view(g.RAP, 1:n2, 1:n3)
         gram[xr, pr] .= view(g.XAP, 1:n1, 1:n3)
-        transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3))
-        transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3))
+        conj!(transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3)))
+        conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
     end
     return 
 end
@@ -252,7 +252,7 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
             gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
         end
         gram[xr, rr] .= view(g.XAR, 1:n1, 1:n2)
-        transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2))
+        conj!(transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2)))
     end
     if n3 > 0
         if normalized
@@ -262,8 +262,8 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
         end
         gram[rr, pr] .= view(g.RAP, 1:n2, 1:n3)
         gram[xr, pr] .= view(g.XAP, 1:n1, 1:n3)
-        transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3))
-        transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3))
+        conj!(transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3)))
+        conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
     end
     return 
 end
