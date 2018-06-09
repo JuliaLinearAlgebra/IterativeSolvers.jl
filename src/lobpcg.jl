@@ -112,22 +112,22 @@ function B_mul_X!(b::Blocks{false}, B, n = 0)
     return
 end
 
-struct Constraint{T, TA<:AbstractArray{T}, TC}
-    Y::TA
-    BY::TA
+struct Constraint{T, TVorM<:Union{AbstractVector{T}, AbstractMatrix{T}}, TM<:AbstractMatrix{T}, TC}
+    Y::TVorM
+    BY::TVorM
     gram_chol::TC
-    gramYBV::TA # to be used in view
-    tmp::TA # to be used in view
+    gramYBV::TM # to be used in view
+    tmp::TM # to be used in view
 end
 function Constraint(::Void, B, X)
-    return Constraint{Void, Matrix{Void}, Void}(Matrix{Void}(0,0), Matrix{Void}(0,0), nothing, Matrix{Void}(0,0), Matrix{Void}(0,0))
+    return Constraint{Void, Matrix{Void}, Matrix{Void}, Void}(Matrix{Void}(0,0), Matrix{Void}(0,0), nothing, Matrix{Void}(0,0), Matrix{Void}(0,0))
 end
 function Constraint(Y, B, X)
     T = eltype(X)
     if B isa Void
-        B = Y
+        BY = Y
     else
-        BY = similar(B)
+        BY = similar(Y)
         A_mul_B!(BY, B, Y)
     end
     gramYBY = Ac_mul_B(Y, BY)
@@ -136,21 +136,22 @@ function Constraint(Y, B, X)
     gramYBV = zeros(T, size(Y, 2), size(X, 2))
     tmp = similar(gramYBV)
 
-    return Constraint(Y, BY, gramYBY_chol, gramYBV, tmp)
+    return Constraint{eltype(Y), typeof(Y), typeof(gramYBV), typeof(gramYBY_chol)}(Y, BY, gramYBY_chol, gramYBV, tmp)
 end
 
-function (constr!::Constraint{Void})(X)
+function (constr!::Constraint{Void})(X, X_temp)
     nothing
 end
 
-function (constr!::Constraint)(X)
+function (constr!::Constraint)(X, X_temp)
     sizeX = size(X, 2)
     sizeY = size(constr!.Y, 2)
     gramYBV_view = view(constr!.gramYBV, 1:sizeY, 1:sizeX)
     Ac_mul_B!(gramYBV_view, constr!.BY, X)
     tmp_view = view(constr!.tmp, 1:sizeY, 1:sizeX)
-    A_ldiv_B!(tmp_view, gram_chol, gramYBV_view)
-    A_mul_B!(X, constr!.Y, tmp_view)
+    A_ldiv_B!(tmp_view, constr!.gram_chol, gramYBV_view)
+    A_mul_B!(X_temp, constr!.Y, tmp_view)
+    @inbounds X .= X .- X_temp
 
     nothing
 end
@@ -200,9 +201,9 @@ PAP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlo
 XBP!(BlockGram, XBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.XAP, :, 1:n), XBlocks.block, view(PBlocks.B_block, :, 1:n))
 XBR!(BlockGram, XBlocks, RBlocks, n) = Ac_mul_B!(view(BlockGram.XAR, :, 1:n), XBlocks.block, view(RBlocks.B_block, :, 1:n))
 RBP!(BlockGram, RBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.RAP, 1:n, 1:n), view(RBlocks.B_block, :, 1:n), view(PBlocks.block, :, 1:n))
-XBX!(BlockGram, XBlocks) = Ac_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.B_block)
-RBR!(BlockGram, RBlocks, n) = Ac_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.B_block, :, 1:n))
-PBP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.B_block, :, 1:n))
+#XBX!(BlockGram, XBlocks) = Ac_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.B_block)
+#RBR!(BlockGram, RBlocks, n) = Ac_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.B_block, :, 1:n))
+#PBP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.B_block, :, 1:n))
 
 function I!(G, xr)
     @inbounds for j in xr, i in xr
@@ -242,15 +243,15 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
     if n1 > 0
         if normalized
             I!(gram, xr)
-        else
-            @inbounds gram[xr, xr] .= view(g.XAX, 1:n1, 1:n1)
+        #else
+        #    @inbounds gram[xr, xr] .= view(g.XAX, 1:n1, 1:n1)
         end
     end
     if n2 > 0
         if normalized
             I!(gram, rr)
-        else
-            @inbounds gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
+        #else
+        #    @inbounds gram[rr, rr] .= view(g.RAR, 1:n2, 1:n2)
         end
         @inbounds gram[xr, rr] .= view(g.XAR, 1:n1, 1:n2)
         @inbounds conj!(transpose!(view(gram, rr, xr), view(g.XAR, 1:n1, 1:n2)))
@@ -258,8 +259,8 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
     if n3 > 0
         if normalized
             I!(gram, pr)
-        else
-            @inbounds gram[pr, pr] .= view(g.PAP, 1:n3, 1:n3)
+        #else
+        #    @inbounds gram[pr, pr] .= view(g.PAP, 1:n3, 1:n3)
         end
         @inbounds gram[rr, pr] .= view(g.RAP, 1:n2, 1:n3)
         @inbounds gram[xr, pr] .= view(g.XAP, 1:n1, 1:n3)
@@ -463,10 +464,10 @@ function update_active!(mask, bs::Int, blockPairs...)
     return
 end
 
-function precond_constr!(block, bs, precond!, constr!)
+function precond_constr!(block, temp_block, bs, precond!, constr!)
     precond!(view(block, :, 1:bs))
     # Constrain the active residual vectors to be B-orthogonal to Y
-    constr!(view(block, :, 1:bs))
+    constr!(view(block, :, 1:bs), view(temp_block, :, 1:bs))
     return 
 end
 function block_grams_1x1!(iterator)
@@ -525,7 +526,6 @@ function sub_problem!(iterator, sizeX, bs1, bs2)
     selectperm!(view(iterator.λperm, 1:subdim), eigf.values, 1:subdim, rev=iterator.largest)
     @inbounds iterator.ritz_values[1:sizeX] .= view(eigf.values, view(iterator.λperm, 1:sizeX))
     @inbounds iterator.V[1:subdim, 1:sizeX] .= view(eigf.vectors, :, view(iterator.λperm, 1:sizeX))
-
     return
 end
 
@@ -594,7 +594,6 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
     sizeX = size(iterator.XBlocks.block, 2)
     iteration = iterator.iteration[]
     if iteration == 1
-        iterator.constr!(iterator.XBlocks.block)
         ortho_AB_mul_X!(iterator.XBlocks, iterator.ortho!, iterator.A, iterator.B)
         # Finds gram matrix X'AX
         block_grams_1x1!(iterator)
@@ -608,7 +607,7 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
         # Update active R blocks
         update_active!(iterator.activeMask, bs, (iterator.activeRBlocks.block, iterator.RBlocks.block))
         # Precondition and constrain the active residual vectors
-        precond_constr!(iterator.activeRBlocks.block, bs, iterator.precond!, iterator.constr!)
+        precond_constr!(iterator.activeRBlocks.block, iterator.tempXBlocks.block, bs, iterator.precond!, iterator.constr!)
         # Orthonormalizes R[:,1:bs] and finds AR[:,1:bs] and BR[:,1:bs]
         ortho_AB_mul_X!(iterator.activeRBlocks, iterator.ortho!, iterator.A, iterator.B, bs)
         # Find [X R] A [X R] and [X R]' B [X R]
@@ -628,7 +627,7 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
             (iterator.activePBlocks.A_block, iterator.PBlocks.A_block),
             (iterator.activePBlocks.B_block, iterator.PBlocks.B_block))
         # Precondition and constrain the active residual vectors
-        precond_constr!(iterator.activeRBlocks.block, bs, iterator.precond!, iterator.constr!)
+        precond_constr!(iterator.activeRBlocks.block, iterator.tempXBlocks.block, bs, iterator.precond!, iterator.constr!)
         # Orthonormalizes R[:,1:bs] and finds AR[:,1:bs] and BR[:,1:bs]
         ortho_AB_mul_X!(iterator.activeRBlocks, iterator.ortho!, iterator.A, iterator.B, bs)
         # Orthonormalizes P and updates AP
@@ -766,16 +765,18 @@ end
 function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, not_zeros=false)
     T = eltype(iterator.XBlocks.block)
     X = iterator.XBlocks.block
+    iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
     if !not_zeros
         for j in 1:size(X,2)
             if all(x -> x==0, view(X, :, j))
                 @inbounds X[:,j] .= rand.()
             end
         end
+        iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
     end
     n = size(X, 1)
     sizeX = size(X, 2)
-    residualTolerance = (tol isa Void) ? sqrt(eps(real(T))) : tol
+    residualTolerance = (tol isa Void) ? (eps(real(T)))^(real(T)(4)/10) : tol
     iterator.iteration[] = 1
     while iterator.iteration[] <= maxiter 
         state = iterator(residualTolerance, log)
