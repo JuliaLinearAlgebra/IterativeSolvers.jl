@@ -2,6 +2,8 @@ using IterativeSolvers
 using LinearMaps
 using Base.Test
 
+# Already defined in another file
+#=
 import Base.A_ldiv_B!
 
 include("laplace_matrix.jl")
@@ -11,6 +13,7 @@ struct JacobiPrec{TD}
 end
 
 A_ldiv_B!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
+=#
 
 function max_err(R)
     r = zeros(real(eltype(R)), size(R, 2))
