@@ -418,7 +418,7 @@ struct LOBPCGIterator{Generalized, T, TA, TB, TL<:AbstractVector{T}, TR<:Abstrac
 end
 
 """
-    LOBPCGIterator(A, X, largest::Bool, P=nothing, C=nothing) -> iterator
+    LOBPCGIterator(A, largest::Bool, X, P=nothing, C=nothing) -> iterator
 
 # Arguments
 
@@ -429,10 +429,10 @@ end
 - `C`: constraint to deflate the residual and solution vectors orthogonal
     to a subspace; must overload `A_mul_B!`.
 """
-LOBPCGIterator(A, X, largest::Bool, P=nothing, C=nothing) = LOBPCGIterator(A, nothing, X, largest, P, C)
+LOBPCGIterator(A, largest::Bool, X, P=nothing, C=nothing) = LOBPCGIterator(A, nothing, largest, X, P, C)
 
 """
-    LOBPCGIterator(A, B, X, largest::Bool, P=nothing, C=nothing) -> iterator
+    LOBPCGIterator(A, B, largest::Bool, X, P=nothing, C=nothing) -> iterator
 
 # Arguments
 
@@ -444,12 +444,12 @@ LOBPCGIterator(A, X, largest::Bool, P=nothing, C=nothing) = LOBPCGIterator(A, no
 - `C`: constraint to deflate the residual and solution vectors orthogonal
     to a subspace; must overload `A_mul_B!`;
 """
-function LOBPCGIterator(A, B, X, largest::Bool, P=nothing, C=nothing)
+function LOBPCGIterator(A, B, largest::Bool, X, P=nothing, C=nothing)
     constr! = Constraint(C, B, X, BWrapper())
     precond! = RPreconditioner(P, X)
-    return LOBPCGIterator(A, B, X, largest, constr!, precond!)
+    return LOBPCGIterator(A, B, largest, X, constr!, precond!)
 end
-function LOBPCGIterator(A, B, X, largest::Bool, constr!::Constraint, precond!::RPreconditioner)
+function LOBPCGIterator(A, B, largest::Bool, X, constr!::Constraint, precond!::RPreconditioner)
     T = eltype(X)
     nev = size(X, 2)
     if B isa Void
@@ -488,10 +488,10 @@ function LOBPCGIterator(A, B, X, largest::Bool, constr!::Constraint, precond!::R
 
     return LOBPCGIterator{generalized, T, typeof(A), typeof(B), typeof(λ), typeof(residuals), typeof(λperm), typeof(V), typeof(XBlocks), typeof(ortho!), typeof(precond!), typeof(constr!), typeof(gramABlock), typeof(activeMask), typeof(trace)}(A, B, ritz_values, λperm, λ, V, residuals, largest, XBlocks, tempXBlocks, PBlocks, activePBlocks, RBlocks, activeRBlocks, iteration, currentBlockSize, ortho!, precond!, constr!, gramABlock, gramBBlock, gramA, gramB, activeMask, trace)
 end
-function LOBPCGIterator(A, X, largest::Bool, nev::Int, P=nothing, C=nothing)
-    LOBPCGIterator(A, nothing, X, largest, nev, P, C)
+function LOBPCGIterator(A, largest::Bool, X, nev::Int, P=nothing, C=nothing)
+    LOBPCGIterator(A, nothing, largest, X, nev, P, C)
 end
-function LOBPCGIterator(A, B, X, largest::Bool, nev::Int, P=nothing, C=nothing)
+function LOBPCGIterator(A, B, largest::Bool, X, nev::Int, P=nothing, C=nothing)
     T = eltype(X)
     n = size(X, 1)
     sizeX = size(X, 2)
@@ -515,7 +515,7 @@ function LOBPCGIterator(A, B, X, largest::Bool, nev::Int, P=nothing, C=nothing)
     end
     constr! = Constraint(Y, BY, X, NotBWrapper())
     precond! = RPreconditioner(P, X)
-    return LOBPCGIterator(A, B, X, largest, constr!, precond!)
+    return LOBPCGIterator(A, B, largest, X, constr!, precond!)
 end
 
 function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
@@ -826,7 +826,7 @@ function lobpcg(A, B, largest, X0;
     sizeX = size(X, 2)
     sizeX > n && throw("X column dimension exceeds the row dimension")
 
-    iterator = LOBPCGIterator(A, B, X, largest, P, C)
+    iterator = LOBPCGIterator(A, B, largest, X, P, C)
     
     return lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
 end
@@ -886,6 +886,36 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
     return results
 end
 
+"""
+lobpcg(A, [B,] largest, X0, nev; kwargs...) -> results
+
+# Arguments
+
+- `A`: linear operator;
+- `B`: linear operator;
+- `largest`: `true` if largest eigenvalues are desired and false if smallest;
+- `X0`: block vectors such that the eigenvalues will be found size(X0, 2) at a time;
+    the columns are also used to initialize the first batch of Ritz vectors;
+- `nev`: number of eigenvalues desired.
+
+## Keywords
+
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+    states; if `false` only `results.trace` will be empty;
+
+- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
+
+- `C`: constraint to deflate the residual and solution vectors orthogonal
+    to a subspace; must overload `A_mul_B!`;
+
+- `maxiter`: maximum number of iterations; default is 200;
+
+- `tol::Number`: tolerance to which residual vector norms must be under.
+
+# Output
+
+- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
+"""
 function lobpcg(A, largest::Bool, X0, nev::Int; kwargs...)
     lobpcg(A, nothing, largest, X0, nev; kwargs...)
 end
@@ -899,7 +929,7 @@ function lobpcg(A, B, largest::Bool, X0, nev::Int;
 
     sizeX = min(nev, sizeX)
     X = X0[:, 1:sizeX]
-    iterator = LOBPCGIterator(A, B, X, largest, nev, C, P)
+    iterator = LOBPCGIterator(A, B, largest, X, nev, C, P)
 
     r = EmptyLOBPCGResults(X, nev, tol, maxiter)
     rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
