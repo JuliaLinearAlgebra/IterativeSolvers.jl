@@ -4,15 +4,13 @@ using Base.Test
 
 # Already defined in another file
 #=
-import Base.A_ldiv_B!
-
 include("laplace_matrix.jl")
 
 struct JacobiPrec{TD}
     diagonal::TD
 end
 
-A_ldiv_B!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
+Base.A_ldiv_B!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 =#
 
 function max_err(R)
@@ -211,7 +209,6 @@ end
                 end
             end
         end
-
         @testset "Constraint" begin
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
@@ -235,7 +232,7 @@ end
                         A = A' * A + I
                         B = rand(T, n, n)
                         B = B' * B + I
-                        tol = √eps(real(T))
+                        tol = eps(real(T))^0.4
                         r = lobpcg(A, B, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ1, X1 = r.λ, r.X
                         r = lobpcg(A, B, largest, 1; C=copy(r.X), tol=tol, maxiter=Inf, log=false)
@@ -285,6 +282,40 @@ end
                         r = lobpcg(A, B, largest, X; tol=10tol, log=true)
                         @test length(r.trace) == 1
                     end
+                end
+            end
+        end
+    end
+    @testset "nev = 3, block size = 2" begin
+        n = 10
+        @testset "Simple eigenvalue problem" begin
+            @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+                @testset "largest = $largest" for largest in (true, false)
+                    A = rand(T, n, n)
+                    A = A' * A + I
+                    tol = eps(real(T))^0.4
+                    X0 = rand(T, n, 2)
+                    r = lobpcg(A, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
+                    λ, X = r.λ, r.X
+                    @test max_err(A*X - X*diagm(λ)) ≤ tol
+                    @test all(isapprox.(Ac_mul_B(X, X), eye(3), atol=n*tol))
+                end
+            end
+        end
+        @testset "Generalized eigenvalue problem" begin
+            @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+                @testset "largest = $largest" for largest in (true, false)
+                    A = rand(T, n, n)
+                    A = A' * A + I
+                    B = rand(T, n, n)
+                    B = B' * B + I
+                    tol = eps(real(T))^0.4
+
+                    X0 = rand(T, n, 2)
+                    r = lobpcg(A, B, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
+                    λ, X = r.λ, r.X
+                    @test max_err(A*X - B*X*diagm(λ)) ≤ tol
+                    @test all(isapprox.(Ac_mul_B(X, B*X), eye(3), atol=n*tol))
                 end
             end
         end

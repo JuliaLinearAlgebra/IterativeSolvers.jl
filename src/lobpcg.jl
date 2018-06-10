@@ -50,15 +50,41 @@ function Base.show(io::IO, tr::LOBPCGTrace)
     return
 end
 
-struct LOBPCGResults{T, TL, TR, TX, TI, TTrace <: LOBPCGTrace}
+struct LOBPCGResults{TL, TX, T, TR, TI, TM, TB, TTrace <: Union{LOBPCGTrace, AbstractVector{<:LOBPCGTrace}}}
     λ::TL
     X::TX
-    iterations::Int
-    residual_norms::TR
     tolerance::T
-    converged::Bool
-    maxiter::TI
+    residual_norms::TR
+    iterations::TI
+    maxiter::TM
+    converged::TB
     trace::TTrace
+end
+function EmptyLOBPCGResults(X::TX, k::Integer, tolerance, maxiter) where {T, TX<:AbstractMatrix{T}}
+    blocksize = size(X,2)
+    λ = Vector{T}(k)
+    X = TX(size(X, 1), k)
+
+    iterations = zeros(Int, ceil(Int, k/blocksize))
+    residual_norms = copy(λ)
+    converged = falses(k)
+    trace = fill(LOBPCGTrace{Vector{real(T)},Vector{T}}(), k÷blocksize+1)
+
+    return LOBPCGResults(λ, X, tolerance, residual_norms, iterations, maxiter, converged, trace)
+end
+
+function Base.append!(r1::LOBPCGResults, r2::LOBPCGResults, n1, n2=length(r2.λ))
+    n = n1 + n2
+    r1.λ[n1+1:n] .= @view r2.λ[end-n2+1:end]
+    r1.residual_norms[n1+1:n] .= @view r2.residual_norms[end-n2+1:end]
+    r1.X[:, n1+1:n] .= @view r2.X[:, end-n2+1:end]
+
+    ind = n1 ÷ length(r2.λ) + 1
+    r1.iterations[ind] = r2.iterations
+    r1.converged[n1+1:n] .= r2.converged
+    r1.trace[ind] = r2.trace
+
+    return r1
 end
 function Base.show(io::IO, r::LOBPCGResults)
     first_two(fr) = [x for (i, x) in enumerate(fr)][1:2]
@@ -79,7 +105,7 @@ function Base.show(io::IO, r::LOBPCGResults)
     end
     @printf io " * Convergence\n"
     @printf io "   * Iterations: %s\n" r.iterations
-    @printf io "   * Converged: %s\n" r.converged
+    @printf io "   * Converged: %s\n" all(r.converged)
     @printf io "   * Iterations limit: %s\n" r.maxiter
 
     return
@@ -112,17 +138,24 @@ function B_mul_X!(b::Blocks{false}, B, n = 0)
     return
 end
 
-struct Constraint{T, TVorM<:Union{AbstractVector{T}, AbstractMatrix{T}}, TM<:AbstractMatrix{T}, TC}
+mutable struct Constraint{T, TVorM<:Union{AbstractVector{T}, AbstractMatrix{T}}, TM<:AbstractMatrix{T}, TC}
     Y::TVorM
     BY::TVorM
     gram_chol::TC
     gramYBV::TM # to be used in view
     tmp::TM # to be used in view
 end
-function Constraint(::Void, B, X)
+struct BWrapper end
+struct NotBWrapper end
+
+Constraint(::Void, B, X) = Constraint(nothing, B, X, BWrapper())
+Constraint(::Void, B, X, ::NotBWrapper) = Constraint(nothing, B, X, BWrapper())
+function Constraint(::Void, B, X, ::BWrapper)
     return Constraint{Void, Matrix{Void}, Matrix{Void}, Void}(Matrix{Void}(0,0), Matrix{Void}(0,0), nothing, Matrix{Void}(0,0), Matrix{Void}(0,0))
 end
-function Constraint(Y, B, X)
+
+Constraint(Y, B, X) = Constraint(Y, B, X, BWrapper())
+function Constraint(Y, B, X, ::BWrapper)
     T = eltype(X)
     if B isa Void
         BY = Y
@@ -130,13 +163,43 @@ function Constraint(Y, B, X)
         BY = similar(Y)
         A_mul_B!(BY, B, Y)
     end
-    gramYBY = Ac_mul_B(Y, BY)
+    return Constraint(Y, BY, X, NotBWrapper())
+end
+function Constraint(Y, BY, X, ::NotBWrapper)
+    T = eltype(X)
+    if Y isa SubArray
+        gramYBY = @view eye(T, size(Y.parent, 2))[1:size(Y, 2), 1:size(Y, 2)]
+        Ac_mul_B!(gramYBY, Y, BY)
+        gramYBV = @view zeros(T, size(Y.parent, 2), size(X, 2))[1:size(Y, 2), :]
+    else
+        gramYBY = Ac_mul_B(Y, BY)
+        gramYBV = zeros(T, size(Y, 2), size(X, 2))
+    end
     realdiag!(gramYBY)
     gramYBY_chol = cholfact!(Hermitian(gramYBY))
-    gramYBV = zeros(T, size(Y, 2), size(X, 2))
-    tmp = similar(gramYBV)
+    tmp = deepcopy(gramYBV)
 
     return Constraint{eltype(Y), typeof(Y), typeof(gramYBV), typeof(gramYBY_chol)}(Y, BY, gramYBY_chol, gramYBV, tmp)
+end
+
+function update!(c::Constraint, X, BX)
+    sizeY = size(c.Y, 2)
+    sizeX = size(X, 2)
+    c.Y.parent[:, sizeY+1:sizeY+sizeX] .= X
+    if X !== BX
+        c.BY.parent[:, sizeY+1:sizeY+sizeX] .= BX
+    end
+    sizeY += sizeX
+    Y = @view c.Y.parent[:, 1:sizeY]
+    BY = @view c.BY.parent[:, 1:sizeY]
+    c.Y = Y
+    c.BY = BY
+    gram_chol = c.gram_chol
+    new_factors = @view gram_chol.factors.parent[1:sizeY, 1:sizeY]
+    c.gram_chol = typeof(gram_chol)(new_factors, gram_chol.uplo)
+    c.gramYBV = @view c.gramYBV.parent[1:sizeY, :]
+    c.tmp = @view c.tmp.parent[1:sizeY, :]
+    return c
 end
 
 function (constr!::Constraint{Void})(X, X_temp)
@@ -144,15 +207,16 @@ function (constr!::Constraint{Void})(X, X_temp)
 end
 
 function (constr!::Constraint)(X, X_temp)
-    sizeX = size(X, 2)
-    sizeY = size(constr!.Y, 2)
-    gramYBV_view = view(constr!.gramYBV, 1:sizeY, 1:sizeX)
-    Ac_mul_B!(gramYBV_view, constr!.BY, X)
-    tmp_view = view(constr!.tmp, 1:sizeY, 1:sizeX)
-    A_ldiv_B!(tmp_view, constr!.gram_chol, gramYBV_view)
-    A_mul_B!(X_temp, constr!.Y, tmp_view)
-    @inbounds X .= X .- X_temp
-
+    if size(constr!.Y, 2) > 0
+        sizeX = size(X, 2)
+        sizeY = size(constr!.Y, 2)
+        gramYBV_view = view(constr!.gramYBV, 1:sizeY, 1:sizeX)
+        Ac_mul_B!(gramYBV_view, constr!.BY, X)
+        tmp_view = view(constr!.tmp, 1:sizeY, 1:sizeX)
+        A_ldiv_B!(tmp_view, constr!.gram_chol, gramYBV_view)
+        A_mul_B!(X_temp, constr!.Y, tmp_view)
+        @inbounds X .= X .- X_temp
+    end
     nothing
 end
 
@@ -170,7 +234,7 @@ function (precond!::RPreconditioner)(X)
     bs = size(X, 2)
     A_ldiv_B!(view(precond!.buffer, :, 1:bs), precond!.M, X)
     # Just returning buffer would be cheaper but struct at call site must be mutable
-    @inbounds X .= view(precond!.buffer, :, 1:bs)
+    @inbounds X .= @view precond!.buffer[:, 1:bs]
     nothing
 end
 
@@ -379,13 +443,14 @@ LOBPCGIterator(A, X, largest::Bool, P=nothing, C=nothing) = LOBPCGIterator(A, no
 - `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
 - `C`: constraint to deflate the residual and solution vectors orthogonal
     to a subspace; must overload `A_mul_B!`;
-
 """
 function LOBPCGIterator(A, B, X, largest::Bool, P=nothing, C=nothing)
-    T = eltype(X)
-    constr! = Constraint(C, B, X)
+    constr! = Constraint(C, B, X, BWrapper())
     precond! = RPreconditioner(P, X)
-
+    return LOBPCGIterator(A, B, X, largest, constr!, precond!)
+end
+function LOBPCGIterator(A, B, X, largest::Bool, constr!::Constraint, precond!::RPreconditioner)
+    T = eltype(X)
     nev = size(X, 2)
     if B isa Void
         XBlocks = Blocks(X, similar(X))
@@ -422,6 +487,35 @@ function LOBPCGIterator(A, B, X, largest::Bool, P=nothing, C=nothing)
     trace = LOBPCGTrace{Vector{real(T)},Vector{T}}()
 
     return LOBPCGIterator{generalized, T, typeof(A), typeof(B), typeof(λ), typeof(residuals), typeof(λperm), typeof(V), typeof(XBlocks), typeof(ortho!), typeof(precond!), typeof(constr!), typeof(gramABlock), typeof(activeMask), typeof(trace)}(A, B, ritz_values, λperm, λ, V, residuals, largest, XBlocks, tempXBlocks, PBlocks, activePBlocks, RBlocks, activeRBlocks, iteration, currentBlockSize, ortho!, precond!, constr!, gramABlock, gramBBlock, gramA, gramB, activeMask, trace)
+end
+function LOBPCGIterator(A, X, largest::Bool, nev::Int, P=nothing, C=nothing)
+    LOBPCGIterator(A, nothing, X, largest, nev, P, C)
+end
+function LOBPCGIterator(A, B, X, largest::Bool, nev::Int, P=nothing, C=nothing)
+    T = eltype(X)
+    n = size(X, 1)
+    sizeX = size(X, 2)
+    if C isa Void
+        sizeC = 0
+        new_C = typeof(X)(n, (nev÷sizeX)*sizeX)
+    else
+        sizeC = size(C,2)
+        new_C = typeof(C)(n, sizeC+(nev÷sizeX)*sizeX)
+        new_C[:,1:sizeC] .= C
+    end
+    if B isa Void
+        new_BC = new_C
+    else
+        new_BC = similar(new_C)
+    end
+    Y = @view new_C[:, 1:sizeC]
+    BY = @view new_BC[:, 1:sizeC]
+    if !(B isa Void)
+        A_mul_B!(BY, B, Y)
+    end
+    constr! = Constraint(Y, BY, X, NotBWrapper())
+    precond! = RPreconditioner(P, X)
+    return LOBPCGIterator(A, B, X, largest, constr!, precond!)
 end
 
 function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
@@ -683,10 +777,10 @@ Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisf
 
 - `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
 """
-function lobpcg(A, largest::Bool, nev::Int=1; kwargs...)
+function lobpcg(A, largest::Bool, nev::Int; kwargs...)
     lobpcg(A, nothing, largest, nev; kwargs...)
 end
-function lobpcg(A, B, largest::Bool, nev::Int=1; kwargs...)
+function lobpcg(A, B, largest::Bool, nev::Int; kwargs...)
     lobpcg(A, B, largest, rand(eltype(A), size(A, 1), nev); not_zeros=true, kwargs...)
 end
 
@@ -720,13 +814,12 @@ end
 
 - `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
 """
-function lobpcg(A, largest::Bool, X0::Union{AbstractMatrix, AbstractVector}; kwargs...)
+function lobpcg(A, largest::Bool, X0; kwargs...)
     lobpcg(A, nothing, largest, X0; kwargs...)
 end
 function lobpcg(A, B, largest, X0;
                 not_zeros=false, log=false, P=nothing, 
                 C=nothing, tol=nothing, maxiter=200)
-
     X = copy(X0)
     T = eltype(X)
     n = size(X, 1)
@@ -776,7 +869,7 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
     end
     n = size(X, 1)
     sizeX = size(X, 2)
-    residualTolerance = (tol isa Void) ? (eps(real(T)))^(real(T)(4)/10) : tol
+    residualTolerance = (tol isa Void) ? (eps(real(T)))^(real(T)(4)/10) : real(tol)
     iterator.iteration[] = 1
     while iterator.iteration[] <= maxiter 
         state = iterator(residualTolerance, log)
@@ -788,7 +881,46 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
     end
     @inbounds iterator.λ .= view(iterator.ritz_values, 1:sizeX)
 
-    results = LOBPCGResults(iterator.λ, X, iterator.iteration[], iterator.residuals[1:sizeX], residualTolerance, all((x)->(norm(x)<=residualTolerance), view(iterator.residuals, 1:sizeX)), maxiter, iterator.trace)
+    results = LOBPCGResults(iterator.λ, X, residualTolerance, iterator.residuals, iterator.iteration[], maxiter, all((x)->(norm(x)<=residualTolerance), view(iterator.residuals, 1:sizeX)), iterator.trace)
 
     return results
+end
+
+function lobpcg(A, largest::Bool, X0, nev::Int; kwargs...)
+    lobpcg(A, nothing, largest, X0, nev; kwargs...)
+end
+function lobpcg(A, B, largest::Bool, X0, nev::Int;
+                not_zeros=false, log=false, P=nothing, 
+                C=nothing, tol=nothing, maxiter=200)
+    T = eltype(X0)
+    n = size(X0, 1)
+    sizeX = size(X0, 2)
+    nev > n && throw("Number of eigenvectors desired exceeds the row dimension.")
+
+    sizeX = min(nev, sizeX)
+    X = X0[:, 1:sizeX]
+    iterator = LOBPCGIterator(A, B, X, largest, nev, C, P)
+
+    r = EmptyLOBPCGResults(X, nev, tol, maxiter)
+    rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
+    append!(r, rnext, 0)
+    converged_x = sizeX
+    while converged_x < nev
+        if nev-converged_x < sizeX
+            cutoff = sizeX-(nev-converged_x)
+            update!(iterator.constr!, view(iterator.XBlocks.block, :, 1:cutoff), view(iterator.XBlocks.B_block, :, 1:cutoff))
+            X[:, 1:sizeX-cutoff] .= @view X[:, cutoff+1:sizeX]
+            rand!(view(X, :, cutoff+1:sizeX))
+            rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
+            append!(r, rnext, converged_x, sizeX-cutoff)
+            converged_x += sizeX-cutoff
+        else
+            update!(iterator.constr!, iterator.XBlocks.block, iterator.XBlocks.B_block)
+            rand!(X)
+            rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
+            append!(r, rnext, converged_x)
+            converged_x += sizeX
+        end
+    end
+    return r
 end
