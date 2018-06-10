@@ -286,7 +286,7 @@ end
             end
         end
     end
-    @testset "nev = 3, block size = 2" begin
+    @testset "nev = 3, block size = $block_size" for block_size in (1, 2)
         n = 10
         @testset "Simple eigenvalue problem" begin
             @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
@@ -294,7 +294,7 @@ end
                     A = rand(T, n, n)
                     A = A' * A + I
                     tol = eps(real(T))^0.4
-                    X0 = rand(T, n, 2)
+                    X0 = rand(T, n, block_size)
                     r = lobpcg(A, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
                     @test max_err(A*X - X*diagm(λ)) ≤ tol
@@ -311,7 +311,7 @@ end
                     B = B' * B + I
                     tol = eps(real(T))^0.4
 
-                    X0 = rand(T, n, 2)
+                    X0 = rand(T, n, block_size)
                     r = lobpcg(A, B, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
                     @test max_err(A*X - B*X*diagm(λ)) ≤ tol
@@ -319,5 +319,45 @@ end
                 end
             end
         end
+        @testset "Constraint" begin
+            @testset "Simple eigenvalue problem" begin
+                @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+                    @testset "largest = $largest" for largest in (true, false)
+                        A = rand(T, n, n)
+                        A = A' * A + I
+                        tol = √eps(real(T))
+                        r = lobpcg(A, largest, 1; tol=tol, maxiter=Inf, log=false)
+                        λ1, X1 = r.λ, r.X
+
+                        X0 = rand(T, n, block_size)
+                        r = lobpcg(A, largest, X0, 3, C=copy(r.X), tol=tol, maxiter=Inf, log=true)
+                        λ2, X2 = r.λ, r.X
+                        @test max_err(A*X2 - X2*diagm(λ2)) ≤ tol
+                        @test all(isapprox.(Ac_mul_B(X2, X2), eye(3), atol=2*n*tol))
+                        @test all(isapprox.(real(Ac_mul_B(X1, X2)), 0, atol=2*n*tol))
+                    end
+                end
+            end
+            @testset "Generalized eigenvalue problem" begin
+                @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+                    @testset "largest = $largest" for largest in (true, false)
+                        A = rand(T, n, n)
+                        A = A' * A + 2I
+                        B = rand(T, n, n)
+                        B = B' * B + 2I
+                        tol = eps(real(T))^0.4
+                        r = lobpcg(A, B, largest, 1; tol=tol, maxiter=Inf, log=false)
+                        λ1, X1 = r.λ, r.X
+
+                        X0 = rand(T, n, block_size)
+                        r = lobpcg(A, B, largest, X0, 2, C=copy(r.X), tol=tol, maxiter=Inf, log=true)
+                        λ2, X2 = r.λ, r.X
+                        @test max_err(A*X2 - B*X2*diagm(λ2)) ≤ tol
+                        @test all(isapprox.(Ac_mul_B(X2, B*X2), eye(2), atol=2*n*tol))
+                        @test all(isapprox.(real(Ac_mul_B(X1, B*X2)), 0, atol=2*n*tol))
+                    end
+                end
+            end
+        end        
     end
 end

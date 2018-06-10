@@ -445,11 +445,11 @@ LOBPCGIterator(A, largest::Bool, X, P=nothing, C=nothing) = LOBPCGIterator(A, no
     to a subspace; must overload `A_mul_B!`;
 """
 function LOBPCGIterator(A, B, largest::Bool, X, P=nothing, C=nothing)
-    constr! = Constraint(C, B, X, BWrapper())
     precond! = RPreconditioner(P, X)
-    return LOBPCGIterator(A, B, largest, X, constr!, precond!)
+    constr! = Constraint(C, B, X)
+    return LOBPCGIterator(A, B, largest, X, precond!, constr!)
 end
-function LOBPCGIterator(A, B, largest::Bool, X, constr!::Constraint, precond!::RPreconditioner)
+function LOBPCGIterator(A, B, largest::Bool, X, precond!::RPreconditioner, constr!::Constraint)
     T = eltype(X)
     nev = size(X, 2)
     if B isa Void
@@ -515,7 +515,7 @@ function LOBPCGIterator(A, B, largest::Bool, X, nev::Int, P=nothing, C=nothing)
     end
     constr! = Constraint(Y, BY, X, NotBWrapper())
     precond! = RPreconditioner(P, X)
-    return LOBPCGIterator(A, B, largest, X, constr!, precond!)
+    return LOBPCGIterator(A, B, largest, X, precond!, constr!)
 end
 
 function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
@@ -929,7 +929,7 @@ function lobpcg(A, B, largest::Bool, X0, nev::Int;
 
     sizeX = min(nev, sizeX)
     X = X0[:, 1:sizeX]
-    iterator = LOBPCGIterator(A, B, largest, X, nev, C, P)
+    iterator = LOBPCGIterator(A, B, largest, X, nev, P, C)
 
     r = EmptyLOBPCGResults(X, nev, tol, maxiter)
     rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
