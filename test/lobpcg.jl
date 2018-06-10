@@ -152,7 +152,7 @@ end
                         A = A' * A + I
                         tol = √eps(real(T))
                         b = rand(T, n, 1)
-                        itr = LOBPCGIterator(A, b, largest)
+                        itr = LOBPCGIterator(A, largest, b)
 
                         r = lobpcg!(itr; tol=tol, maxiter=Inf, log=false)
                         λ, X = r.λ, r.X
@@ -169,7 +169,7 @@ end
                         B = B' * B + I
                         b = rand(T, n, 1)
                         tol = √eps(real(T))
-                        itr = LOBPCGIterator(A, B, b, largest)
+                        itr = LOBPCGIterator(A, B, largest, b)
 
                         r = lobpcg!(itr; tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
@@ -221,7 +221,7 @@ end
                         r = lobpcg(A, largest, 1; C=copy(r.X), tol=tol, maxiter=Inf, log=false)
                         λ2, X2 = r.λ, r.X
                         @test norm(A*X2 - X2*λ2) ≤ tol
-                        @test isapprox(real(Ac_mul_B(X1, X2)[1,1]), 0, atol=n*tol)
+                        @test isapprox(real(Ac_mul_B(X1, X2)[1,1]), 0, atol=2*n*tol)
                     end
                 end
             end
@@ -238,7 +238,7 @@ end
                         r = lobpcg(A, B, largest, 1; C=copy(r.X), tol=tol, maxiter=Inf, log=false)
                         λ2, X2 = r.λ, r.X
                         @test norm(A*X2 - B*X2*λ2) ≤ tol
-                        @test isapprox(real(Ac_mul_B(X1, B*X2)[1,1]), 0, atol=n*tol)
+                        @test isapprox(real(Ac_mul_B(X1, B*X2)[1,1]), 0, atol=2*n*tol)
                     end
                 end
             end
@@ -298,7 +298,7 @@ end
                     r = lobpcg(A, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
                     @test max_err(A*X - X*diagm(λ)) ≤ tol
-                    @test all(isapprox.(Ac_mul_B(X, X), eye(3), atol=n*tol))
+                    @test all(isapprox.(Ac_mul_B(X, X), eye(3), atol=2*n*tol))
                 end
             end
         end
@@ -315,7 +315,7 @@ end
                     r = lobpcg(A, B, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
                     @test max_err(A*X - B*X*diagm(λ)) ≤ tol
-                    @test all(isapprox.(Ac_mul_B(X, B*X), eye(3), atol=n*tol))
+                    @test all(isapprox.(Ac_mul_B(X, B*X), eye(3), atol=2*n*tol))
                 end
             end
         end
