@@ -24,6 +24,7 @@ include("idrs.jl")
 
 # Eigensolvers
 include("simple.jl")
+include("lobpcg.jl")
 
 # SVD solvers
 include("svdl.jl")
