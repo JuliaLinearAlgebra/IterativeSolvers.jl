@@ -1,6 +1,6 @@
 export lsmr, lsmr!
 
-using Base.LinAlg
+using LinearAlgebra
 
 """
     lsmr(A, b; kwrags...) -> x, [history]
@@ -15,9 +15,9 @@ lsmr(A, b; kwargs...) = lsmr!(zerox(A, b), A, b; kwargs...)
 Minimizes ``\\|Ax - b\\|^2 + \\|λx\\|^2`` in the Euclidean norm. If multiple solutions
 exists the minimum norm solution is returned.
 
-The method is based on the Golub-Kahan bidiagonalization process. It is 
-algebraically equivalent to applying MINRES to the normal equations 
-``(A^*A + λ^2I)x = A^*b``, but has better numerical properties, 
+The method is based on the Golub-Kahan bidiagonalization process. It is
+algebraically equivalent to applying MINRES to the normal equations
+``(A^*A + λ^2I)x = A^*b``, but has better numerical properties,
 especially if ``A`` is ill-conditioned.
 
 # Arguments
@@ -74,7 +74,7 @@ function lsmr!(x, A, b;
     T = Adivtype(A, b)
     m, n = size(A, 1), size(A, 2)
     btmp = similar(b, T)
-    copy!(btmp, b)
+    copyto!(btmp, b)
     v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
     lsmr_method!(history, x, A, btmp, v, h, hbar; maxiter=maxiter, kwargs...)
     log && shrink!(history)
@@ -126,7 +126,7 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     cbar = one(Tr)
     sbar = zero(Tr)
 
-    copy!(h, v)
+    copyto!(h, v)
     fill!(hbar, zero(Tr))
 
     # Initialize variables for estimation of ||r||.
@@ -281,7 +281,7 @@ end
 
 for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
     @eval begin
-        function Base.$name(α::Number, A::StridedVecOrMat, x::AbstractVector, β::Number, y::AbstractVector)
+        function LinearAlgebra.$name(α::Number, A::StridedVecOrMat, x::AbstractVector, β::Number, y::AbstractVector)
             BLAS.gemm!($symbol, 'N', convert(eltype(y), α), A, x, convert(eltype(y), β), y)
         end
     end

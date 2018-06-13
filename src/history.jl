@@ -23,7 +23,7 @@ Store general and in-depth information about an iterative method.
 `restart::T`: restart relevant information.
 
 * `T == Int`: iterations per restart.
-* `T == Void`: methods without restarts.
+* `T == Nothing`: methods without restarts.
 
 `isconverged::Bool`: convergence of the method.
 
@@ -78,7 +78,7 @@ const CompleteHistory = ConvergenceHistory{true}
 """
 History without resets.
 """
-const UnrestartedHistory{T} = ConvergenceHistory{T, Void}
+const UnrestartedHistory{T} = ConvergenceHistory{T, Nothing}
 
 """
 History with resets.
@@ -179,7 +179,7 @@ function _reserve!(typ::Type, ch::PartialHistory, key::Symbol, ::Int, size::Int)
     ch.data[key] = Vector{typ}(size)
 end
 function _reserve!(typ::Type, ch::CompleteHistory, key::Symbol, len::Int)
-    ch.data[key] = Vector{typ}(len)
+    ch.data[key] = Vector{typ}(undef, len)
 end
 function _reserve!(typ::Type, ch::CompleteHistory, key::Symbol, len::Int, size::Int)
     ch.data[key] = Matrix{typ}(len, size)
@@ -285,8 +285,8 @@ plotable(::Any) = false
             linecolor := sep
 
             left=1
-            maxy = round(maximum(draw),2)
-            miny = round(minimum(draw),2)
+            maxy = round(maximum(draw); digits=2)
+            miny = round(minimum(draw); digits=2)
             for restart in 2:nrests(ch)
                 @series begin
                     left+=ch.restart
@@ -313,8 +313,8 @@ end
         linecolor := sep
 
         left=1
-        maxy = round(maximum(draw),2)
-        miny = round(minimum(draw),2)
+        maxy = round(maximum(draw); digits=2)
+        miny = round(minimum(draw); digits=2)
         for restart in 2:nrests(ch)
             @series begin
                 left+=ch.restart

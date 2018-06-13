@@ -33,14 +33,14 @@ function next(p::PowerMethodIterable, iteration::Int)
     p.θ = dot(p.x, p.Ax)
 
     # (Previous) residual vector r = Ax - λx
-    copy!(p.r, p.Ax)
+    copyto!(p.r, p.Ax)
     BLAS.axpy!(-p.θ, p.x, p.r)
 
     # Normed residual
     p.residual = norm(p.r)
 
     # Normalize the next approximation
-    copy!(p.x, p.Ax)
+    copyto!(p.x, p.Ax)
     scale!(p.x, one(eltype(p.x)) / norm(p.x))
 
     p.residual, iteration + 1
@@ -109,9 +109,9 @@ By default finds the approximate eigenpair `(λ, x)` of `B` where `|λ|` is larg
 ```julia
 using LinearMaps
 σ = 1.0 + 1.3im
-A = rand(Complex128, 50, 50)
+A = rand(ComplexF64, 50, 50)
 F = lufact(A - σ * I)
-Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
+Fmap = LinearMap{ComplexF64}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
 λ, x = powm(Fmap, inverse = true, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """
@@ -161,9 +161,9 @@ The method calls `powm!(B, x0; inverse = true, shift = σ)` with
 ```julia
 using LinearMaps
 σ = 1.0 + 1.3im
-A = rand(Complex128, 50, 50)
+A = rand(ComplexF64, 50, 50)
 F = lufact(A - σ * I)
-Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
+Fmap = LinearMap{ComplexF64}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
 λ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """

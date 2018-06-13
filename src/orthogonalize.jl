@@ -11,7 +11,7 @@ struct ModifiedGramSchmidt <: OrthogonalizationMethod end
 
 function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, h::StridedVector{T}, ::Type{DGKS}) where {T}
     # Orthogonalize using BLAS-2 ops
-    Ac_mul_B!(h, V, w)
+    mul!(h, adjoint(V), w)
     BLAS.gemv!('N', -one(T), V, h, one(T), w)
     nrm = norm(w)
 
@@ -23,7 +23,7 @@ function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, 
     # Repeat as long as the DGKS condition is satisfied
     # Typically this condition is true only once.
     while nrm < η * projection_size
-        correction = Ac_mul_B(V, w)
+        correction = adjoint(V)*w
         projection_size = norm(correction)
         # w = w - V * correction
         BLAS.gemv!('N', -one(T), V, correction, one(T), w)
@@ -39,7 +39,7 @@ end
 
 function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, h::StridedVector{T}, ::Type{ClassicalGramSchmidt}) where {T}
     # Orthogonalize using BLAS-2 ops
-    Ac_mul_B!(h, V, w)
+    mul!(h, adjoint(V), w)
     BLAS.gemv!('N', -one(T), V, h, one(T), w)
     nrm = norm(w)
 

@@ -94,7 +94,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     Q = copy(Z)
     V = copy(Z)
 
-    M = eye(eltype(C),s,s)
+    M = Matrix{eltype(C)}(I,s,s)
     f = zeros(eltype(C),s)
     c = zeros(eltype(C),s)
 
@@ -169,7 +169,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
 
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
         # Note: r is already perpendicular to P so v = r
-        copy!(V, R)
+        copyto!(V, R)
         A_mul_B!(Q, A, V)
         om = omega(Q, R)
         R .-= om .* Q
@@ -191,7 +191,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
         push!(log, :resnorm, normR)
     end
     if smoothing
-        copy!(X, X_s)
+        copyto!(X, X_s)
     end
     verbose && @printf("\n")
     setconv(log, 0<=normR<tol)

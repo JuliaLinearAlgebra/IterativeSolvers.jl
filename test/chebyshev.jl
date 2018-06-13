@@ -1,5 +1,5 @@
 using IterativeSolvers
-using Base.Test
+using Test
 
 function randSPD(T, n)
     A = rand(T, n, n) + n * I
@@ -19,7 +19,7 @@ end
 n = 10
 srand(1234321)
 
-@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+@testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = randSPD(T, n)
     b = rand(T, n)
     tol = √(eps(real(T)))

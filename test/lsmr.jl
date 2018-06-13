@@ -1,8 +1,8 @@
 using IterativeSolvers
-using Base.Test
+using Test
 
-import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, scale!, copy!, fill!, length, broadcast!
-import Base.LinAlg: norm
+import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, copyto!, fill!, length, broadcast!
+import LinearAlgebra: norm, scale!
 
 # Type used in Dampenedtest
 # solve (A'A + diag(v).^2 ) x = b
@@ -21,9 +21,9 @@ function Base.Broadcast.broadcast!(f::Tf, to::DampenedVector, from::DampenedVect
     to
 end
 
-function copy!(a::DampenedVector{Ty, Tx}, b::DampenedVector{Ty, Tx}) where {Ty, Tx}
-    copy!(a.y, b.y)
-    copy!(a.x, b.x)
+function copyto!(a::DampenedVector{Ty, Tx}, b::DampenedVector{Ty, Tx}) where {Ty, Tx}
+    copyto!(a.y, b.y)
+    copyto!(a.x, b.x)
     a
 end
 
@@ -36,8 +36,8 @@ end
 scale!(α::Number, a::DampenedVector) = scale!(a, α)
 
 function scale!(a::DampenedVector, α::Number)
-    scale!(a.y, α)
-    scale!(a.x, α)
+    rmul!(a.y, α)
+    rmul!(a.x, α)
     a
 end
 
@@ -84,7 +84,7 @@ function Ac_mul_B!(α::Number, mw::DampenedMatrix{TA, Tx}, a::DampenedVector{Ty,
         if β == 0.
             fill!(b, 0.)
         else
-            scale!(b, β)
+            rmul!(b, β)
         end
     end
     Ac_mul_B!(α, mw.A, a.y, 1.0, b)
@@ -142,6 +142,6 @@ end
         Adampened = DampenedMatrix(A, v)
         bdampened = DampenedVector(b, zeros(n))
         x, ch = lsmr(Adampened, bdampened, log=true)
-        @test norm((A'A + diagm(v) .^ 2)x - A'b) ≤ 1e-3
+        @test norm((A'A + Matrix(Diagonal(v)) .^ 2)x - A'b) ≤ 1e-3
     end
 end

@@ -3,7 +3,7 @@ function laplace_matrix(::Type{T}, n, dims) where T
     A = copy(D);
 
     for idx = 2 : dims
-        A = kron(A, speye(n)) + kron(speye(size(A, 1)), D);
+        A = kron(A, sparse(I, n, n)) + kron(sparse(I, size(A, 1), size(A, 1)), D);
     end
 
     A
