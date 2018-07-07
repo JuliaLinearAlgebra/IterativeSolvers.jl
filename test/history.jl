@@ -1,10 +1,10 @@
 using IterativeSolvers
 using RecipesBase
-using Base.Test
+using Test
 
 @testset "ConvergenceHistory" begin
 
-    const KW = Dict{Symbol, Any}
+    KW = Dict{Symbol, Any}
 
     RecipesBase.is_key_supported(k::Symbol) = k == :sep ? false : true
 
@@ -28,7 +28,7 @@ using Base.Test
         history = ConvergenceHistory(partial = false)
         history.iters = 3
         history.data[:resnorm] = [10.0, 3.0, 0.1]
-        
+
         plots = (
             RecipesBase.apply_recipe(KW(), history),
             RecipesBase.apply_recipe(KW(), history, :resnorm)
@@ -54,7 +54,7 @@ using Base.Test
 
         for data in plots
             @test length(data) == 2
-            @test data[2].d[:linecolor] == :white    
+            @test data[2].d[:linecolor] == :white
         end
     end
 

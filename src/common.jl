@@ -1,4 +1,4 @@
-import Base: A_ldiv_B!, \
+import LinearAlgebra: ldiv!, \
 
 export Identity
 
@@ -22,5 +22,5 @@ No-op preconditioner
 struct Identity end
 
 \(::Identity, x) = copy(x)
-A_ldiv_B!(::Identity, x) = x
-A_ldiv_B!(y, ::Identity, x) = copy!(y, x)
+ldiv!(::Identity, x) = x
+ldiv!(y, ::Identity, x) = copyto!(y, x)

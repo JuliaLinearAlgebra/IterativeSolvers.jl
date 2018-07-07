@@ -1,5 +1,7 @@
+using LinearAlgebra
 using IterativeSolvers
-using Base.Test
+using Test
+using Random
 
 srand(1234321)
 
@@ -14,12 +16,12 @@ end
 @testset "Identity preconditioner" begin
     P = Identity()
     x = rand(10)
-    y = zeros(x)
+    y = zero(x)
 
     # Should be a no-op
     @test P \ x == x
-    @test A_ldiv_B!(P, copy(x)) == x
-    @test A_ldiv_B!(y, P, copy(x)) == x
+    @test ldiv!(P, copy(x)) == x
+    @test ldiv!(y, P, copy(x)) == x
 end
 
 end

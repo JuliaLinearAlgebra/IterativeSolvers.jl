@@ -1,7 +1,8 @@
 using IterativeSolvers
-using Base.Test
+using Test
 using LinearMaps
-
+using LinearAlgebra
+using Random
 
 #GMRES
 @testset "GMRES" begin
@@ -9,10 +10,10 @@ using LinearMaps
 srand(1234321)
 n = 10
 
-@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+@testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = rand(T, n, n)
     b = rand(T, n)
-    F = lufact(A)
+    F = lu(A)
     tol = √eps(real(T))
 
     # Test optimality condition: residual should be non-increasing
@@ -31,10 +32,10 @@ n = 10
     @test norm(A * x - b) / norm(b) ≤ tol
 end
 
-@testset "SparseMatrixCSC{$T}" for T in (Float64, Complex128)
+@testset "SparseMatrixCSC{$T}" for T in (Float64, ComplexF64)
     A = sprand(T, n, n, 0.5) + I
     b = rand(T, n)
-    F = lufact(A)
+    F = lu(A)
     tol = √eps(real(T))
 
     # Test optimality condition: residual should be non-increasing

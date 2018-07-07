@@ -1,5 +1,7 @@
 using IterativeSolvers
-using Base.Test
+using Test
+using Random
+using LinearAlgebra
 
 function randSPD(T, n)
     A = rand(T, n, n) + n * I
@@ -19,11 +21,11 @@ end
 n = 10
 srand(1234321)
 
-@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+@testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = randSPD(T, n)
     b = rand(T, n)
     tol = √(eps(real(T)))
-    
+
     # Without a preconditioner
     begin
         λ_min, λ_max = approx_eigenvalue_bounds(A)
@@ -48,7 +50,7 @@ srand(1234321)
     # With a preconditioner
     begin
         B = randSPD(T, n)
-        B_fact = cholfact!(B)
+        B_fact = cholesky!(B, Val(false))
         λ_min, λ_max = approx_eigenvalue_bounds(B_fact \ A)
         x, history = chebyshev(A, b, λ_min, λ_max, Pl = B_fact, tol=tol, maxiter=10n, log=true)
         @test history.isconverged

@@ -1,8 +1,10 @@
 using IterativeSolvers
 using LinearMaps
-using Base.Test
+using Test
+using LinearAlgebra
+using SparseArrays
 
-import Base.A_ldiv_B!
+import LinearAlgebra.ldiv!
 
 include("laplace_matrix.jl")
 
@@ -10,8 +12,7 @@ struct JacobiPrec
     diagonal
 end
 
-
-A_ldiv_B!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
+ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 
 @testset "Conjugate Gradients" begin
 
@@ -20,7 +21,7 @@ srand(1234321)
 @testset "Small full system" begin
     n = 10
 
-    @testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+    @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
         A = rand(T, n, n)
         A = A' * A + I
         b = rand(T, n)
@@ -37,7 +38,7 @@ srand(1234321)
         @test nprods(ch) ≤ 2
 
         # Test with cholfact should converge immediately
-        F = cholfact(A)
+        F = cholesky(A, Val(false))
         x,ch = cg(A, b; Pl=F, log=true)
         @test niters(ch) ≤ 2
         @test nprods(ch) ≤ 2
@@ -53,7 +54,7 @@ end
     P = JacobiPrec(diag(A))
 
     rhs = randn(size(A, 2))
-    scale!(rhs, inv(norm(rhs)))
+    rmul!(rhs, inv(norm(rhs)))
     tol = 1e-5
 
     @testset "Matrix" begin
