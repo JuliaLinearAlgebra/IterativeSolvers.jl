@@ -107,7 +107,8 @@ suitably padded by zeros.
 """
 function sol_matrix(m, n)
     mn = min(m, n)
-    spdiagm((1.0 : mn - 1, 1.0 : mn), (-1, 0), m, n)
+    I, J, V = SparseArrays.spdiagm_internal(-1 => 1.0 : mn - 1, 0 => 1.0 : mn)
+    sparse(I, J, V, m, n)
 end
 
 @testset "LSMR" begin
