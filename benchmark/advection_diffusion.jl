@@ -19,7 +19,7 @@ function advection_dominated(;N = 50, β = 1000.0)
     Δ = laplace_matrix(Float64, N, 3) ./ -h^2
 
     # And the dx bit.
-    ∂x_1d = spdiagm((fill(-β / 2h, N - 1), fill(β / 2h, N - 1)), (-1, 1))
+    ∂x_1d = spdiagm(-1 => fill(-β / 2h, N - 1), 1 => fill(β / 2h, N - 1))
     ∂x = kron(speye(N^2), ∂x_1d)
 
     # Final matrix and rhs.
@@ -41,6 +41,6 @@ function laplace_matrix(::Type{T}, n, dims) where T
 end
 
 second_order_central_diff(::Type{T}, dim) where {T} = convert(
-    SparseMatrixCSC{T, Int}, 
+    SparseMatrixCSC{T, Int},
     SymTridiagonal(fill(2 * one(T), dim), fill(-one(T), dim - 1))
 )
