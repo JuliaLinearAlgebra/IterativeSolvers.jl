@@ -1,5 +1,5 @@
 import Base: start, next, done
-
+using Printf
 export cg, cg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
 mutable struct CGIterable{matT, solT, vecT, numT <: Real}
@@ -46,7 +46,7 @@ function next(it::CGIterable, iteration::Int)
     it.u .= it.r .+ β .* it.u
 
     # c = A * u
-    A_mul_B!(it.c, it.A, it.u)
+    mul!(it.c, it.A, it.u)
     α = it.residual^2 / dot(it.u, it.c)
 
     # Improve solution and residual
@@ -65,17 +65,17 @@ end
 #####################
 
 function next(it::PCGIterable, iteration::Int)
-    A_ldiv_B!(it.c, it.Pl, it.r)
+    ldiv!(it.c, it.Pl, it.r)
 
     ρ_prev = it.ρ
     it.ρ = dot(it.c, it.r)
-    
+
     # u := c + βu (almost an axpy)
     β = it.ρ / ρ_prev
     it.u .= it.c .+ β .* it.u
 
     # c = A * u
-    A_mul_B!(it.c, it.A, it.u)
+    mul!(it.c, it.A, it.u)
     α = it.ρ / dot(it.u, it.c)
 
     # Improve solution and residual
@@ -109,14 +109,14 @@ end
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
-    statevars::CGStateVariables = CGStateVariables{eltype(x),typeof(x)}(zeros(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables{eltype(x),typeof(x)}(zero(x), similar(x), similar(x)),
     initially_zero::Bool = false
 )
     u = statevars.u
     r = statevars.r
     c = statevars.c
     u .= zero(eltype(x))
-    copy!(r, b)
+    copyto!(r, b)
 
     # Compute r with an MV-product or not.
     if initially_zero
@@ -126,7 +126,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
         reltol = residual * tol # Save one dot product
     else
         mv_products = 1
-        A_mul_B!(c, A, x)
+        mul!(c, A, x)
         r .-= c
         residual = norm(r)
         reltol = norm(b) * tol
@@ -165,10 +165,10 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 ## Keywords
 
 - `statevars::CGStateVariables`: Has 3 arrays similar to `x` to hold intermediate results;
-- `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one 
-  matrix-vector product can be saved when computing the initial 
+- `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one
+  matrix-vector product can be saved when computing the initial
   residual vector;
-- `Pl = Identity()`: left preconditioner of the method. Should be symmetric, 
+- `Pl = Identity()`: left preconditioner of the method. Should be symmetric,
   positive-definite like `A`;
 - `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`;
 - `maxiter::Int = size(A,2)`: maximum number of iterations;
@@ -195,7 +195,7 @@ function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
-    statevars::CGStateVariables = CGStateVariables{eltype(x), typeof(x)}(zeros(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables{eltype(x), typeof(x)}(zero(x), similar(x), similar(x)),
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...

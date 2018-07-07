@@ -1,5 +1,5 @@
 #=
-The code below was derived from the scipy implementation of the LOBPCG algorithm in https://github.com/scipy/scipy/blob/v1.1.0/scipy/sparse/linalg/eigen/lobpcg/lobpcg.py#L109-L568. 
+The code below was derived from the scipy implementation of the LOBPCG algorithm in https://github.com/scipy/scipy/blob/v1.1.0/scipy/sparse/linalg/eigen/lobpcg/lobpcg.py#L109-L568.
 
 Since the link above mentions the license is BSD license, the notice for the BSD license 2.0 is hereby given below giving credit to the authors of the Python implementation.
 
@@ -29,6 +29,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 =#
 
 export lobpcg, lobpcg!, LOBPCGIterator
+
+using LinearAlgebra
+using Random
 
 struct LOBPCGState{TR,TL}
     iteration::Int
@@ -62,8 +65,8 @@ struct LOBPCGResults{TL, TX, T, TR, TI, TM, TB, TTrace <: Union{LOBPCGTrace, Abs
 end
 function EmptyLOBPCGResults(X::TX, k::Integer, tolerance, maxiter) where {T, TX<:AbstractMatrix{T}}
     blocksize = size(X,2)
-    λ = Vector{T}(k)
-    X = TX(size(X, 1), k)
+    λ = Vector{T}(undef, k)
+    X = TX(undef, size(X, 1), k)
 
     iterations = zeros(Int, ceil(Int, k/blocksize))
     residual_norms = copy(λ)
@@ -119,19 +122,19 @@ end
 Blocks(X, AX) = Blocks{false, eltype(X), typeof(X)}(X, AX, X)
 Blocks(X, AX, BX) = Blocks{true, eltype(X), typeof(X)}(X, AX, BX)
 function A_mul_X!(b::Blocks, A)
-    A_mul_B!(b.A_block, A, b.block)
+    mul!(b.A_block, A, b.block)
     return
 end
 function A_mul_X!(b::Blocks, A, n)
-    A_mul_B!(view(b.A_block, :, 1:n), A, view(b.block, :, 1:n))
+    mul!(view(b.A_block, :, 1:n), A, view(b.block, :, 1:n))
     return
 end
 function B_mul_X!(b::Blocks{true}, B)
-    A_mul_B!(b.B_block, B, b.block)
+    mul!(b.B_block, B, b.block)
     return
 end
 function B_mul_X!(b::Blocks{true}, B, n)
-    A_mul_B!(view(b.B_block, :, 1:n), B, view(b.block, :, 1:n))
+    mul!(view(b.B_block, :, 1:n), B, view(b.block, :, 1:n))
     return
 end
 function B_mul_X!(b::Blocks{false}, B, n = 0)
@@ -148,35 +151,35 @@ end
 struct BWrapper end
 struct NotBWrapper end
 
-Constraint(::Void, B, X) = Constraint(nothing, B, X, BWrapper())
-Constraint(::Void, B, X, ::NotBWrapper) = Constraint(nothing, B, X, BWrapper())
-function Constraint(::Void, B, X, ::BWrapper)
-    return Constraint{Void, Matrix{Void}, Matrix{Void}, Void}(Matrix{Void}(0,0), Matrix{Void}(0,0), nothing, Matrix{Void}(0,0), Matrix{Void}(0,0))
+Constraint(::Nothing, B, X) = Constraint(nothing, B, X, BWrapper())
+Constraint(::Nothing, B, X, ::NotBWrapper) = Constraint(nothing, B, X, BWrapper())
+function Constraint(::Nothing, B, X, ::BWrapper)
+    return Constraint{Nothing, Matrix{Nothing}, Matrix{Nothing}, Nothing}(Matrix{Nothing}(undef,0,0), Matrix{Nothing}(undef,0,0), nothing, Matrix{Nothing}(undef,0,0), Matrix{Nothing}(undef,0,0))
 end
 
 Constraint(Y, B, X) = Constraint(Y, B, X, BWrapper())
 function Constraint(Y, B, X, ::BWrapper)
     T = eltype(X)
-    if B isa Void
+    if B isa Nothing
         BY = Y
     else
         BY = similar(Y)
-        A_mul_B!(BY, B, Y)
+        mul!(BY, B, Y)
     end
     return Constraint(Y, BY, X, NotBWrapper())
 end
 function Constraint(Y, BY, X, ::NotBWrapper)
     T = eltype(X)
     if Y isa SubArray
-        gramYBY = @view eye(T, size(Y.parent, 2))[1:size(Y, 2), 1:size(Y, 2)]
-        Ac_mul_B!(gramYBY, Y, BY)
+        gramYBY = @view Matrix{T}(I, size(Y.parent, 2), size(Y.parent, 2))[1:size(Y, 2), 1:size(Y, 2)]
+        mul!(gramYBY, adjoint(Y), BY)
         gramYBV = @view zeros(T, size(Y.parent, 2), size(X, 2))[1:size(Y, 2), :]
     else
-        gramYBY = Ac_mul_B(Y, BY)
+        gramYBY = adjoint(Y)*BY
         gramYBV = zeros(T, size(Y, 2), size(X, 2))
     end
     realdiag!(gramYBY)
-    gramYBY_chol = cholfact!(Hermitian(gramYBY))
+    gramYBY_chol = cholesky!(Hermitian(gramYBY))
     tmp = deepcopy(gramYBV)
 
     return Constraint{eltype(Y), typeof(Y), typeof(gramYBV), typeof(gramYBY_chol)}(Y, BY, gramYBY_chol, gramYBV, tmp)
@@ -196,13 +199,13 @@ function update!(c::Constraint, X, BX)
     c.BY = BY
     gram_chol = c.gram_chol
     new_factors = @view gram_chol.factors.parent[1:sizeY, 1:sizeY]
-    c.gram_chol = typeof(gram_chol)(new_factors, gram_chol.uplo)
+    c.gram_chol = typeof(gram_chol)(new_factors, gram_chol.uplo, convert(LinearAlgebra.BlasInt, 0))
     c.gramYBV = @view c.gramYBV.parent[1:sizeY, :]
     c.tmp = @view c.tmp.parent[1:sizeY, :]
     return c
 end
 
-function (constr!::Constraint{Void})(X, X_temp)
+function (constr!::Constraint{Nothing})(X, X_temp)
     nothing
 end
 
@@ -211,10 +214,10 @@ function (constr!::Constraint)(X, X_temp)
         sizeX = size(X, 2)
         sizeY = size(constr!.Y, 2)
         gramYBV_view = view(constr!.gramYBV, 1:sizeY, 1:sizeX)
-        Ac_mul_B!(gramYBV_view, constr!.BY, X)
+        mul!(gramYBV_view, adjoint(constr!.BY), X)
         tmp_view = view(constr!.tmp, 1:sizeY, 1:sizeX)
-        A_ldiv_B!(tmp_view, constr!.gram_chol, gramYBV_view)
-        A_mul_B!(X_temp, constr!.Y, tmp_view)
+        ldiv!(tmp_view, constr!.gram_chol, gramYBV_view)
+        mul!(X_temp, constr!.Y, tmp_view)
         @inbounds X .= X .- X_temp
     end
     nothing
@@ -227,12 +230,12 @@ struct RPreconditioner{TM, T, TA<:AbstractArray{T}}
 end
 RPreconditioner(M, X) = RPreconditioner{typeof(M), eltype(X), typeof(X)}(M, X)
 
-function (precond!::RPreconditioner{Void})(X)
+function (precond!::RPreconditioner{Nothing})(X)
     nothing
 end
 function (precond!::RPreconditioner)(X)
     bs = size(X, 2)
-    A_ldiv_B!(view(precond!.buffer, :, 1:bs), precond!.M, X)
+    ldiv!(view(precond!.buffer, :, 1:bs), precond!.M, X)
     # Just returning buffer would be cheaper but struct at call site must be mutable
     @inbounds X .= @view precond!.buffer[:, 1:bs]
     nothing
@@ -256,18 +259,18 @@ function BlockGram(XBlocks::Blocks{Generalized, T}) where {Generalized, T}
     PAP = zeros(T, sizeX, sizeX)
     return BlockGram{Generalized, Matrix{T}}(XAX, XAR, XAP, RAR, RAP, PAP)
 end
-XAX!(BlockGram, XBlocks) = Ac_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.A_block)
-XAP!(BlockGram, XBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.XAP, :, 1:n), XBlocks.block, view(PBlocks.A_block, :, 1:n))
-XAR!(BlockGram, XBlocks, RBlocks, n) = Ac_mul_B!(view(BlockGram.XAR, :, 1:n), XBlocks.block, view(RBlocks.A_block, :, 1:n))
-RAR!(BlockGram, RBlocks, n) = Ac_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.A_block, :, 1:n))
-RAP!(BlockGram, RBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.RAP, 1:n, 1:n), view(RBlocks.A_block, :, 1:n), view(PBlocks.block, :, 1:n))
-PAP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.A_block, :, 1:n))
-XBP!(BlockGram, XBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.XAP, :, 1:n), XBlocks.block, view(PBlocks.B_block, :, 1:n))
-XBR!(BlockGram, XBlocks, RBlocks, n) = Ac_mul_B!(view(BlockGram.XAR, :, 1:n), XBlocks.block, view(RBlocks.B_block, :, 1:n))
-RBP!(BlockGram, RBlocks, PBlocks, n) = Ac_mul_B!(view(BlockGram.RAP, 1:n, 1:n), view(RBlocks.B_block, :, 1:n), view(PBlocks.block, :, 1:n))
-#XBX!(BlockGram, XBlocks) = Ac_mul_B!(BlockGram.XAX, XBlocks.block, XBlocks.B_block)
-#RBR!(BlockGram, RBlocks, n) = Ac_mul_B!(view(BlockGram.RAR, 1:n, 1:n), view(RBlocks.block, :, 1:n), view(RBlocks.B_block, :, 1:n))
-#PBP!(BlockGram, PBlocks, n) = Ac_mul_B!(view(BlockGram.PAP, 1:n, 1:n), view(PBlocks.block, :, 1:n), view(PBlocks.B_block, :, 1:n))
+XAX!(BlockGram, XBlocks) = mul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.A_block)
+XAP!(BlockGram, XBlocks, PBlocks, n) = mul!(view(BlockGram.XAP, :, 1:n), adjoint(XBlocks.block), view(PBlocks.A_block, :, 1:n))
+XAR!(BlockGram, XBlocks, RBlocks, n) = mul!(view(BlockGram.XAR, :, 1:n), adjoint(XBlocks.block), view(RBlocks.A_block, :, 1:n))
+RAR!(BlockGram, RBlocks, n) = mul!(view(BlockGram.RAR, 1:n, 1:n), adjoint(view(RBlocks.block, :, 1:n)), view(RBlocks.A_block, :, 1:n))
+RAP!(BlockGram, RBlocks, PBlocks, n) = mul!(view(BlockGram.RAP, 1:n, 1:n), adjoint(view(RBlocks.A_block, :, 1:n)), view(PBlocks.block, :, 1:n))
+PAP!(BlockGram, PBlocks, n) = mul!(view(BlockGram.PAP, 1:n, 1:n), adjoint(view(PBlocks.block, :, 1:n)), view(PBlocks.A_block, :, 1:n))
+XBP!(BlockGram, XBlocks, PBlocks, n) = mul!(view(BlockGram.XAP, :, 1:n), adjoint(XBlocks.block), view(PBlocks.B_block, :, 1:n))
+XBR!(BlockGram, XBlocks, RBlocks, n) = mul!(view(BlockGram.XAR, :, 1:n), adjoint(XBlocks.block), view(RBlocks.B_block, :, 1:n))
+RBP!(BlockGram, RBlocks, PBlocks, n) = mul!(view(BlockGram.RAP, 1:n, 1:n), adjoint(view(RBlocks.B_block, :, 1:n)), view(PBlocks.block, :, 1:n))
+#XBX!(BlockGram, XBlocks) = mul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.B_block)
+#RBR!(BlockGram, RBlocks, n) = mul!(view(BlockGram.RAR, 1:n, 1:n), adjoint(view(RBlocks.block, :, 1:n)), view(RBlocks.B_block, :, 1:n))
+#PBP!(BlockGram, PBlocks, n) = mul!(view(BlockGram.PAP, 1:n, 1:n), adjoint(view(PBlocks.block, :, 1:n)), view(PBlocks.B_block, :, 1:n))
 
 function I!(G, xr)
     @inbounds for j in xr, i in xr
@@ -298,7 +301,7 @@ function (g::BlockGram)(gram, lambda, n1::Int, n2::Int, n3::Int)
             conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
         end
     end
-    return 
+    return
 end
 function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
     xr = 1:n1
@@ -331,7 +334,7 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
         @inbounds conj!(transpose!(view(gram, pr, rr), view(g.RAP, 1:n2, 1:n3)))
         @inbounds conj!(transpose!(view(gram, pr, xr), view(g.XAP, 1:n1, 1:n3)))
     end
-    return 
+    return
 end
 
 abstract type AbstractOrtho end
@@ -339,7 +342,7 @@ struct CholQR{TA} <: AbstractOrtho
     gramVBV::TA # to be used in view
 end
 
-function A_rdiv_B!(A, B::UpperTriangular)
+function rdiv!(A, B::UpperTriangular)
     s = size(A, 2)
     @inbounds A[:,1] .= view(A, :, 1) ./ B[1,1]
     @inbounds for i in 2:s
@@ -369,24 +372,24 @@ function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=fa
     AX = XBlocks.A_block
     gram_view = view(ortho!.gramVBV, 1:sizeX, 1:sizeX)
     if useview
-        Ac_mul_B!(gram_view, view(X, :, 1:sizeX), view(BX, :, 1:sizeX))
+        mul!(gram_view, adjoint(view(X, :, 1:sizeX)), view(BX, :, 1:sizeX))
     else
-        Ac_mul_B!(gram_view, X, BX)
+        mul!(gram_view, adjoint(X), BX)
     end
     realdiag!(gram_view)
-    cholf = cholfact!(Hermitian(gram_view))
+    cholf = cholesky!(Hermitian(gram_view))
     R = cholf.factors
     if useview
-        A_rdiv_B!(view(X, :, 1:sizeX), UpperTriangular(R))
-        update_AX && A_rdiv_B!(view(AX, :, 1:sizeX), UpperTriangular(R))
-        Generalized && update_BX && A_rdiv_B!(view(BX, :, 1:sizeX), UpperTriangular(R))
+        rdiv!(view(X, :, 1:sizeX), UpperTriangular(R))
+        update_AX && rdiv!(view(AX, :, 1:sizeX), UpperTriangular(R))
+        Generalized && update_BX && rdiv!(view(BX, :, 1:sizeX), UpperTriangular(R))
     else
-        A_rdiv_B!(X, UpperTriangular(R))
-        update_AX && A_rdiv_B!(AX, UpperTriangular(R))
-        Generalized && update_BX && A_rdiv_B!(BX, UpperTriangular(R))
+        rdiv!(X, UpperTriangular(R))
+        update_AX && rdiv!(AX, UpperTriangular(R))
+        Generalized && update_BX && rdiv!(BX, UpperTriangular(R))
     end
 
-    return 
+    return
 end
 
 struct LOBPCGIterator{Generalized, T, TA, TB, TL<:AbstractVector{T}, TR<:AbstractVector, TPerm<:AbstractVector{Int}, TV<:AbstractArray{T}, TBlocks<:Blocks{Generalized, T}, TO<:AbstractOrtho, TP, TC, TG, TM, TTrace}
@@ -425,9 +428,9 @@ end
 - `A`: linear operator;
 - `X`: initial guess of the Ritz vectors; to be overwritten by the eigenvectors;
 - `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
+- `P`: preconditioner of residual vectors, must overload `ldiv!`;
 - `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `A_mul_B!`.
+    to a subspace; must overload `mul!`.
 """
 LOBPCGIterator(A, largest::Bool, X, P=nothing, C=nothing) = LOBPCGIterator(A, nothing, largest, X, P, C)
 
@@ -440,9 +443,9 @@ LOBPCGIterator(A, largest::Bool, X, P=nothing, C=nothing) = LOBPCGIterator(A, no
 - `B`: linear operator;
 - `X`: initial guess of the Ritz vectors; to be overwritten by the eigenvectors;
 - `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
+- `P`: preconditioner of residual vectors, must overload `ldiv!`;
 - `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `A_mul_B!`;
+    to a subspace; must overload `mul!`;
 """
 function LOBPCGIterator(A, B, largest::Bool, X, P=nothing, C=nothing)
     precond! = RPreconditioner(P, X)
@@ -452,7 +455,7 @@ end
 function LOBPCGIterator(A, B, largest::Bool, X, precond!::RPreconditioner, constr!::Constraint)
     T = eltype(X)
     nev = size(X, 2)
-    if B isa Void
+    if B isa Nothing
         XBlocks = Blocks(X, similar(X))
         tempXBlocks = Blocks(copy(X), similar(X))
         RBlocks = Blocks(similar(X), similar(X))
@@ -474,7 +477,7 @@ function LOBPCGIterator(A, B, largest::Bool, X, precond!::RPreconditioner, const
     residuals = fill(real(T)(NaN), nev)
     iteration = Ref(1)
     currentBlockSize = Ref(nev)
-    generalized = !(B isa Void)
+    generalized = !(B isa Nothing)
     ortho! = CholQR(zeros(T, nev, nev))
 
     gramABlock = BlockGram(XBlocks)
@@ -495,23 +498,23 @@ function LOBPCGIterator(A, B, largest::Bool, X, nev::Int, P=nothing, C=nothing)
     T = eltype(X)
     n = size(X, 1)
     sizeX = size(X, 2)
-    if C isa Void
+    if C isa Nothing
         sizeC = 0
-        new_C = typeof(X)(n, (nev÷sizeX)*sizeX)
+        new_C = typeof(X)(undef, n, (nev÷sizeX)*sizeX)
     else
         sizeC = size(C,2)
-        new_C = typeof(C)(n, sizeC+(nev÷sizeX)*sizeX)
+        new_C = typeof(C)(undef, n, sizeC+(nev÷sizeX)*sizeX)
         new_C[:,1:sizeC] .= C
     end
-    if B isa Void
+    if B isa Nothing
         new_BC = new_C
     else
         new_BC = similar(new_C)
     end
     Y = @view new_C[:, 1:sizeC]
     BY = @view new_BC[:, 1:sizeC]
-    if !(B isa Void)
-        A_mul_B!(BY, B, Y)
+    if !(B isa Nothing)
+        mul!(BY, B, Y)
     end
     constr! = Constraint(Y, BY, X, NotBWrapper())
     precond! = RPreconditioner(P, X)
@@ -525,11 +528,11 @@ function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
     bs == -1 ? ortho!(blocks, update_BX=true) : ortho!(blocks, bs, update_BX=true)
     # Updates AX
     bs == -1 ? A_mul_X!(blocks, A) : A_mul_X!(blocks, A, bs)
-    return 
+    return
 end
 function residuals!(iterator)
     sizeX = size(iterator.XBlocks.block, 2)
-    A_mul_B!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(view(iterator.ritz_values, 1:sizeX)))
+    mul!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(view(iterator.ritz_values, 1:sizeX)))
     @inbounds iterator.RBlocks.block .= iterator.XBlocks.A_block .- iterator.RBlocks.block
     # Finds residual norms
     @inbounds for j in 1:size(iterator.RBlocks.block, 2)
@@ -548,7 +551,7 @@ function update_mask!(iterator, residualTolerance)
     # Update active vectors mask
     @inbounds iterator.activeMask .= view(iterator.residuals, 1:sizeX) .> residualTolerance
     iterator.currentBlockSize[] = sum(iterator.activeMask)
-    return 
+    return
 end
 
 function update_active!(mask, bs::Int, blockPairs...)
@@ -562,7 +565,7 @@ function precond_constr!(block, temp_block, bs, precond!, constr!)
     precond!(view(block, :, 1:bs))
     # Constrain the active residual vectors to be B-orthogonal to Y
     constr!(view(block, :, 1:bs), view(temp_block, :, 1:bs))
-    return 
+    return
 end
 function block_grams_1x1!(iterator)
     # Finds gram matrix X'AX
@@ -574,7 +577,7 @@ function block_grams_2x2!(iterator, bs)
     #XAX!(iterator.gramABlock, iterator.XBlocks)
     XAR!(iterator.gramABlock, iterator.XBlocks, iterator.activeRBlocks, bs)
     RAR!(iterator.gramABlock, iterator.activeRBlocks, bs)
-    XBR!(iterator.gramBBlock, iterator.XBlocks, iterator.activeRBlocks, bs)        
+    XBR!(iterator.gramBBlock, iterator.XBlocks, iterator.activeRBlocks, bs)
     iterator.gramABlock(iterator.gramA, view(iterator.ritz_values, 1:sizeX), sizeX, bs, 0)
     iterator.gramBBlock(iterator.gramB, sizeX, bs, 0, true)
 
@@ -592,7 +595,7 @@ function block_grams_3x3!(iterator, bs)
     # Find X'BR, X'BP and P'BR
     XBR!(iterator.gramBBlock, iterator.XBlocks, iterator.activeRBlocks, bs)
     XBP!(iterator.gramBBlock, iterator.XBlocks, iterator.activePBlocks, bs)
-    RBP!(iterator.gramBBlock, iterator.activeRBlocks, iterator.activePBlocks, bs)    
+    RBP!(iterator.gramBBlock, iterator.activeRBlocks, iterator.activePBlocks, bs)
     # Update the gram matrix [X R P]' A [X R P]
     iterator.gramABlock(iterator.gramA, view(iterator.ritz_values, 1:sizeX), sizeX, bs, bs)
     # Update the gram matrix [X R P]' B [X R P]
@@ -607,17 +610,17 @@ function sub_problem!(iterator, sizeX, bs1, bs2)
         gramAview = view(iterator.gramABlock.XAX, 1:subdim, 1:subdim)
         # Source of type instability
         realdiag!(gramAview)
-        eigf = eigfact!(Hermitian(gramAview))
+        eigf = eigen!(Hermitian(gramAview))
     else
         gramAview = view(iterator.gramA, 1:subdim, 1:subdim)
         gramBview = view(iterator.gramB, 1:subdim, 1:subdim)
         # Source of type instability
         realdiag!(gramAview)
         realdiag!(gramBview)
-        eigf = eigfact!(Hermitian(gramAview), Hermitian(gramBview))
+        eigf = eigen!(Hermitian(gramAview), Hermitian(gramBview))
     end
     # Selects extremal eigenvalues and corresponding vectors
-    selectperm!(view(iterator.λperm, 1:subdim), eigf.values, 1:subdim, rev=iterator.largest)
+    partialsortperm!(view(iterator.λperm, 1:subdim), eigf.values, 1:subdim; rev=iterator.largest)
     @inbounds iterator.ritz_values[1:sizeX] .= view(eigf.values, view(iterator.λperm, 1:sizeX))
     @inbounds iterator.V[1:subdim, 1:sizeX] .= view(eigf.vectors, :, view(iterator.λperm, 1:sizeX))
     return
@@ -637,17 +640,17 @@ function update_X_P!(iterator::LOBPCGIterator{Generalized}, bs1, bs2) where Gene
         pb_blockview = view(iterator.activePBlocks.B_block, :, 1:bs2)
     end
     if bs1 > 0
-        A_mul_B!(iterator.PBlocks.block, r_blockview, r_eigview)
-        A_mul_B!(iterator.PBlocks.A_block, ra_blockview, r_eigview)
+        mul!(iterator.PBlocks.block, r_blockview, r_eigview)
+        mul!(iterator.PBlocks.A_block, ra_blockview, r_eigview)
         if Generalized
-            A_mul_B!(iterator.PBlocks.B_block, rb_blockview, r_eigview)
+            mul!(iterator.PBlocks.B_block, rb_blockview, r_eigview)
         end
     end
     if bs2 > 0
-        A_mul_B!(iterator.tempXBlocks.block, p_blockview, p_eigview)
-        A_mul_B!(iterator.tempXBlocks.A_block, pa_blockview, p_eigview)
+        mul!(iterator.tempXBlocks.block, p_blockview, p_eigview)
+        mul!(iterator.tempXBlocks.A_block, pa_blockview, p_eigview)
         if Generalized
-            A_mul_B!(iterator.tempXBlocks.B_block, pb_blockview, p_eigview)
+            mul!(iterator.tempXBlocks.B_block, pb_blockview, p_eigview)
         end
         @inbounds iterator.PBlocks.block .= iterator.PBlocks.block .+ iterator.tempXBlocks.block
         @inbounds iterator.PBlocks.A_block .= iterator.PBlocks.A_block .+ iterator.tempXBlocks.A_block
@@ -657,14 +660,14 @@ function update_X_P!(iterator::LOBPCGIterator{Generalized}, bs1, bs2) where Gene
     end
     block = iterator.XBlocks.block
     tempblock = iterator.tempXBlocks.block
-    A_mul_B!(tempblock, block, x_eigview)
+    mul!(tempblock, block, x_eigview)
     block = iterator.XBlocks.A_block
     tempblock = iterator.tempXBlocks.A_block
-    A_mul_B!(tempblock, block, x_eigview)
+    mul!(tempblock, block, x_eigview)
     if Generalized
         block = iterator.XBlocks.B_block
         tempblock = iterator.tempXBlocks.B_block
-        A_mul_B!(tempblock, block, x_eigview)
+        mul!(tempblock, block, x_eigview)
     end
     @inbounds begin
         if bs1 > 0
@@ -715,8 +718,8 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
         # Update active blocks
         bs = iterator.currentBlockSize[]
         # Update active R and P blocks
-        update_active!(iterator.activeMask, bs, 
-            (iterator.activeRBlocks.block, iterator.RBlocks.block), 
+        update_active!(iterator.activeMask, bs,
+            (iterator.activeRBlocks.block, iterator.RBlocks.block),
             (iterator.activePBlocks.block, iterator.PBlocks.block),
             (iterator.activePBlocks.A_block, iterator.PBlocks.A_block),
             (iterator.activePBlocks.B_block, iterator.PBlocks.B_block))
@@ -750,7 +753,7 @@ The Locally Optimal Block Preconditioned Conjugate Gradient Method (LOBPCG)
 
 Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisfying `AX = λBX`.
 
-`A` and `B` may be generic types but `Base.A_mul_B!(C, AorB, X)` must be defined for vectors and strided matrices `X` and `C`. `size(A, i::Int)` and `eltype(A)` must also be defined for `A`.
+`A` and `B` may be generic types but `Base.mul!(C, AorB, X)` must be defined for vectors and strided matrices `X` and `C`. `size(A, i::Int)` and `eltype(A)` must also be defined for `A`.
 
     lobpcg(A, [B,] largest, nev; kwargs...) -> results
 
@@ -763,13 +766,13 @@ Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisf
 
 ## Keywords
 
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
     states; if `false` only `results.trace` will be empty;
 
-- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
+- `P`: preconditioner of residual vectors, must overload `ldiv!`;
 
 - `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `A_mul_B!`;
+    to a subspace; must overload `mul!`;
 
 - `maxiter`: maximum number of iterations; default is 200;
 
@@ -800,13 +803,13 @@ end
 
 - `not_zeros`: default is `false`. If `true`, `X0` will be assumed to not have any all-zeros column.
 
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
     states; if `false` only `results.trace` will be empty;
 
-- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
+- `P`: preconditioner of residual vectors, must overload `ldiv!`;
 
 - `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `A_mul_B!`;
+    to a subspace; must overload `mul!`;
 
 - `maxiter`: maximum number of iterations; default is 200;
 
@@ -828,13 +831,13 @@ function lobpcg(A, B, largest, X0;
     sizeX > n && throw("X column dimension exceeds the row dimension")
 
     iterator = LOBPCGIterator(A, B, largest, X, P, C)
-    
+
     return lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
 end
 
 """
     lobpcg!(iterator::LOBPCGIterator; kwargs...) -> results
-    
+
 # Arguments
 
 - `iterator::LOBPCGIterator`: a struct having all the variables required
@@ -844,7 +847,7 @@ end
 
 - `not_zeros`: default is `false`. If `true`, the initial Ritz vectors will be assumed to not have any all-zeros column.
 
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
     states; if `false` only `results.trace` will be empty;
 
 - `maxiter`: maximum number of iterations; default is 200;
@@ -900,13 +903,13 @@ lobpcg(A, [B,] largest, X0, nev; kwargs...) -> results
 
 ## Keywords
 
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations    
+- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
     states; if `false` only `results.trace` will be empty;
 
-- `P`: preconditioner of residual vectors, must overload `A_ldiv_B!`;
+- `P`: preconditioner of residual vectors, must overload `ldiv!`;
 
 - `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `A_mul_B!`;
+    to a subspace; must overload `mul!`;
 
 - `maxiter`: maximum number of iterations; default is 200;
 

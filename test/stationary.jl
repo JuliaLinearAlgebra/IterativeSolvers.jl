@@ -1,10 +1,11 @@
-import Base.LinAlg.SingularException
-import IterativeSolvers: DiagonalIndices, FastLowerTriangular, 
+import LinearAlgebra.SingularException
+import IterativeSolvers: DiagonalIndices, FastLowerTriangular,
        FastUpperTriangular, forward_sub!, backward_sub!, OffDiagonal,
        gauss_seidel_multiply!, StrictlyUpperTriangular, StrictlyLowerTriangular
 
 using IterativeSolvers
-using Base.Test
+using Test
+using SparseArrays
 
 @testset "Stationary solvers" begin
 
@@ -13,7 +14,7 @@ m = 6
 ω = 1.2
 srand(1234321)
 
-@testset "SparseMatrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+@testset "SparseMatrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     @testset "Sparse? $sparse" for sparse = (true, false)
         # Diagonally dominant
         if sparse
@@ -43,7 +44,7 @@ srand(1234321)
 
         for solver in (sor!, ssor!)
             xi = solver(copy(x0), A, b, ω, maxiter=2n)
-            @test norm(b - A * xi) / norm(b) ≤ tol
+            @test norm(b - A * xi) / norm(b) ≤ 10*tol
         end
     end
 end
@@ -69,11 +70,11 @@ end
 
     for matrix in (A, B)
         for solver in (jacobi, gauss_seidel)
-            @test_throws Base.LinAlg.SingularException solver(matrix, b)
+            @test_throws LinearAlgebra.SingularException solver(matrix, b)
         end
 
         for solver in (sor, ssor)
-            @test_throws Base.LinAlg.SingularException solver(A, b, 0.5)
+            @test_throws LinearAlgebra.SingularException solver(A, b, 0.5)
         end
     end
 end
@@ -84,10 +85,10 @@ end
     D = DiagonalIndices(A)
     @test A.nzval[D.diag] == Diagonal(A).diag
     @test_throws SingularException DiagonalIndices(B)
-    
+
     x = ones(10)
     y = zeros(10)
-    A_ldiv_B!(y, D, x)
+    ldiv!(y, D, x)
     @test y ≈ Diagonal(A) \ ones(10)
 end
 
@@ -98,7 +99,7 @@ end
 
     x = rand(10)
     y = copy(x)
-    
+
     forward_sub!(L, x)
 
     @test x ≈ LowerTriangular(A) \ y
@@ -131,7 +132,7 @@ end
 
     x = rand(10)
     y = copy(x)
-    
+
     backward_sub!(L, x)
 
     @test x ≈ UpperTriangular(A) \ y
@@ -157,24 +158,24 @@ end
     @test x ≈ z
 end
 
-@testset "A_mul_B! with OffDiagonal type" begin
+@testset "mul! with OffDiagonal type" begin
     A = sprand(10, 10, .3) + 2I
     D = DiagonalIndices(A)
     O = OffDiagonal(A, D)
 
     x = rand(10)
     y = ones(10)
-    A_mul_B!(1.0, O, x, 0.0, y)
+    mul!(1.0, O, x, 0.0, y)
     @test y ≈ A * x - Diagonal(A) * x
 
     x = rand(10)
     y = ones(10)
-    A_mul_B!(1.0, O, x, 1.0, y)
+    mul!(1.0, O, x, 1.0, y)
     @test y ≈ A * x - Diagonal(A) * x + ones(10)
 
     x = rand(10)
     y = ones(10)
-    A_mul_B!(2.0, O, x, 3.0, y)
+    mul!(2.0, O, x, 3.0, y)
     @test y ≈ 2 * (A * x - Diagonal(A) * x) + 3 * ones(10)
 end
 

@@ -1,6 +1,9 @@
 using IterativeSolvers
-using Base.Test
+using Test
 using LinearMaps
+using LinearAlgebra
+using Random
+using SparseArrays
 
 srand(1234321)
 

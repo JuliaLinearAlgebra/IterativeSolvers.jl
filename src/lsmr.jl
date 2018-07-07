@@ -1,6 +1,6 @@
 export lsmr, lsmr!
 
-using Base.LinAlg
+using LinearAlgebra
 
 """
     lsmr(A, b; kwrags...) -> x, [history]
@@ -15,9 +15,9 @@ lsmr(A, b; kwargs...) = lsmr!(zerox(A, b), A, b; kwargs...)
 Minimizes ``\\|Ax - b\\|^2 + \\|λx\\|^2`` in the Euclidean norm. If multiple solutions
 exists the minimum norm solution is returned.
 
-The method is based on the Golub-Kahan bidiagonalization process. It is 
-algebraically equivalent to applying MINRES to the normal equations 
-``(A^*A + λ^2I)x = A^*b``, but has better numerical properties, 
+The method is based on the Golub-Kahan bidiagonalization process. It is
+algebraically equivalent to applying MINRES to the normal equations
+``(A^*A + λ^2I)x = A^*b``, but has better numerical properties,
 especially if ``A`` is ill-conditioned.
 
 # Arguments
@@ -74,7 +74,7 @@ function lsmr!(x, A, b;
     T = Adivtype(A, b)
     m, n = size(A, 1), size(A, 2)
     btmp = similar(b, T)
-    copy!(btmp, b)
+    copyto!(btmp, b)
     v, h, hbar = similar(x, T), similar(x, T), similar(x, T)
     lsmr_method!(history, x, A, btmp, v, h, hbar; maxiter=maxiter, kwargs...)
     log && shrink!(history)
@@ -107,10 +107,10 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     normArs = Tr[]
     conlim > 0 ? ctol = convert(Tr, inv(conlim)) : ctol = zero(Tr)
     # form the first vectors u and v (satisfy  β*u = b,  α*v = A'u)
-    u = A_mul_B!(-1, A, x, 1, b)
+    u = mul!(b, A, x, -1, 1)
     β = norm(u)
     u .*= inv(β)
-    Ac_mul_B!(1, A, u, 0, v)
+    mul!(v, adjoint(A), u, 1, 0)
     α = norm(v)
     v .*= inv(α)
 
@@ -126,7 +126,7 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     cbar = one(Tr)
     sbar = zero(Tr)
 
-    copy!(h, v)
+    copyto!(h, v)
     fill!(hbar, zero(Tr))
 
     # Initialize variables for estimation of ||r||.
@@ -158,12 +158,12 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
         while iter < maxiter
             nextiter!(log,mvps=1)
             iter += 1
-            A_mul_B!(1, A, v, -α, u)
+            mul!(u, A, v, 1, -α)
             β = norm(u)
             if β > 0
                 log.mtvps+=1
                 u .*= inv(β)
-                Ac_mul_B!(1, A, u, -β, v)
+                mul!(v, adjoint(A), u, 1, -β)
                 α = norm(v)
                 v .*= inv(α)
             end
@@ -279,10 +279,10 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     x
 end
 
-for (name, symbol) in ((:Ac_mul_B!, 'T'), (:A_mul_B!, 'N'))
-    @eval begin
-        function Base.$name(α::Number, A::StridedVecOrMat, x::AbstractVector, β::Number, y::AbstractVector)
-            BLAS.gemm!($symbol, 'N', convert(eltype(y), α), A, x, convert(eltype(y), β), y)
-        end
-    end
+function LinearAlgebra.mul!(y::AbstractVector, A::StridedVecOrMat, x::AbstractVector, α::Number, β::Number)
+    BLAS.gemm!('N', 'N', convert(eltype(y), α), A, x, convert(eltype(y), β), y)
+end
+
+function LinearAlgebra.mul!(y::AbstractVector, A::Adjoint{F, T}, x::AbstractVector, α::Number, β::Number) where {F, T <: StridedVecOrMat{F}}
+    BLAS.gemm!('T', 'N', convert(eltype(y), α), adjoint(A), x, convert(eltype(y), β), y)
 end

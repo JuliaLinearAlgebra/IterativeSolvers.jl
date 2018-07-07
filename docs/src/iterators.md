@@ -43,7 +43,7 @@ end
 @show norm(b1 - A * x) / norm(b1)
 
 # Copy the next right-hand side into the iterable
-copy!(my_iterable.b, b2)
+copyto!(my_iterable.b, b2)
 
 for item in my_iterable
     println("Iteration for rhs 2")

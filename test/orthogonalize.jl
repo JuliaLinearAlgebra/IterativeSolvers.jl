@@ -1,5 +1,6 @@
 using IterativeSolvers
-using Base.Test
+using Test
+using Random
 
 @testset "Orthogonalization" begin
 
@@ -7,10 +8,11 @@ srand(1234321)
 n = 10
 m = 3
 
-@testset "Eltype $T" for T = (Complex64, Float64)
+@testset "Eltype $T" for T = (ComplexF32, Float64)
 
     # Create an orthonormal matrix V
-    V, = qr(rand(T, n, m))
+    F = qr(rand(T, n, m))
+    V = Matrix(F.Q)
 
     # And a random vector to be orth. to V.
     w_original = rand(T, n)

@@ -2,13 +2,13 @@
 
 Many iterative solvers have the option to provide left and right preconditioners (`Pl` and `Pr` resp.) in order to speed up convergence or prevent stagnation. They transform a problem $Ax = b$ into a better conditioned system $(P_l^{-1}AP_r^{-1})y = P_l^{-1}b$, where $x = P_r^{-1}y$.
 
-These preconditioners should support the operations 
+These preconditioners should support the operations
 
-- `A_ldiv_B!(y, P, x)` computes `P \ x` in-place of `y`;
-- `A_ldiv_B!(P, x)` computes `P \ x` in-place of `x`;
+- `ldiv!(y, P, x)` computes `P \ x` in-place of `y`;
+- `ldiv!(P, x)` computes `P \ x` in-place of `x`;
 - and `P \ x`.
 
-If no preconditioners are passed to the solver, the method will default to 
+If no preconditioners are passed to the solver, the method will default to
 
 ```julia
 Pl = Pr = IterativeSolvers.Identity()

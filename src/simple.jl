@@ -27,21 +27,21 @@ end
 
 function next(p::PowerMethodIterable, iteration::Int)
 
-    A_mul_B!(p.Ax, p.A, p.x)
+    mul!(p.Ax, p.A, p.x)
 
     # Rayleigh quotient θ = x'Ax
     p.θ = dot(p.x, p.Ax)
 
     # (Previous) residual vector r = Ax - λx
-    copy!(p.r, p.Ax)
+    copyto!(p.r, p.Ax)
     BLAS.axpy!(-p.θ, p.x, p.r)
 
     # Normed residual
     p.residual = norm(p.r)
 
     # Normalize the next approximation
-    copy!(p.x, p.Ax)
-    scale!(p.x, one(eltype(p.x)) / norm(p.x))
+    copyto!(p.x, p.Ax)
+    rmul!(p.x, one(eltype(p.x)) / norm(p.x))
 
     p.residual, iteration + 1
 end
@@ -57,12 +57,12 @@ end
 """
     powm(B; kwargs...) -> λ, x, [history]
 
-See [`powm!`](@ref). Calls `powm!(B, x0; kwargs...)` with 
+See [`powm!`](@ref). Calls `powm!(B, x0; kwargs...)` with
 `x0` initialized as a random, complex unit vector.
 """
 function powm(B; kwargs...)
     x0 = rand(Complex{real(eltype(B))}, size(B, 1))
-    scale!(x0, one(eltype(B)) / norm(x0))
+    rmul!(x0, one(eltype(B)) / norm(x0))
     powm!(B, x0; kwargs...)
 end
 
@@ -82,10 +82,10 @@ By default finds the approximate eigenpair `(λ, x)` of `B` where `|λ|` is larg
 - `verbose::Bool`: print convergence information during the iterations.
 
 !!! note "Shift-and-invert"
-    When applying shift-and-invert to ``Ax = λx`` with `invert = true` and `shift = ...`, note 
-    that the role of `B * b` becomes computing `inv(A - shift I) * b`. So rather than 
-    passing the linear map ``A`` itself, pass a linear map `B` that has the action of 
-    shift-and-invert. The eigenvalue is transformed back to an eigenvalue of the actual 
+    When applying shift-and-invert to ``Ax = λx`` with `invert = true` and `shift = ...`, note
+    that the role of `B * b` becomes computing `inv(A - shift I) * b`. So rather than
+    passing the linear map ``A`` itself, pass a linear map `B` that has the action of
+    shift-and-invert. The eigenvalue is transformed back to an eigenvalue of the actual
     matrix ``A``.
 
 # Return values
@@ -109,9 +109,9 @@ By default finds the approximate eigenpair `(λ, x)` of `B` where `|λ|` is larg
 ```julia
 using LinearMaps
 σ = 1.0 + 1.3im
-A = rand(Complex128, 50, 50)
-F = lufact(A - σ * I)
-Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
+A = rand(ComplexF64, 50, 50)
+F = lu(A - σ * I)
+Fmap = LinearMap{ComplexF64}((y, x) -> ldiv!(y, F, x), 50, ismutating = true)
 λ, x = powm(Fmap, inverse = true, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """
@@ -161,15 +161,15 @@ The method calls `powm!(B, x0; inverse = true, shift = σ)` with
 ```julia
 using LinearMaps
 σ = 1.0 + 1.3im
-A = rand(Complex128, 50, 50)
-F = lufact(A - σ * I)
-Fmap = LinearMap{Complex128}((y, x) -> A_ldiv_B!(y, F, x), 50, ismutating = true)
+A = rand(ComplexF64, 50, 50)
+F = lu(A - σ * I)
+Fmap = LinearMap{ComplexF64}((y, x) -> ldiv!(y, F, x), 50, ismutating = true)
 λ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """
 function invpowm(B; kwargs...)
     x0 = rand(Complex{real(eltype(B))}, size(B, 1))
-    scale!(x0, one(eltype(B)) / norm(x0))
+    rmul!(x0, one(eltype(B)) / norm(x0))
     invpowm!(B, x0; kwargs...)
 end
 

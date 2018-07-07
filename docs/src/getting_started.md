@@ -25,7 +25,7 @@ Rather than constructing an explicit matrix `A` of the type `Matrix` or `SparseM
 For matrix-free types of `A` the following interface is expected to be defined:
 
 - `A*v` computes the matrix-vector product on a `v::AbstractVector`;
-- `A_mul_B!(y, A, v)` computes the matrix-vector product on a `v::AbstractVector` in-place;
+- `mul!(y, A, v)` computes the matrix-vector product on a `v::AbstractVector` in-place;
 - `eltype(A)` returns the element type implicit in the equivalent matrix representation of `A`;
 - `size(A, d)` returns the nominal dimensions along the `d`th axis in the equivalent matrix representation of `A`.
 

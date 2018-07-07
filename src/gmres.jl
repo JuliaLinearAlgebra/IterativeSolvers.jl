@@ -1,5 +1,5 @@
 import Base: start, next, done
-
+using Printf
 export gmres, gmres!
 
 struct ArnoldiDecomp{T, matT}
@@ -146,8 +146,8 @@ Solves the problem ``Ax = b`` with restarted GMRES.
 
 ## Keywords
 
-- `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one 
-  matrix-vector product can be saved when computing the initial 
+- `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one
+  matrix-vector product can be saved when computing the initial
   residual vector;
 - `tol`: relative tolerance;
 - `restart::Int = min(20, size(A, 2))`: restarts GMRES after specified number of iterations;
@@ -213,18 +213,18 @@ end
 function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool = false) where {T}
     # Initialize the Krylov subspace with the initial residual vector
     # This basically does V[1] = Pl \ (b - A * x) and then normalize
-    
+
     first_col = view(arnoldi.V, :, 1)
 
-    copy!(first_col, b)
+    copyto!(first_col, b)
 
     # Potentially save one MV product
     if !initially_zero
-        A_mul_B!(Ax, arnoldi.A, x)
+        mul!(Ax, arnoldi.A, x)
         first_col .-= Ax
     end
 
-    A_ldiv_B!(Pl, first_col)
+    ldiv!(Pl, first_col)
 
     # Normalize
     β = norm(first_col)
@@ -243,7 +243,7 @@ function solve_least_squares!(arnoldi::ArnoldiDecomp{T}, β, k::Int) where {T}
     rhs[1] = β
 
     H = FastHessenberg(view(arnoldi.H, 1 : k, 1 : k - 1))
-    A_ldiv_B!(H, rhs)
+    ldiv!(H, rhs)
 
     rhs
 end
@@ -257,28 +257,28 @@ end
 
 function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int, Ax) where {T}
     # Computing x ← x + Pr \ (V * y) and use Ax as a work space
-    A_mul_B!(Ax, view(arnoldi.V, :, 1 : k - 1), y)
-    A_ldiv_B!(Pr, Ax)
+    mul!(Ax, view(arnoldi.V, :, 1 : k - 1), y)
+    ldiv!(Pr, Ax)
     x .+= Ax
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl::Identity, Pr::Identity, k::Int, Ax)
     # Simply expands by A * v without allocating
-    A_mul_B!(view(arnoldi.V, :, k + 1), arnoldi.A, view(arnoldi.V, :, k))
+    mul!(view(arnoldi.V, :, k + 1), arnoldi.A, view(arnoldi.V, :, k))
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl, Pr::Identity, k::Int, Ax)
     # Expands by Pl \ (A * v) without allocating
     nextV = view(arnoldi.V, :, k + 1)
-    A_mul_B!(nextV, arnoldi.A, view(arnoldi.V, :, k))
-    A_ldiv_B!(Pl, nextV)
+    mul!(nextV, arnoldi.A, view(arnoldi.V, :, k))
+    ldiv!(Pl, nextV)
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl, Pr, k::Int, Ax)
     # Expands by Pl \ (A * (Pr \ v)). Avoids allocation by using Ax.
     nextV = view(arnoldi.V, :, k + 1)
-    A_ldiv_B!(nextV, Pr, view(arnoldi.V, :, k))
-    A_mul_B!(Ax, arnoldi.A, nextV)
-    copy!(nextV,  Ax)
-    A_ldiv_B!(Pl, nextV)
+    ldiv!(nextV, Pr, view(arnoldi.V, :, k))
+    mul!(Ax, arnoldi.A, nextV)
+    copyto!(nextV,  Ax)
+    ldiv!(Pl, nextV)
 end

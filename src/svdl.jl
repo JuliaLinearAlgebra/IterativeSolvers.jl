@@ -1,6 +1,8 @@
 export svdl
 
-import Base: size, getindex, full, svdfact
+import Base: size, getindex, Matrix
+import LinearAlgebra.svd
+using LinearAlgebra
 
 """
 Matrix of the form
@@ -48,7 +50,7 @@ function getindex(B::BrokenArrowBidiagonal{T}, i::Int, j::Int) where {T}
     end
 end
 
-function full(B::BrokenArrowBidiagonal{T}) where {T}
+function Matrix(B::BrokenArrowBidiagonal{T}) where {T}
     n = size(B, 1)
     k = length(B.av)
     M = zeros(T, n, n)
@@ -64,7 +66,7 @@ function full(B::BrokenArrowBidiagonal{T}) where {T}
     M
 end
 
-svdfact(B::BrokenArrowBidiagonal) = svdfact(full(B)) #XXX This can be much faster
+svd(B::BrokenArrowBidiagonal) = svd(Matrix(B)) #XXX This can be much faster
 
 """
 Partial factorization object which is an approximation of a matrix
@@ -101,12 +103,12 @@ If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 - `v0 = random unit vector`: starting guess vector in the domain of `A`.
   The length of `q` should be the number of columns in `A`;
 - `k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting;
-- `j::Int = nsv`: number of vectors to keep at the end of the restart. 
+- `j::Int = nsv`: number of vectors to keep at the end of the restart.
   We don't recommend j < nsv;
 - `maxiter::Int = minimum(size(A))`: maximum number of iterations to run;
 - `verbose::Bool = false`: print information at each iteration;
 - `tol::Real = √eps()`: maximum absolute error in each desired singular value;
-- `reltol::Real=√eps()`: maximum error in each desired singular value relative to the 
+- `reltol::Real=√eps()`: maximum error in each desired singular value relative to the
   estimated norm of the input matrix;
 - `method::Symbol=:ritz`: restarting algorithm to use. Valid choices are:
   1. `:ritz`: Thick restart with Ritz values [Wu2000].
@@ -125,7 +127,7 @@ If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 
 **if `log` is `false`**
 
-- `Σ`: list of the desired singular values if `vecs == :none` (the default), otherwise 
+- `Σ`: list of the desired singular values if `vecs == :none` (the default), otherwise
   returns an `SVD` object with the desired singular vectors filled in;
 - `L`: computed partial factorizations of A.
 
@@ -144,12 +146,12 @@ otherwise returns an `SVD` object with the desired singular vectors filled in;
 - `:conv` => `convhist`: Convergence data.
 
 [^Golub1965]:
-    Golub, Gene, and William Kahan. "Calculating the singular values and pseudo-inverse 
-    of a matrix." Journal of the Society for Industrial and Applied Mathematics, 
+    Golub, Gene, and William Kahan. "Calculating the singular values and pseudo-inverse
+    of a matrix." Journal of the Society for Industrial and Applied Mathematics,
     Series B: Numerical Analysis 2.2 (1965): 205-224.
 [^Wu2000]:
-    Wu, Kesheng, and Horst Simon. "Thick-restart Lanczos method for large symmetric 
-    eigenvalue problems." SIAM Journal on Matrix Analysis and Applications 22.2 
+    Wu, Kesheng, and Horst Simon. "Thick-restart Lanczos method for large symmetric
+    eigenvalue problems." SIAM Journal on Matrix Analysis and Applications 22.2
     (2000): 602-616.
 """
 function svdl(A;
@@ -173,7 +175,7 @@ end
 #########################
 
 function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::Int=2l,
-    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->scale!(x, inv(norm(x))),
+    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->rmul!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, vecs=:none, dolock::Bool=false)
 
@@ -187,7 +189,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
         nextiter!(log)
 
         #@assert size(L.B) == (k, k)
-        F = svdfact(L.B)::LinAlg.SVD{eltype(v0), typeof(real(one(eltype(v0)))), Matrix{eltype(v0)}}
+        F = svd(L.B)::LinearAlgebra.SVD{eltype(v0), typeof(real(one(eltype(v0)))), Matrix{eltype(v0)}}
         iter==1 && @assert eltype(F)==eltype(v0)
         if method == :ritz
             thickrestart!(A, L, F, j)
@@ -205,7 +207,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
         conv = isconverged(L, F, l, tol, reltol, log, verbose)
 
         push!(log, :conv, conv)
-        push!(log, :ritz, F[:S][1:k])
+        push!(log, :ritz, F.S[1:k])
         push!(log, :Bs, deepcopy(L.B))
         push!(log, :betas, L.β)
 
@@ -222,17 +224,17 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
     shrink!(log)
 
     #Compute singular vectors as necessary and return them in the output
-    values = F[:S][1:l]
+    values = F.S[1:l]
     m, n = size(A)
 
     leftvecs = if vecs == :left || vecs == :both
-        L.P*view(F[:U], :, 1:l)
+        L.P*view(F.U, :, 1:l)
     else
         zeros(eltype(v0), m, 0)
     end
 
     rightvecs = if vecs == :right || vecs == :both
-        (view(L.Q, :, 1:size(L.Q,2)-1)*view(F[:V], :, 1:l))'
+        (view(L.Q, :, 1:size(L.Q,2)-1)*view(F.V, :, 1:l))'
     else
         zeros(eltype(v0), 0, n)
     end
@@ -240,7 +242,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
     if vecs == :none
         values, L
     else
-        LinAlg.SVD(leftvecs, values, rightvecs), L
+        LinearAlgebra.SVD(leftvecs, values, rightvecs), L
     end
 end
 
@@ -253,7 +255,7 @@ Determine if any singular values in a partial factorization have converged.
 
 - `L::PartialFactorization`: a `PartialFactorization` computed by an iterative
 method such as `svdl`;
-- `F::Base.LinAlg.SVD`: a `SVD` factorization computed for `L.B`;
+- `F::LinearAlgebra.SVD`: a `SVD` factorization computed for `L.B`;
 - `k::Int` : number of singular values to check;
 - `tol::Real`: absolute tolerance for a Ritz value to be considered converged;
 - `reltol::Real`: relative tolerance for a Ritz value to be considered converged;
@@ -270,29 +272,29 @@ described in [^Wilkinson1965] Ch.3 §54-55 p.173, [^Yamamoto1980], [^Ortega1990]
 [^Geurts1982] and [^Deif1989].
 
 [^Wilkinson1965]:
-    Wilkinson, James Hardy. The algebraic eigenvalue problem. 
+    Wilkinson, James Hardy. The algebraic eigenvalue problem.
     Vol. 87. Oxford: Clarendon Press, 1965.
-[^Yamamoto1980]: 
-    Yamamoto, Tetsuro. "Error bounds for computed eigenvalues 
+[^Yamamoto1980]:
+    Yamamoto, Tetsuro. "Error bounds for computed eigenvalues
     and eigenvectors." Numerische Mathematik 34.2 (1980): 189-199.
 [^Ortega1990]:
-    Ortega, James M. Numerical analysis: a second course. 
+    Ortega, James M. Numerical analysis: a second course.
     Society for Industrial and Applied Mathematics, 1990.
 [^Geurts1982]:
-    Geurts, A. J. "A contribution to the theory of condition." 
+    Geurts, A. J. "A contribution to the theory of condition."
     Numerische Mathematik 39.1 (1982): 85-96.
 [^Deif1989]:
-    Deif, A. "A relative backward perturbation theorem for the eigenvalue 
+    Deif, A. "A relative backward perturbation theorem for the eigenvalue
     problem." Numerische Mathematik 56.6 (1989): 625-626.
 """
-function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::Real,
+function isconverged(L::PartialFactorization, F::LinearAlgebra.SVD, k::Int, tol::Real,
     reltol::Real, log::ConvergenceHistory, verbose::Bool=false
     )
 
     @assert tol ≥ 0
 
-    σ = F[:S][1:k]
-    Δσ= L.β * abs.(F[:U][end, 1 : k])
+    σ = F.S[1:k]
+    Δσ= L.β * abs.(F.U[end, 1 : k])
 
     #Best available eigenvalue bounds
     δσ = copy(Δσ)
@@ -339,7 +341,7 @@ function isconverged(L::PartialFactorization, F::Base.LinAlg.SVD, k::Int, tol::R
     end
 
     #Estimate condition number and see if two-sided reorthog is needed
-    if verbose && (F[:S][1]/F[:S][end]) > 1/√eps()
+    if verbose && (F.S[1]/F.S[end]) > 1/√eps()
         warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 
@@ -371,24 +373,23 @@ Thick restart (with ordinary Ritz values)
 [^Hernandez2008]
 
 """
-#Hernandez2008
 function thickrestart!(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, l::Int) where {T,Tr}
+        F::LinearAlgebra.SVD{Tr,Tr}, l::Int) where {T,Tr}
 
-    k = size(F[:V], 1)
+    k = size(F.V, 1)
     m, n = size(A)
     #@assert size(L.P) == (m, k)
     #@assert size(L.Q) == (n, k+1)
 
-    Q = view(L.Q, :,1:k)*view(F[:V], :,1:l)
+    Q = view(L.Q, :,1:k)*view(F.V, :,1:l)
     L.Q = [Q view(L.Q, :, k+1)]
     #Be pedantic about ensuring normalization
     #L.Q = qr(L.Q)[1]
     #@assert all([norm(L.Q[:,i]) ≈ 1 for i=1:size(L.Q,2)])
 
     f = A*view(L.Q, :, l+1)
-    ρ = L.β * reshape(F[:U][end, 1:l], l)
-    L.P = view(L.P, :, 1:k)*view(F[:U], :, 1:l)
+    ρ = L.β * reshape(F.U[end, 1:l], l)
+    L.P = view(L.P, :, 1:k)*view(F.U, :, 1:l)
 
     #@assert ρ[i] ≈ f⋅L.P[:, i]
     f -= L.P*ρ
@@ -398,7 +399,7 @@ function thickrestart!(A, L::PartialFactorization{T,Tr},
 
     g = A'f - α*L.Q[:, end]
     L.β = β = norm(g)
-    L.B = BrokenArrowBidiagonal([F[:S][1:l]; α], ρ, typeof(β)[])
+    L.B = BrokenArrowBidiagonal([F.S[1:l]; α], ρ, typeof(β)[])
     #@assert size(L.P, 2) == size(L.Q, 2) == size(L.B, 2)
     L
 end
@@ -406,40 +407,40 @@ end
 """
     harmonicrestart!(A, L, F, k) -> L
 
-Thick restart with harmonic Ritz values. See [^Baglama2005] but note that 
-they have P and Q swapped relative to our notation, which follows that 
+Thick restart with harmonic Ritz values. See [^Baglama2005] but note that
+they have P and Q swapped relative to our notation, which follows that
 of [^Hernandez2008]
 
-[^Baglama2005]: 
-    Baglama, James, and Lothar Reichel. "Augmented implicitly restarted 
-    Lanczos bidiagonalization methods." SIAM Journal on Scientific 
+[^Baglama2005]:
+    Baglama, James, and Lothar Reichel. "Augmented implicitly restarted
+    Lanczos bidiagonalization methods." SIAM Journal on Scientific
     Computing 27.1 (2005): 19-42.
-[^Hernandez2008]: 
-    Vicente Hernández, José E. Román, and Andrés Tomás. "A robust and 
-    efficient parallel SVD solver based on restarted Lanczos bidiagonalization." 
+[^Hernandez2008]:
+    Vicente Hernández, José E. Román, and Andrés Tomás. "A robust and
+    efficient parallel SVD solver based on restarted Lanczos bidiagonalization."
     Electronic Transactions on Numerical Analysis 31 (2008): 68-85.
 
 """
 function harmonicrestart!(A, L::PartialFactorization{T,Tr},
-        F::Base.LinAlg.SVD{Tr,Tr}, k::Int) where {T,Tr}
+        F::LinearAlgebra.SVD{Tr,Tr}, k::Int) where {T,Tr}
 
     m = size(L.B, 1)::Int
     #@assert size(L.P,2)==m==size(L.Q,2)-1
 
-    F0 = F# svdfact(L.B)
-    ρ = L.β*F0[:U][end,:] #Residuals of singular values
+    F0 = F# svd(L.B)
+    ρ = L.β*F0.U[end,:] #Residuals of singular values
 
 
     #Construct broken arrow matrix
-    BA = [diagm(F0[:S]) ρ]
-    F2 = svdfact!(BA, thin=false)
+    BA = [Matrix(Diagonal(F0.S)) ρ]
+    F2 = svd!(BA; full=true)
 
     #Take k largest triplets
-    Σ = (F2[:S]::Vector{Tr})[1:k]
-    U = F0[:U]*view(F2[:U],:,1:k)
-    M = eye(T, m+1)
-    M[1:m, 1:m] = F0[:V]::Matrix{T}
-    M = M * F2[:V]
+    Σ = (F2.S::Vector{Tr})[1:k]
+    U = F0.U*view(F2.U,:,1:k)
+    M = Matrix{T}(I, m+1, m+1)
+    M[1:m, 1:m] = F0.V::Union{Matrix{T}, Adjoint{T,Matrix{T}}}
+    M = M * F2.V
     Mend = M[end, 1:k]
     #Compute scaled residual from the harmonic Ritz problem
     r0 = zeros(Tr, m)
@@ -449,12 +450,11 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     end
     r = try
         #(L.B\r0)
-        A_ldiv_B!(L.B, r0)
+        ldiv!(L.B, r0)
     catch exc
-        if isa(exc, LinAlg.LAPACKException) ||
-                isa(exc, LinAlg.SingularException) #B\r is singular
-
-            pinv(full(L.B))*r0
+        if isa(exc, LinearAlgebra.LAPACKException) ||
+            isa(exc, LinearAlgebra.SingularException) #B\r is singular
+            pinv(Matrix(L.B))*r0
         else rethrow(exc) end
     end::Vector{Tr}
     r .*= L.β
@@ -464,9 +464,10 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     M2[1:m, 1:k] = M[:,1:k]
     M2[1:m, k+1] = -r
     M2[m+1, k+1] = 1
-    Q, R = qr(M2)
+    QRF = qr(M2)
+    Q, R = QRF.Q, QRF.R
 
-    Q = L.Q*Q
+    Q = L.Q*view(Q,:,1:k+1)
     P = L.P*view(U,:,1:k)
 
     R = view(R,1:k+1,1:k) + view(R,:,k+1)*Mend'
@@ -524,17 +525,17 @@ right vectors, except when the matrix norm exceeds `1/√eps(eltype(A))`, in
 which case it will be necessary to orthogonalize both sets of vectors. See
 [^Simon2000].
 
-[^Bjorck2015]: 
-    Björck, Åke. Numerical methods in matrix computations. 
+[^Bjorck2015]:
+    Björck, Åke. Numerical methods in matrix computations.
     New York: Springer, 2015.
-[^Simon2000]: 
-    Simon, Horst D., and Hongyuan Zha. "Low-rank matrix approximation 
-    using the Lanczos bidiagonalization process with applications." 
-    SIAM Journal on Scientific Computing 21.6 (2000): 2257-2274. 
+[^Simon2000]:
+    Simon, Horst D., and Hongyuan Zha. "Low-rank matrix approximation
+    using the Lanczos bidiagonalization process with applications."
+    SIAM Journal on Scientific Computing 21.6 (2000): 2257-2274.
 
 [^Daniel1976]:
-    Daniel, James W., et al. "Reorthogonalization and stable algorithms 
-    for updating the Gram-Schmidt QR factorization." Mathematics of 
+    Daniel, James W., et al. "Reorthogonalization and stable algorithms
+    for updating the Gram-Schmidt QR factorization." Mathematics of
     Computation 30.136 (1976): 772-795.
 ```
 """
@@ -560,7 +561,7 @@ function extend!(
     β = L.β
     for j=l+1:k
         log.mtvps+=1
-        Ac_mul_B!(q, A, p) #q = A'p
+        mul!(q, adjoint(A), p) #q = A'p
 
         if orthright #Orthogonalize right Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization
@@ -579,7 +580,7 @@ function extend!(
 
         log.mvps+=1
         #p = A*q - β*p
-        A_mul_B!(p, A, q)
+        mul!(p, A, q)
         p .-= β*view(L.P, :, j)
 
         if orthleft #Orthogonalize left Lanczos vector
@@ -608,5 +609,5 @@ end
 
 let
     B = BrokenArrowBidiagonal([1, 2, 3], [1, 2], Int[])
-    @assert full(B) == [1 0 1; 0 2 2; 0 0 3]
+    @assert Matrix(B) == [1 0 1; 0 2 2; 0 0 3]
 end
