@@ -5,6 +5,8 @@ import IterativeSolvers: DiagonalIndices, FastLowerTriangular,
 
 using IterativeSolvers
 using Test
+using Random
+using LinearAlgebra
 using SparseArrays
 
 @testset "Stationary solvers" begin
@@ -12,7 +14,7 @@ using SparseArrays
 n = 10
 m = 6
 ω = 1.2
-srand(1234321)
+srand(1234322)
 
 @testset "SparseMatrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     @testset "Sparse? $sparse" for sparse = (true, false)
@@ -44,7 +46,7 @@ srand(1234321)
 
         for solver in (sor!, ssor!)
             xi = solver(copy(x0), A, b, ω, maxiter=2n)
-            @test norm(b - A * xi) / norm(b) ≤ 10*tol
+            @test norm(b - A * xi) / norm(b) ≤ tol
         end
     end
 end
