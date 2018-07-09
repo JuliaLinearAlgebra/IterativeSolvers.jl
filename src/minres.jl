@@ -1,7 +1,7 @@
 export minres_iterable, minres, minres!
 using Printf
 import LinearAlgebra: BLAS.axpy!, givensAlgorithm
-import Base: start, next, done
+import Base: iterate
 
 mutable struct MINRESIterable{matT, solT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}
     A::matT
@@ -94,7 +94,9 @@ start(::MINRESIterable) = 1
 
 done(m::MINRESIterable, iteration::Int) = iteration > m.maxiter || converged(m)
 
-function next(m::MINRESIterable, iteration::Int)
+function iterate(m::MINRESIterable, iteration::Int=start(m))
+    if done(m, iteration) return nothing end
+
     # v_next = A * v_curr - H[2] * v_prev
     mul!(m.v_next, m.A, m.v_curr)
 
