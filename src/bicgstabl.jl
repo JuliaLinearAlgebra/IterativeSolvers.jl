@@ -1,6 +1,6 @@
 export bicgstabl, bicgstabl!, bicgstabl_iterator, bicgstabl_iterator!, BiCGStabIterable
 using Printf
-import Base: start, next, done
+import Base: iterate
 
 mutable struct BiCGStabIterable{precT, matT, solT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
     A::matT
@@ -76,7 +76,9 @@ end
 @inline start(::BiCGStabIterable) = 0
 @inline done(it::BiCGStabIterable, iteration::Int) = it.mv_products ≥ it.max_mv_products || converged(it)
 
-function next(it::BiCGStabIterable, iteration::Int)
+function iterate(it::BiCGStabIterable, iteration::Int=start(it))
+    if done(it, iteration) return nothing end
+
     T = eltype(it.x)
     L = 2 : it.l + 1
 

@@ -1,5 +1,5 @@
 import LinearAlgebra: mul!, ldiv!
-import Base: start, next, done, getindex
+import Base: getindex, iterate
 
 using SparseArrays
 
@@ -222,7 +222,8 @@ end
 
 start(::JacobiIterable) = 1
 done(j::JacobiIterable, iteration::Int) = iteration > j.maxiter
-function next(j::JacobiIterable{T}, iteration::Int) where {T}
+function iterate(j::JacobiIterable{T}, iteration::Int=start(j)) where {T}
+    if done(j, iteration) return nothing end
     # tmp = D \ (b - (A - D) * x)
     copyto!(j.next, j.b)
     mul!(-one(T), j.O, j.x, one(T), j.next)
@@ -273,7 +274,8 @@ end
 
 start(::GaussSeidelIterable) = 1
 done(g::GaussSeidelIterable, iteration::Int) = iteration > g.maxiter
-function next(g::GaussSeidelIterable, iteration::Int)
+function iterate(g::GaussSeidelIterable, iteration::Int=start(g))
+    if done(g, iteration) return nothing end
     # x ← L \ (-U * x + b)
     T = eltype(g.x)
     gauss_seidel_multiply!(-one(T), g.U, g.x, one(T), g.b, g.x)
@@ -316,7 +318,9 @@ end
 
 start(::SORIterable) = 1
 done(s::SORIterable, iteration::Int) = iteration > s.maxiter
-function next(s::SORIterable{T}, iteration::Int) where {T}
+function iterate(s::SORIterable{T}, iteration::Int=start(s)) where {T}
+    if done(s, iteration) return nothing end
+
     # next = b - U * x
     gauss_seidel_multiply!(-one(T), s.U, s.x, one(T), s.b, s.next)
 
@@ -384,7 +388,9 @@ end
 start(s::SSORIterable) = 1
 done(s::SSORIterable, iteration::Int) = iteration > s.maxiter
 
-function next(s::SSORIterable{T}, iteration::Int) where {T}
+function iterate(s::SSORIterable{T}, iteration::Int=start(s)) where {T}
+    if done(s, iteration) return nothing end
+
     # tmp = b - U * x
     gauss_seidel_multiply!(-one(T), s.sU, s.x, one(T), s.b, s.tmp)
 

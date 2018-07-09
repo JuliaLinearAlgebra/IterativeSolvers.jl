@@ -1,4 +1,4 @@
-import Base: next, start, done
+import Base: iterate
 
 export chebyshev, chebyshev!
 
@@ -26,7 +26,9 @@ converged(c::ChebyshevIterable) = c.resnorm ≤ c.reltol
 start(::ChebyshevIterable) = 0
 done(c::ChebyshevIterable, iteration::Int) = iteration ≥ c.maxiter || converged(c)
 
-function next(cheb::ChebyshevIterable, iteration::Int)
+function iterate(cheb::ChebyshevIterable, iteration::Int=start(cheb))
+    if done(cheb, iteration) return nothing end
+
     T = eltype(cheb.x)
 
     ldiv!(cheb.c, cheb.Pl, cheb.r)

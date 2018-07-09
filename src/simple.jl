@@ -1,4 +1,4 @@
-import Base: start, next, done
+import Base: iterate
 
 #Simple methods
 export powm, powm!, invpowm, invpowm!
@@ -25,7 +25,8 @@ end
 
 @inline done(p::PowerMethodIterable, iteration::Int) = iteration > p.maxiter || converged(p)
 
-function next(p::PowerMethodIterable, iteration::Int)
+function iterate(p::PowerMethodIterable, iteration::Int=start(p))
+    if done(p, iteration) return nothing end
 
     mul!(p.Ax, p.A, p.x)
 

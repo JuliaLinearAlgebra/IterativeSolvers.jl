@@ -1,4 +1,4 @@
-import Base: start, next, done
+import Base: iterate
 using Printf
 export cg, cg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
@@ -40,7 +40,9 @@ end
 # Ordinary CG #
 ###############
 
-function next(it::CGIterable, iteration::Int)
+function iterate(it::CGIterable, iteration::Int=start(it))
+    if done(it, iteration) return nothing end
+
     # u := r + βu (almost an axpy)
     β = it.residual^2 / it.prev_residual^2
     it.u .= it.r .+ β .* it.u
@@ -64,7 +66,12 @@ end
 # Preconditioned CG #
 #####################
 
-function next(it::PCGIterable, iteration::Int)
+function iterate(it::PCGIterable, iteration::Int=start(it))
+    # Check for termination first
+    if done(it, iteration)
+        return nothing
+    end
+
     ldiv!(it.c, it.Pl, it.r)
 
     ρ_prev = it.ρ

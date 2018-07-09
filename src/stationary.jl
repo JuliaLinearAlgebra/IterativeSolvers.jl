@@ -1,7 +1,7 @@
 export jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 
 import LinearAlgebra.SingularException
-import Base: start, next, done, getindex
+import Base: getindex, iterate
 
 function check_diag(A::AbstractMatrix)
     for i = 1 : size(A, 1)
@@ -45,7 +45,9 @@ end
 
 start(::DenseJacobiIterable) = 1
 done(it::DenseJacobiIterable, iteration::Int) = iteration > it.maxiter
-function next(j::DenseJacobiIterable, iteration::Int)
+function iterate(j::DenseJacobiIterable, iteration::Int=start(j))
+    if done(j, iteration) return nothing end
+
     n = size(j.A, 1)
 
     copyto!(j.next, j.b)
@@ -103,7 +105,9 @@ end
 start(::DenseGaussSeidelIterable) = 1
 done(it::DenseGaussSeidelIterable, iteration::Int) = iteration > it.maxiter
 
-function next(s::DenseGaussSeidelIterable, iteration::Int)
+function iterate(s::DenseGaussSeidelIterable, iteration::Int=start(s))
+    if done(s, iteration) return nothing end
+
     n = size(s.A, 1)
 
     for col = 1 : n
@@ -160,7 +164,9 @@ end
 
 start(::DenseSORIterable) = 1
 done(it::DenseSORIterable, iteration::Int) = iteration > it.maxiter
-function next(s::DenseSORIterable, iteration::Int)
+function iterate(s::DenseSORIterable, iteration::Int=start(s))
+    if done(s, iteration) return nothing end
+
     n = size(s.A, 1)
 
     for col = 1 : n
@@ -218,7 +224,9 @@ end
 
 start(::DenseSSORIterable) = 1
 done(it::DenseSSORIterable, iteration::Int) = iteration > it.maxiter
-function next(s::DenseSSORIterable, iteration::Int)
+function iterate(s::DenseSSORIterable, iteration::Int=start(s))
+    if done(s, iteration) return nothing end
+
     n = size(s.A, 1)
 
     for col = 1 : n

@@ -1,4 +1,4 @@
-import Base: start, next, done
+import Base: iterate
 using Printf
 export gmres, gmres!
 
@@ -52,7 +52,8 @@ start(::GMRESIterable) = 0
 
 done(g::GMRESIterable, iteration::Int) = iteration ≥ g.maxiter || converged(g)
 
-function next(g::GMRESIterable, iteration::Int)
+function iterate(g::GMRESIterable, iteration::Int=start(g))
+    if done(g, iteration) return nothing end
 
     # Arnoldi step: expand
     expand!(g.arnoldi, g.Pl, g.Pr, g.k, g.Ax)
