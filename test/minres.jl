@@ -1,5 +1,8 @@
 using IterativeSolvers
 using Test
+using Random
+using SparseArrays
+using LinearAlgebra
 using LinearMaps
 
 @testset "MINRES" begin

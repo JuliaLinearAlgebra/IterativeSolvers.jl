@@ -3,6 +3,7 @@ using Test
 using LinearMaps
 using LinearAlgebra
 using Random
+using SparseArrays
 
 #GMRES
 @testset "GMRES" begin

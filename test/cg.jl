@@ -3,6 +3,7 @@ using LinearMaps
 using Test
 using LinearAlgebra
 using SparseArrays
+using Random
 
 import LinearAlgebra.ldiv!
 
