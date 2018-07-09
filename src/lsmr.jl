@@ -107,10 +107,14 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     normArs = Tr[]
     conlim > 0 ? ctol = convert(Tr, inv(conlim)) : ctol = zero(Tr)
     # form the first vectors u and v (satisfy  β*u = b,  α*v = A'u)
-    u = mul!(b, A, x, -1, 1)
+    tmp_u = similar(b)
+    tmp_v = similar(v)
+    mul!(tmp_u, A, x)
+    b .-= tmp_u
+    u = b
     β = norm(u)
     u .*= inv(β)
-    mul!(v, adjoint(A), u, 1, 0)
+    mul!(v, adjoint(A), u)
     α = norm(v)
     v .*= inv(α)
 
@@ -158,12 +162,14 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
         while iter < maxiter
             nextiter!(log,mvps=1)
             iter += 1
-            mul!(u, A, v, 1, -α)
+            mul!(tmp_u, A, v)
+            u .= tmp_u .+ u .* -α
             β = norm(u)
             if β > 0
                 log.mtvps+=1
                 u .*= inv(β)
-                mul!(v, adjoint(A), u, 1, -β)
+                mul!(tmp_v, adjoint(A), u)
+                v .= tmp_v .+ v .* -β
                 α = norm(v)
                 v .*= inv(α)
             end
@@ -277,12 +283,4 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     verbose && @printf("\n")
     setconv(log, istop ∉ (3, 6, 7))
     x
-end
-
-function LinearAlgebra.mul!(y::AbstractVector, A::StridedVecOrMat, x::AbstractVector, α::Number, β::Number)
-    BLAS.gemm!('N', 'N', convert(eltype(y), α), A, x, convert(eltype(y), β), y)
-end
-
-function LinearAlgebra.mul!(y::AbstractVector, A::Adjoint{F, T}, x::AbstractVector, α::Number, β::Number) where {F, T <: StridedVecOrMat{F}}
-    BLAS.gemm!('T', 'N', convert(eltype(y), α), adjoint(A), x, convert(eltype(y), β), y)
 end
