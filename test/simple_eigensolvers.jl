@@ -26,7 +26,7 @@ n = 10
         @test norm(A * x - λ * x) ≤ tol
     end
 
-    @testset "Inverse iteration" begin
+    @test_skip @testset "Inverse iteration" begin
         # Set a target near the middle eigenvalue
         idx = div(n, 2)
         σ = T(0.75 * λs[idx] + 0.25 * λs[idx + 1])

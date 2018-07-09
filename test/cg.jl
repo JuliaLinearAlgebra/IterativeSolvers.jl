@@ -66,14 +66,14 @@ end
     end
 
     Af = LinearMap(A)
-    @testset "Function" begin
+    @test_skip @testset "Function" begin
         xCG = cg(Af, rhs; tol=tol, maxiter=100)
         xJAC = cg(Af, rhs; Pl=P, tol=tol, maxiter=100)
         @test norm(A * xCG - rhs) ≤ tol
         @test norm(A * xJAC - rhs) ≤ tol
     end
 
-    @testset "Function with specified starting guess" begin
+    @test_skip @testset "Function with specified starting guess" begin
         x0 = randn(size(rhs))
         xCG, hCG = cg!(copy(x0), Af, rhs; tol=tol, maxiter=100, log=true)
         xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=P, tol=tol, maxiter=100, log=true)
