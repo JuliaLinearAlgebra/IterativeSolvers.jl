@@ -29,7 +29,7 @@ end
 
 function cg(; n = 1_000_000, tol = 1e-6, maxiter::Int = 200)
     A, b = posdef(n)
-    P = DiagonalPreconditioner(collect(linspace(1.0, 2.0, n)))
+    P = DiagonalPreconditioner(collect(range(1.0, stop=2.0, length=n)))
 
     println("Symmetric positive definite matrix of size ", n)
     println("Eigenvalues in interval [0.01, 4.01]")

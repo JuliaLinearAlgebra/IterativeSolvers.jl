@@ -13,7 +13,7 @@ function advection_dominated(;N = 50, β = 1000.0)
     h = 1.0 / (N + 1)
 
     # Interior points only
-    xs = linspace(0, 1, N + 2)[2 : N + 1]
+    xs = range(0, stop=1, length=N + 2)[2 : N + 1]
 
     # The Laplacian
     Δ = laplace_matrix(Float64, N, 3) ./ -h^2

@@ -1,7 +1,7 @@
 #Tests using the NIST Matrix Market
 
 using IterativeSolvers, MatrixMarket
-info("Testing matrices from the NIST Matrix Market")
+@info("Testing matrices from the NIST Matrix Market")
 for (setname, matname) in [("cylshell", "s3dkq4m2")]
     dl_filename = string(setname, "_", filename)
     isfile(dl_filename) || download("ftp://math.nist.gov/pub/MatrixMarket2/misc/$setname/$matname.mtx.gz", dl_filename)
