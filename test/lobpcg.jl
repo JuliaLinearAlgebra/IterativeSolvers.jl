@@ -27,7 +27,7 @@ function max_err(R)
 end
 
 @testset "Locally Optimal Block Preconditioned Conjugate Gradient" begin
-    srand(1234323)
+    srand(1234321)
     @testset "Single eigenvalue" begin
         n = 10
         @testset "Small full system" begin
@@ -37,8 +37,7 @@ end
                         A = rand(T, n, n)
                         A = A' * A + I
                         b = rand(T, n, 1)
-                        tol = √eps(real(T))
-
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
                         λ, X = r.λ, r.X
                         @test norm(A*X - X*λ) ≤ tol
@@ -57,8 +56,7 @@ end
                         B = rand(T, n, n)
                         B = B' * B + I
                         b = rand(T, n, 1)
-                        tol = √eps(real(T))
-
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
                         @test max_err(A*X - B*X*λ) ≤ tol
@@ -74,8 +72,7 @@ end
             A = laplace_matrix(Float64, 20, 2)
             rhs = randn(size(A, 2), 1)
             rmul!(rhs, inv(norm(rhs)))
-            tol = 1e-5
-
+            tol = IterativeSolvers.default_tolerance(Float64)
             @testset "Matrix" begin
                 @testset "largest = $largest" for largest in (true, false)
                     r = lobpcg(A, largest, rhs; tol=tol, maxiter=Inf)
@@ -91,8 +88,7 @@ end
                         A = rand(T, n, n)
                         A = A' * A + I
                         b = zeros(T, n, 1)
-                        tol = √eps(real(T))
-
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
                         λ, X = r.λ, r.X
                         @test norm(A*X - X*λ) ≤ tol
@@ -107,7 +103,7 @@ end
                         B = rand(T, n, n)
                         B = B' * B + I
                         b = zeros(T, n, 1)
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
 
                         r = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
@@ -122,7 +118,7 @@ end
                     @testset "largest = $largest" for largest in (true, false)
                         A = rand(T, n, n)
                         A = A' * A + I
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
 
                         r = lobpcg(A, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ, X = r.λ, r.X
@@ -137,7 +133,7 @@ end
                         A = A' * A + I
                         B = rand(T, n, n)
                         B = B' * B + I
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
 
                         r = lobpcg(A, B, largest, 1; tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
@@ -152,7 +148,7 @@ end
                     @testset "largest = $largest" for largest in (true, false)
                         A = rand(T, n, n)
                         A = A' * A + I
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
                         b = rand(T, n, 1)
                         itr = LOBPCGIterator(A, largest, b)
 
@@ -170,7 +166,7 @@ end
                         B = rand(T, n, n)
                         B = B' * B + I
                         b = rand(T, n, 1)
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
                         itr = LOBPCGIterator(A, B, largest, b)
 
                         r = lobpcg!(itr; tol=tol, maxiter=Inf, log=true)
@@ -186,7 +182,7 @@ end
                     @testset "largest = $largest" for largest in (true, false)
                         A = rand(T, n, n)
                         A = A' * A + I
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
                         P = JacobiPrec(diag(A))
                         r = lobpcg(A, largest, 1; P=P, tol=tol, maxiter=Inf, log=false)
                         λ, X = r.λ, r.X
@@ -202,7 +198,7 @@ end
                         P = JacobiPrec(diag(A))
                         B = rand(T, n, n)
                         B = B' * B + I
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
 
                         r = lobpcg(A, B, largest, 1; P=P, tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
@@ -217,7 +213,7 @@ end
                     @testset "largest = $largest" for largest in (true, false)
                         A = rand(T, n, n)
                         A = A' * A + I
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ1, X1 = r.λ, r.X
                         r = lobpcg(A, largest, 1; C=copy(r.X), tol=tol, maxiter=Inf, log=false)
@@ -234,7 +230,7 @@ end
                         A = A' * A + I
                         B = rand(T, n, n)
                         B = B' * B + I
-                        tol = eps(real(T))^0.4
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ1, X1 = r.λ, r.X
                         r = lobpcg(A, B, largest, 1; C=copy(r.X), tol=tol, maxiter=Inf, log=false)
@@ -255,7 +251,7 @@ end
                         A = rand(T, n, n)
                         A = A' * A + I
                         b = rand(T, n, 2)
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
 
                         r  = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
                         λ, X = r.λ, r.X
@@ -275,7 +271,7 @@ end
                         B = rand(T, n, n)
                         B = B' * B + I
                         b = rand(T, n, 2)
-                        tol = eps(real(T))^(real(T)(4/10))
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
                         @test max_err(A*X - B*X*Matrix(Diagonal(λ))) ≤ tol
@@ -295,7 +291,7 @@ end
                 @testset "largest = $largest" for largest in (true, false)
                     A = rand(T, n, n)
                     A = A' * A + I
-                    tol = eps(real(T))^0.4
+                    tol = IterativeSolvers.default_tolerance(T)
                     X0 = rand(T, n, block_size)
                     r = lobpcg(A, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
@@ -311,8 +307,7 @@ end
                     A = A' * A + I
                     B = rand(T, n, n)
                     B = B' * B + I
-                    tol = eps(real(T))^0.4
-
+                    tol = IterativeSolvers.default_tolerance(T)
                     X0 = rand(T, n, block_size)
                     r = lobpcg(A, B, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
@@ -327,7 +322,7 @@ end
                     @testset "largest = $largest" for largest in (true, false)
                         A = rand(T, n, n)
                         A = A' * A + I
-                        tol = √eps(real(T))
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ1, X1 = r.λ, r.X
 
@@ -347,7 +342,7 @@ end
                         A = A' * A + 2I
                         B = rand(T, n, n)
                         B = B' * B + 2I
-                        tol = eps(real(T))^0.4
+                        tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ1, X1 = r.λ, r.X
 

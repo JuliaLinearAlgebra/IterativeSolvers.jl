@@ -746,6 +746,22 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
     end
 end
 
+function default_tolerance(::Type{T}, tol=nothing) where T 
+    if T <: Complex
+        if tol isa Nothing
+            return eps(real(T))^(real(T)(3)/10)
+        else
+            real(tol)
+        end
+    else
+        if tol isa Nothing
+            return eps(T)^(T(3)/10)
+        else
+            return real(tol)
+        end
+    end
+end
+
 """
 The Locally Optimal Block Preconditioned Conjugate Gradient Method (LOBPCG)
 
@@ -872,7 +888,7 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
     end
     n = size(X, 1)
     sizeX = size(X, 2)
-    residualTolerance = (tol isa Nothing) ? (eps(real(T)))^(real(T)(4)/10) : real(tol)
+    residualTolerance = default_tolerance(T, tol)
     iterator.iteration[] = 1
     while iterator.iteration[] <= maxiter
         state = iterator(residualTolerance, log)
