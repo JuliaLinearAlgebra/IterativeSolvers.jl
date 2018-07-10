@@ -25,7 +25,7 @@ function sol_matrix(m, n)
     sparse(I, J, V, m, n)
 end
 
-@test_skip @testset "SOL test" for (m, n) = ((10, 10), (20, 10), (20, 10))
+@testset "SOL test" for (m, n) = ((10, 10), (20, 10), (20, 10))
     # Test adapted from the BSD-licensed Matlab implementation at
     #    http://www.stanford.edu/group/SOL/software/lsqr.html
     #              Michael Saunders, Systems Optimization Laboratory,
