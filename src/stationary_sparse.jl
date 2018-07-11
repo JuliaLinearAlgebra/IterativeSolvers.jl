@@ -1,5 +1,7 @@
-import Base.LinAlg: A_mul_B!, A_ldiv_B!
-import Base: start, next, done, getindex
+import LinearAlgebra: mul!, ldiv!
+import Base: getindex, iterate
+
+using SparseArrays
 
 struct DiagonalIndices{Tv, Ti <: Integer}
     matrix::SparseMatrixCSC{Tv,Ti}
@@ -7,14 +9,14 @@ struct DiagonalIndices{Tv, Ti <: Integer}
 
     function DiagonalIndices{Tv,Ti}(A::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti}
         # Check square?
-        diag = Vector{Ti}(A.n)
+        diag = Vector{Ti}(undef, A.n)
 
         for col = 1 : A.n
             r1 = A.colptr[col]
             r2 = A.colptr[col + 1] - 1
             r1 = searchsortedfirst(A.rowval, col, r1, r2, Base.Order.Forward)
             if r1 > r2 || A.rowval[r1] != col || iszero(A.nzval[r1])
-                throw(Base.LinAlg.SingularException(col))
+                throw(LinearAlgebra.SingularException(col))
             end
             diag[col] = r1
         end
@@ -25,7 +27,7 @@ end
 
 DiagonalIndices(A::SparseMatrixCSC{Tv,Ti}) where {Tv,Ti} = DiagonalIndices{Tv,Ti}(A)
 
-function A_ldiv_B!(y::AbstractVector{Tv}, D::DiagonalIndices{Tv,Ti}, x::AbstractVector{Tv}) where {Tv,Ti}
+function ldiv!(y::AbstractVector{Tv}, D::DiagonalIndices{Tv,Ti}, x::AbstractVector{Tv}) where {Tv,Ti}
     @inbounds for row = 1 : D.matrix.n
         y[row] = x[row] / D.matrix.nzval[D.diag[row]]
     end
@@ -141,9 +143,9 @@ function backward_sub!(α, F::FastUpperTriangular, x::AbstractVector, β, y::Abs
 end
 
 """
-Do A_mul_B! with the off-diagonal elements of a matrix.
+Do mul! with the off-diagonal elements of a matrix.
 """
-function A_mul_B!(α::T, O::OffDiagonal, x::AbstractVector, β::T, y::AbstractVector) where {T}
+function mul!(α::T, O::OffDiagonal, x::AbstractVector, β::T, y::AbstractVector) where {T}
     # Specialize for β = 0 and β = 1
     A = O.matrix
 
@@ -151,7 +153,7 @@ function A_mul_B!(α::T, O::OffDiagonal, x::AbstractVector, β::T, y::AbstractVe
         if iszero(β)
             fill!(y, zero(T))
         else
-            scale!(β, y)
+            lmul!(β, y)
         end
     end
 
@@ -220,16 +222,17 @@ end
 
 start(::JacobiIterable) = 1
 done(j::JacobiIterable, iteration::Int) = iteration > j.maxiter
-function next(j::JacobiIterable{T}, iteration::Int) where {T}
+function iterate(j::JacobiIterable{T}, iteration::Int=start(j)) where {T}
+    if done(j, iteration) return nothing end
     # tmp = D \ (b - (A - D) * x)
-    copy!(j.next, j.b)
-    A_mul_B!(-one(T), j.O, j.x, one(T), j.next)
-    A_ldiv_B!(j.x, j.O.diag, j.next)
+    copyto!(j.next, j.b)
+    mul!(-one(T), j.O, j.x, one(T), j.next)
+    ldiv!(j.x, j.O.diag, j.next)
 
     nothing, iteration + 1
 end
 
-jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) = 
+jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) =
     JacobiIterable{eltype(x), typeof(x), typeof(x), typeof(b)}(
         OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)
 
@@ -241,7 +244,7 @@ Performs exactly `maxiter` Jacobi iterations.
 
 Allocates a temporary vector and precomputes the diagonal indices.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function jacobi!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int=10)
@@ -271,7 +274,8 @@ end
 
 start(::GaussSeidelIterable) = 1
 done(g::GaussSeidelIterable, iteration::Int) = iteration > g.maxiter
-function next(g::GaussSeidelIterable, iteration::Int)
+function iterate(g::GaussSeidelIterable, iteration::Int=start(g))
+    if done(g, iteration) return nothing end
     # x ← L \ (-U * x + b)
     T = eltype(g.x)
     gauss_seidel_multiply!(-one(T), g.U, g.x, one(T), g.b, g.x)
@@ -287,7 +291,7 @@ Performs exactly `maxiter` Gauss-Seidel iterations.
 
 Works fully in-place, but precomputes the diagonal indices.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function gauss_seidel!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10)
@@ -314,7 +318,9 @@ end
 
 start(::SORIterable) = 1
 done(s::SORIterable, iteration::Int) = iteration > s.maxiter
-function next(s::SORIterable{T}, iteration::Int) where {T}
+function iterate(s::SORIterable{T}, iteration::Int=start(s)) where {T}
+    if done(s, iteration) return nothing end
+
     # next = b - U * x
     gauss_seidel_multiply!(-one(T), s.U, s.x, one(T), s.b, s.next)
 
@@ -331,7 +337,7 @@ function sor_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, 
     D = DiagonalIndices(A)
     T = eltype(x)
     SORIterable{T,typeof(x),typeof(x),typeof(b),eltype(ω)}(
-        StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), ω, 
+        StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), ω,
         x, similar(x), b, maxiter
     )
 end
@@ -343,7 +349,7 @@ Performs exactly `maxiter` SOR iterations with relaxation parameter `ω`.
 
 Allocates a temporary vector and precomputes the diagonal indices.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function sor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
@@ -382,7 +388,9 @@ end
 start(s::SSORIterable) = 1
 done(s::SSORIterable, iteration::Int) = iteration > s.maxiter
 
-function next(s::SSORIterable{T}, iteration::Int) where {T}
+function iterate(s::SSORIterable{T}, iteration::Int=start(s)) where {T}
+    if done(s, iteration) return nothing end
+
     # tmp = b - U * x
     gauss_seidel_multiply!(-one(T), s.sU, s.x, one(T), s.b, s.tmp)
 
@@ -401,12 +409,12 @@ end
 """
     ssor!(x, A::SparseMatrixCSC, b, ω::Real; maxiter=10)
 
-Performs exactly `maxiter` SSOR iterations with relaxation parameter `ω`. Each iteration 
+Performs exactly `maxiter` SSOR iterations with relaxation parameter `ω`. Each iteration
 is basically a forward *and* backward sweep of SOR.
 
 Allocates a temporary vector and precomputes the diagonal indices.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function ssor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)

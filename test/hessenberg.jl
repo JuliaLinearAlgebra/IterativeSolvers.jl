@@ -1,5 +1,5 @@
 using IterativeSolvers
-using Base.Test
+using Test
 
 @testset "Hessenberg" begin
 
@@ -7,9 +7,9 @@ using Base.Test
     H1 = [
         1.19789 1.42354 -0.0371401  0.0118481 -0.0362113  0.00269463;
         1.46142 4.01953  0.890729  -0.0157701 -0.0300656 -0.0191307;
-        0.0     1.08456  3.35179    0.941966   0.0439339 -0.072888; 
-        0.0     0.0      1.29071    3.1746     0.853378   0.0202058; 
-        0.0     0.0      0.0        1.32227    3.06086    1.18129; 
+        0.0     1.08456  3.35179    0.941966   0.0439339 -0.072888;
+        0.0     0.0      1.29071    3.1746     0.853378   0.0202058;
+        0.0     0.0      0.0        1.32227    3.06086    1.18129;
         0.0     0.0      0.0        0.0        1.58682    2.99037;
         0.0     0.0      0.0        0.0        0.0        1.45345
     ]
@@ -30,7 +30,7 @@ using Base.Test
 
         # Compare \ against the optimized version.
         solution_with_residual = copy(rhs)
-        A_ldiv_B!(IterativeSolvers.FastHessenberg(copy(H)), solution_with_residual)
+        ldiv!(IterativeSolvers.FastHessenberg(copy(H)), solution_with_residual)
         solution = H \ rhs
 
         # First part is the solution

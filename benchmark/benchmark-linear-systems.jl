@@ -1,6 +1,6 @@
 module LinearSystemsBench
 
-import Base.A_ldiv_B!, Base.\
+import Base.ldiv!, Base.\
 
 using BenchmarkTools
 using IterativeSolvers
@@ -12,7 +12,7 @@ struct DiagonalPreconditioner{T}
     diag::Vector{T}
 end
 
-function A_ldiv_B!(y::AbstractVector{T}, A::DiagonalPreconditioner{T}, b::AbstractVector{T}) where T
+function ldiv!(y::AbstractVector{T}, A::DiagonalPreconditioner{T}, b::AbstractVector{T}) where T
     for i = 1 : length(b)
         @inbounds y[i] = A.diag[i] \ b[i]
     end
@@ -34,7 +34,7 @@ function cg(; n = 1_000_000, tol = 1e-6, maxiter::Int = 200)
     println("Symmetric positive definite matrix of size ", n)
     println("Eigenvalues in interval [0.01, 4.01]")
     println("Tolerance = ", tol, "; max #iterations = ", maxiter)
-    
+
     # Dry run
     initial = rand(n)
     IterativeSolvers.cg!(copy(initial), A, b, Pl = P, maxiter = maxiter, tol = tol, log = false)

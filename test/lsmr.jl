@@ -1,55 +1,19 @@
 using IterativeSolvers
-using Base.Test
+using Test
+using LinearAlgebra
+using Random
+using SparseArrays
 
-import Base: size, A_mul_B!, Ac_mul_B!, eltype, similar, scale!, copy!, fill!, length, broadcast!
-import Base.LinAlg: norm
+import Base: size, eltype, similar, copyto!, fill!, length, axes, getindex, setindex!
+import LinearAlgebra: norm, mul!, rmul!, lmul!
 
 # Type used in Dampenedtest
-# solve (A'A + diag(v).^2 ) x = b
-# using LSMR in the augmented space A' = [A ; diag(v)] b' = [b; zeros(size(A, 2)]
-mutable struct DampenedVector{Ty, Tx}
-    y::Ty
-    x::Tx
-end
-
-eltype(a::DampenedVector) = promote_type(eltype(a.y), eltype(a.x))
-norm(a::DampenedVector) = sqrt(norm(a.y)^2 + norm(a.x)^2)
-
-function Base.Broadcast.broadcast!(f::Tf, to::DampenedVector, from::DampenedVector, args...) where {Tf}
-    to.x .= f.(from.x, args...)
-    to.y .= f.(from.y, args...)
-    to
-end
-
-function copy!(a::DampenedVector{Ty, Tx}, b::DampenedVector{Ty, Tx}) where {Ty, Tx}
-    copy!(a.y, b.y)
-    copy!(a.x, b.x)
-    a
-end
-
-function fill!(a::DampenedVector, α::Number)
-    fill!(a.y, α)
-    fill!(a.x, α)
-    a
-end
-
-scale!(α::Number, a::DampenedVector) = scale!(a, α)
-
-function scale!(a::DampenedVector, α::Number)
-    scale!(a.y, α)
-    scale!(a.x, α)
-    a
-end
-
-similar(a::DampenedVector, T) = DampenedVector(similar(a.y, T), similar(a.x, T))
-length(a::DampenedVector) = length(a.y) + length(a.x)
-
-mutable struct DampenedMatrix{TA, Tx}
+# solve (A'A + diag(v).^2 ) x = A'b
+# using LSMR in the augmented space Ã = [A ; diag(v)] b̃ = [b; zeros(size(A, 2)]
+struct DampenedMatrix{Tv,TA<:AbstractMatrix{Tv},TD<:AbstractVector{Tv}} <: AbstractMatrix{Tv}
     A::TA
-    diagonal::Tx
+    diagonal::TD
 end
-
-eltype(A::DampenedMatrix) = promote_type(eltype(A.A), eltype(A.diagonal))
 
 function size(A::DampenedMatrix)
     m, n = size(A.A)
@@ -60,36 +24,23 @@ end
 function size(A::DampenedMatrix, dim::Integer)
     m, n = size(A.A)
     l = length(A.diagonal)
-    dim == 1 ? (m + l) :
-    dim == 2 ? n : 1
+    dim == 1 ? (m + l) : (dim == 2 ? n : 1)
 end
 
-function A_mul_B!(α::Number, mw::DampenedMatrix{TA, Tx}, a::Tx,
-    β::Number, b::DampenedVector{Ty, Tx}) where {TA, Tx, Ty}
-    if β != 1.
-        if β == 0.
-            fill!(b, 0.)
-        else
-            scale!(b, β)
-        end
-    end
-    A_mul_B!(α, mw.A, a, 1.0, b.y)
-    map!((z, x, y)-> z + α * x * y, b.x, b.x, a, mw.diagonal)
-    return b
+function mul!(y::AbstractVector{Tv}, mw::DampenedMatrix, x::AbstractVector{Tv}) where {Tv}
+    m₁ = size(mw.A, 1)
+    m₂ = size(mw, 1)
+    mul!(view(y, 1:m₁), mw.A, x)
+    y[m₁+1:m₂] .= mw.diagonal .* x
+    return y
 end
 
-function Ac_mul_B!(α::Number, mw::DampenedMatrix{TA, Tx}, a::DampenedVector{Ty, Tx},
-    β::Number, b::Tx) where {TA, Tx, Ty}
-    if β != 1.
-        if β == 0.
-            fill!(b, 0.)
-        else
-            scale!(b, β)
-        end
-    end
-    Ac_mul_B!(α, mw.A, a.y, 1.0, b)
-    map!((z, x, y)-> z + α * x * y, b, b, a.x, mw.diagonal)
-    return b
+function mul!(y::AbstractVector, mw::Adjoint{Tv,<:DampenedMatrix}, x::AbstractVector) where {Tv}
+    m₁ = size(mw.parent.A, 1)
+    m₂ = size(mw.parent, 1)
+    mul!(y, adjoint(mw.parent.A), view(x, 1:m₁))
+    y .+= mw.parent.diagonal .* view(x, m₁+1:m₂)
+    return y
 end
 
 """
@@ -104,7 +55,8 @@ suitably padded by zeros.
 """
 function sol_matrix(m, n)
     mn = min(m, n)
-    spdiagm((1.0 : mn - 1, 1.0 : mn), (-1, 0), m, n)
+    I, J, V = SparseArrays.spdiagm_internal(-1 => 1.0 : mn - 1, 0 => 1.0 : mn)
+    sparse(I, J, V, m, n)
 end
 
 @testset "LSMR" begin
@@ -139,9 +91,9 @@ end
         b = rand(m)
         A = rand(m, n)
         v = rand(n)
-        Adampened = DampenedMatrix(A, v)
-        bdampened = DampenedVector(b, zeros(n))
-        x, ch = lsmr(Adampened, bdampened, log=true)
-        @test norm((A'A + diagm(v) .^ 2)x - A'b) ≤ 1e-3
+        A′ = DampenedMatrix(A, v)
+        b′ = [b; zeros(n)]
+        x, ch = lsmr(A′, b′, log=true)
+        @test norm((A'A + Matrix(Diagonal(v)) .^ 2)x - A'b) ≤ 1e-3
     end
 end

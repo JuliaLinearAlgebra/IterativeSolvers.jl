@@ -14,8 +14,8 @@ Minimizes ``\\|Ax - b\\|^2 + \\|damp*x\\|^2`` in the Euclidean norm. If multiple
 exists returns the minimal norm solution.
 
 The method is based on the Golub-Kahan bidiagonalization process.
-It is algebraically equivalent to applying CG to the normal equations 
-``(A^*A + λ^2I)x = A^*b`` but has better numerical properties, 
+It is algebraically equivalent to applying CG to the normal equations
+``(A^*A + λ^2I)x = A^*b`` but has better numerical properties,
 especially if A is ill-conditioned.
 
 # Arguments
@@ -126,7 +126,7 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
     if beta > 0
         log.mtvps=1
         u .*= inv(beta)
-        Ac_mul_B!(v,A,u)
+        mul!(v, adjoint(A), u)
         alpha = norm(v)
     end
     if alpha > 0
@@ -156,8 +156,8 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
         #      alpha*v  =  A'*u - beta*v.
 
         # Note that the following three lines are a band aid for a GEMM: X: C := αAB + βC.
-        # This is already supported in A_mul_B! for sparse and distributed matrices, but not yet dense
-        A_mul_B!(tmpm, A, v)
+        # This is already supported in mul! for sparse and distributed matrices, but not yet dense
+        mul!(tmpm, A, v)
         u .= -alpha .* u .+ tmpm
         beta = norm(u)
         if beta > 0
@@ -165,8 +165,8 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
             u .*= inv(beta)
             Anorm = sqrt(abs2(Anorm) + abs2(alpha) + abs2(beta) + dampsq)
             # Note that the following three lines are a band aid for a GEMM: X: C := αA'B + βC.
-            # This is already supported in Ac_mul_B! for sparse and distributed matrices, but not yet dense
-            Ac_mul_B!(tmpn, A, u)
+            # This is already supported in mul! for sparse and distributed matrices, but not yet dense
+            mul!(tmpn, adjoint(A), u)
             v .= -beta .* v .+ tmpn
             alpha  = norm(v)
             if alpha > 0

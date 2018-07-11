@@ -1,4 +1,4 @@
-import Base: next, start, done
+import Base: iterate
 
 export chebyshev, chebyshev!
 
@@ -26,21 +26,23 @@ converged(c::ChebyshevIterable) = c.resnorm ≤ c.reltol
 start(::ChebyshevIterable) = 0
 done(c::ChebyshevIterable, iteration::Int) = iteration ≥ c.maxiter || converged(c)
 
-function next(cheb::ChebyshevIterable, iteration::Int)
+function iterate(cheb::ChebyshevIterable, iteration::Int=start(cheb))
+    if done(cheb, iteration) return nothing end
+
     T = eltype(cheb.x)
 
-    A_ldiv_B!(cheb.c, cheb.Pl, cheb.r)
+    ldiv!(cheb.c, cheb.Pl, cheb.r)
 
     if iteration == 1
         cheb.α = T(2) / cheb.λ_avg
-        copy!(cheb.u, cheb.c)
+        copyto!(cheb.u, cheb.c)
     else
         β = (cheb.λ_diff * cheb.α / 2) ^ 2
         cheb.α = inv(cheb.λ_avg - β)
         cheb.u .= cheb.c .+ β .* cheb.c
     end
 
-    A_mul_B!(cheb.c, cheb.A, cheb.u)
+    mul!(cheb.c, cheb.A, cheb.u)
     cheb.mv_products += 1
 
     cheb.x .+= cheb.α .* cheb.u
@@ -59,8 +61,8 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
 
     T = eltype(x)
     r = similar(x)
-    copy!(r, b)
-    u = zeros(x)
+    copyto!(r, b)
+    u = zero(x)
     c = similar(x)
 
     # One MV product less
@@ -69,7 +71,7 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
         reltol = tol * resnorm
         mv_products = 0
     else
-        A_mul_B!(c, A, x)
+        mul!(c, A, x)
         r .-= c
         resnorm = norm(r)
         reltol = tol * norm(b)
@@ -107,8 +109,8 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
 
 ## Keywords
 
-- `initially_zero::Bool = false`: if `true` assumes that `iszero(x)` so that one 
-  matrix-vector product can be saved when computing the initial 
+- `initially_zero::Bool = false`: if `true` assumes that `iszero(x)` so that one
+  matrix-vector product can be saved when computing the initial
   residual vector;
 - `tol`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`.
 - `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;

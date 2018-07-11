@@ -1,5 +1,7 @@
 export idrs, idrs!
 
+using Random
+
 """
     idrs(A, b; s = 8) -> x, [history]
 
@@ -56,9 +58,9 @@ end
 
 @inline function omega(t, s)
     angle = sqrt(2.)/2
-    ns = vecnorm(s)
-    nt = vecnorm(t)
-    ts = vecdot(t,s)
+    ns = norm(s)
+    nt = norm(t)
+    ts = dot(t,s)
     rho = abs(ts/(nt*ns))
     om = ts/(nt*nt)
     if rho < angle
@@ -73,13 +75,13 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
 
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - A*X
-    normR = vecnorm(R)
+    normR = norm(R)
 	iter = 1
 
     if smoothing
         X_s = copy(X)
         R_s = copy(R)
-        T_s = zeros(R)
+        T_s = zero(R)
     end
 
     if normR <= tol           # Initial guess is a good enough solution
@@ -94,14 +96,14 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     Q = copy(Z)
     V = copy(Z)
 
-    M = eye(eltype(C),s,s)
+    M = Matrix{eltype(C)}(I,s,s)
     f = zeros(eltype(C),s)
     c = zeros(eltype(C),s)
 
     om::eltype(C) = 1
     while normR > tol && iter ≤ maxiter
         for i in 1:s,
-            f[i] = vecdot(P[i], R)
+            f[i] = dot(P[i], R)
         end
         for k in 1:s
             nextiter!(log,mvps=1)
@@ -121,12 +123,12 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
             V .= R .- V
 
             U[k] .= Q .+ om .* V
-            A_mul_B!(G[k], A, U[k])
+            mul!(G[k], A, U[k])
 
             # Bi-orthogonalise the new basis vectors
 
             for i in 1:k-1
-                alpha = vecdot(P[i],G[k])/M[i,i]
+                alpha = dot(P[i],G[k])/M[i,i]
                 G[k] .-= alpha .* G[i]
                 U[k] .-= alpha .* U[i]
             end
@@ -134,7 +136,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
             # New column of M = P'*G  (first k-1 entries are zero)
 
             for i in k:s
-                M[i,k] = vecdot(P[i],G[k])
+                M[i,k] = dot(P[i],G[k])
             end
 
             #  Make r orthogonal to q_i, i = 1..k
@@ -143,16 +145,16 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
             R .-= beta .* G[k]
             X .+= beta .* U[k]
 
-            normR = vecnorm(R)
+            normR = norm(R)
             if smoothing
                 T_s .= R_s .- R
 
-                gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
+                gamma = dot(R_s, T_s)/dot(T_s, T_s)
 
                 R_s .-= gamma .* T_s
                 X_s .-= gamma .* (X_s .- X)
 
-                normR = vecnorm(R_s)
+                normR = norm(R_s)
             end
             push!(log, :resnorm, normR)
             verbose && @printf("%3d\t%1.2e\n",iter,normR)
@@ -169,29 +171,29 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
 
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
         # Note: r is already perpendicular to P so v = r
-        copy!(V, R)
-        A_mul_B!(Q, A, V)
+        copyto!(V, R)
+        mul!(Q, A, V)
         om = omega(Q, R)
         R .-= om .* Q
         X .+= om .* V
 
-        normR = vecnorm(R)
+        normR = norm(R)
         if smoothing
             T_s .= R_s .- R
 
-            gamma = vecdot(R_s, T_s)/vecdot(T_s, T_s)
+            gamma = dot(R_s, T_s)/dot(T_s, T_s)
 
             R_s .-= gamma .* T_s
             X_s .-= gamma .* (X_s .- X)
 
-            normR = vecnorm(R_s)
+            normR = norm(R_s)
         end
         iter += 1
         nextiter!(log, mvps=1)
         push!(log, :resnorm, normR)
     end
     if smoothing
-        copy!(X, X_s)
+        copyto!(X, X_s)
     end
     verbose && @printf("\n")
     setconv(log, 0<=normR<tol)

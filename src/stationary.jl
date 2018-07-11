@@ -1,7 +1,7 @@
 export jacobi, jacobi!, gauss_seidel, gauss_seidel!, sor, sor!, ssor, ssor!
 
-import Base.LinAlg.SingularException
-import Base: start, next, done, getindex
+import LinearAlgebra.SingularException
+import Base: getindex, iterate
 
 function check_diag(A::AbstractMatrix)
     for i = 1 : size(A, 1)
@@ -25,7 +25,7 @@ Performs exactly `maxiter` Jacobi iterations.
 
 Allocates a single temporary vector and traverses `A` columnwise.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function jacobi!(x, A::AbstractMatrix, b; maxiter::Int=10)
@@ -45,11 +45,13 @@ end
 
 start(::DenseJacobiIterable) = 1
 done(it::DenseJacobiIterable, iteration::Int) = iteration > it.maxiter
-function next(j::DenseJacobiIterable, iteration::Int)
+function iterate(j::DenseJacobiIterable, iteration::Int=start(j))
+    if done(j, iteration) return nothing end
+
     n = size(j.A, 1)
 
-    copy!(j.next, j.b)
-    
+    copyto!(j.next, j.b)
+
     # Computes next = b - (A - D)x
     for col = 1 : n
         @simd for row = 1 : col - 1
@@ -83,7 +85,7 @@ Performs exactly `maxiter` Gauss-Seidel iterations.
 
 Works fully in-place and traverses `A` columnwise.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function gauss_seidel!(x, A::AbstractMatrix, b; maxiter::Int=10)
@@ -103,9 +105,11 @@ end
 start(::DenseGaussSeidelIterable) = 1
 done(it::DenseGaussSeidelIterable, iteration::Int) = iteration > it.maxiter
 
-function next(s::DenseGaussSeidelIterable, iteration::Int)
+function iterate(s::DenseGaussSeidelIterable, iteration::Int=start(s))
+    if done(s, iteration) return nothing end
+
     n = size(s.A, 1)
-    
+
     for col = 1 : n
         @simd for row = 1 : col - 1
             @inbounds s.x[row] -= s.A[row, col] * s.x[col]
@@ -139,7 +143,7 @@ Performs exactly `maxiter` SOR iterations with relaxation parameter `ω`.
 
 Allocates a single temporary vector and traverses `A` columnwise.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function sor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
@@ -160,7 +164,9 @@ end
 
 start(::DenseSORIterable) = 1
 done(it::DenseSORIterable, iteration::Int) = iteration > it.maxiter
-function next(s::DenseSORIterable, iteration::Int)
+function iterate(s::DenseSORIterable, iteration::Int=start(s))
+    if done(s, iteration) return nothing end
+
     n = size(s.A, 1)
 
     for col = 1 : n
@@ -192,12 +198,12 @@ ssor(A::AbstractMatrix, b, ω::Real; kwargs...) =
 """
     ssor!(x, A::AbstractMatrix, b, ω::Real; maxiter=10) -> x
 
-Performs exactly `maxiter` SSOR iterations with relaxation parameter `ω`. Each iteration 
+Performs exactly `maxiter` SSOR iterations with relaxation parameter `ω`. Each iteration
 is basically a forward *and* backward sweep of SOR.
 
 Allocates a single temporary vector and traverses `A` columnwise.
 
-Throws `Base.LinAlg.SingularException` when the diagonal has a zero. This check
+Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
 function ssor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
@@ -218,7 +224,9 @@ end
 
 start(::DenseSSORIterable) = 1
 done(it::DenseSSORIterable, iteration::Int) = iteration > it.maxiter
-function next(s::DenseSSORIterable, iteration::Int)
+function iterate(s::DenseSSORIterable, iteration::Int=start(s))
+    if done(s, iteration) return nothing end
+
     n = size(s.A, 1)
 
     for col = 1 : n

@@ -1,13 +1,15 @@
 using IterativeSolvers
-using Base.Test
+using Test
 using LinearMaps
+using LinearAlgebra
+using Random
 
 @testset "Simple Eigensolvers" begin
 
 srand(1234321)
 n = 10
 
-@testset "Matrix{$T}" for T in (Float32, Float64, Complex64, Complex128)
+@testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
 
     A = rand(T, n, n)
     A = A' * A
@@ -32,8 +34,8 @@ n = 10
         # Construct F = inv(A - σI) "matrix free"
         # Make sure we use complex arithmetic everywhere,
         # because of the follow bug in base: https://github.com/JuliaLang/julia/issues/22683
-        F = lufact(complex(A) - UniformScaling(σ))
-        Fmap = LinearMap{complex(T)}((y, x) -> A_ldiv_B!(y, F, x), size(A, 1), ismutating = true)
+        F = lu(complex(A) - UniformScaling(σ))
+        Fmap = LinearMap{complex(T)}((y, x) -> ldiv!(y, F, x), size(A, 1), ismutating = true)
 
         λ, x, history = invpowm(Fmap; shift=σ, tol=tol, maxiter=10n, log=true)
 
