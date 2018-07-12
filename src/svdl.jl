@@ -200,7 +200,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
         end
         extend!(log, A, L, k)
         if verbose
-            elapsedtime = round((time_ns()-T0)*1e-9, 3)
+            elapsedtime = round((time_ns()-T0)*1e-9, digits=3)
             info("Iteration $iter: $elapsedtime seconds")
         end
 
@@ -328,7 +328,7 @@ function isconverged(L::PartialFactorization, F::LinearAlgebra.SVD, k::Int, tol:
                 δσ[i] = min(δσ[i], y)
             end
 
-	    verbose && println("Ritz value ", i, ": ", σ[i], " ± ", signif(δσ[i], 3))
+	    verbose && println("Ritz value ", i, ": ", σ[i], " ± ", round(δσ[i], sigdigits=3))
 
             #Estimate of the normwise backward error [Deif 1989]
             ##Use the largest singular (Ritz) value to estimate the 2-norm of the matrix
@@ -342,7 +342,7 @@ function isconverged(L::PartialFactorization, F::LinearAlgebra.SVD, k::Int, tol:
 
     #Estimate condition number and see if two-sided reorthog is needed
     if verbose && (F.S[1]/F.S[end]) > 1/√eps()
-        warn("Two-sided reorthogonalization should be used but is not implemented")
+        @warn("Two-sided reorthogonalization should be used but is not implemented")
     end
 
     push!(log, :resnorm, δσ[1:k])
@@ -358,7 +358,7 @@ function build(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int) where {
     p = A*q
     α = convert(Tr, norm(p))
     p .*= inv(α)
-    bidiag = Bidiagonal([α], Tr[], @static VERSION < v"0.7.0-DEV.884" ? true : :U)
+    bidiag = Bidiagonal([α], Tr[], @static false ? true : :U)
     extend!(log, A, PartialFactorization(reshape(p, m, 1), reshape(q, n, 1), bidiag, β), k)
 end
 
@@ -446,7 +446,7 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     r0 = zeros(Tr, m)
     r0[end] = 1
     if isa(L.B, Bidiagonal)
-        @assert @static VERSION < v"0.7.0-DEV.884" ? L.B.isupper : L.B.uplo == 'U'
+        @assert @static false ? L.B.isupper : L.B.uplo == 'U'
     end
     r = try
         #(L.B\r0)
