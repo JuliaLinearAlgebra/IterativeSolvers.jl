@@ -19,3 +19,5 @@ IterativeSolvers.jl itself does not provide any other preconditioners besides `I
 
 - [ILU.jl](https://github.com/haampie/ILU.jl) for incomplete LU decompositions (using drop tolerance);
 - [IncompleteSelectedInversion.jl](https://github.com/ettersi/IncompleteSelectedInversion.jl) for incomplete LDLt decompositions.
+- [AMG.jl](https://github.com/JuliaLinearAlgebra/AlgebraicMultigrid.jl) for some algebraic multigrid (AMG) preconditioners.
+- [Preconditioners.jl](https://github.com/mohamed82008/Preconditioners.jl) which wraps a bunch of preconditioners from other packages. If you are a beginner or want to try different ones quickly, this is good starting place.
