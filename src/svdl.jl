@@ -358,7 +358,7 @@ function build(log::ConvergenceHistory, A, q::AbstractVector{T}, k::Int) where {
     p = A*q
     α = convert(Tr, norm(p))
     p .*= inv(α)
-    bidiag = Bidiagonal([α], Tr[], @static false ? true : :U)
+    bidiag = Bidiagonal([α], Tr[], :U)
     extend!(log, A, PartialFactorization(reshape(p, m, 1), reshape(q, n, 1), bidiag, β), k)
 end
 
@@ -446,7 +446,7 @@ function harmonicrestart!(A, L::PartialFactorization{T,Tr},
     r0 = zeros(Tr, m)
     r0[end] = 1
     if isa(L.B, Bidiagonal)
-        @assert @static false ? L.B.isupper : L.B.uplo == 'U'
+        @assert L.B.uplo == 'U'
     end
     r = try
         #(L.B\r0)
