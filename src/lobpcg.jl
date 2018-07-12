@@ -743,6 +743,8 @@ function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {
     end
 end
 
+default_tolerance(::Type{T}) where {T<:Number} = eps(real(T))^(real(T)(3)/10)
+
 """
 The Locally Optimal Block Preconditioned Conjugate Gradient Method (LOBPCG)
 
@@ -771,7 +773,7 @@ Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisf
 
 - `maxiter`: maximum number of iterations; default is 200;
 
-- `tol::Number`: tolerance to which residual vector norms must be under.
+- `tol::Real`: tolerance to which residual vector norms must be under.
 
 # Output
 
@@ -808,7 +810,7 @@ end
 
 - `maxiter`: maximum number of iterations; default is 200;
 
-- `tol::Number`: tolerance to which residual vector norms must be under.
+- `tol::Real`: tolerance to which residual vector norms must be under.
 
 # Output
 
@@ -818,10 +820,9 @@ function lobpcg(A, largest::Bool, X0; kwargs...)
     lobpcg(A, nothing, largest, X0; kwargs...)
 end
 function lobpcg(A, B, largest, X0;
-                not_zeros=false, log=false, P=nothing, 
-                C=nothing, tol=nothing, maxiter=200)
+                not_zeros=false, log=false, P=nothing, maxiter=200,
+                C=nothing, tol::Real=default_tolerance(eltype(X0)))
     X = copy(X0)
-    T = eltype(X)
     n = size(X, 1)
     sizeX = size(X, 2)
     sizeX > n && throw("X column dimension exceeds the row dimension")
@@ -848,15 +849,15 @@ end
 
 - `maxiter`: maximum number of iterations; default is 200;
 
-- `tol::Number`: tolerance to which residual vector norms must be under.
+- `tol::Real`: tolerance to which residual vector norms must be under.
 
 # Output
 
 - `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
 
 """
-function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, not_zeros=false)
-    T = eltype(iterator.XBlocks.block)
+function lobpcg!(iterator::LOBPCGIterator; log=false, maxiter=200, not_zeros=false,
+                 tol::Real=default_tolerance(eltype(iterator.XBlocks.block)))
     X = iterator.XBlocks.block
     iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
     if !not_zeros
@@ -869,10 +870,9 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
     end
     n = size(X, 1)
     sizeX = size(X, 2)
-    residualTolerance = (tol isa Void) ? (eps(real(T)))^(real(T)(4)/10) : real(tol)
     iterator.iteration[] = 1
     while iterator.iteration[] <= maxiter 
-        state = iterator(residualTolerance, log)
+        state = iterator(tol, log)
         if log
             push!(iterator.trace, state)
         end
@@ -881,7 +881,7 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, tol=nothing, maxiter=200, 
     end
     @inbounds iterator.λ .= view(iterator.ritz_values, 1:sizeX)
 
-    results = LOBPCGResults(iterator.λ, X, residualTolerance, iterator.residuals, iterator.iteration[], maxiter, all((x)->(norm(x)<=residualTolerance), view(iterator.residuals, 1:sizeX)), iterator.trace)
+    results = LOBPCGResults(iterator.λ, X, tol, iterator.residuals, iterator.iteration[], maxiter, all((x)->(norm(x)<=tol), view(iterator.residuals, 1:sizeX)), iterator.trace)
 
     return results
 end
@@ -910,7 +910,7 @@ lobpcg(A, [B,] largest, X0, nev; kwargs...) -> results
 
 - `maxiter`: maximum number of iterations; default is 200;
 
-- `tol::Number`: tolerance to which residual vector norms must be under.
+- `tol::Real`: tolerance to which residual vector norms must be under.
 
 # Output
 
@@ -920,9 +920,8 @@ function lobpcg(A, largest::Bool, X0, nev::Int; kwargs...)
     lobpcg(A, nothing, largest, X0, nev; kwargs...)
 end
 function lobpcg(A, B, largest::Bool, X0, nev::Int;
-                not_zeros=false, log=false, P=nothing, 
-                C=nothing, tol=nothing, maxiter=200)
-    T = eltype(X0)
+                not_zeros=false, log=false, P=nothing, maxiter=200,
+                C=nothing, tol::Real=default_tolerance(eltype(X0)))
     n = size(X0, 1)
     sizeX = size(X0, 2)
     nev > n && throw("Number of eigenvectors desired exceeds the row dimension.")
