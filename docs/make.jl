@@ -23,6 +23,7 @@ makedocs(
 		],
 		"Eigenproblems" => [
 			"Power method" => "eigenproblems/power_method.md",
+			"LOBPCG" => "eigenproblems/lobpcg.md"
 		],
 		"SVDL" => "svd/svdl.md",
 		"The iterator approach" => "iterators.md",
@@ -37,7 +38,7 @@ deploydocs(
 	repo = "github.com/JuliaMath/IterativeSolvers.jl.git",
 	target = "build",
 	osname = "linux",
-	julia  = "0.6",
+	julia  = "0.7",
 	deps = nothing,
 	make = nothing,
 )
