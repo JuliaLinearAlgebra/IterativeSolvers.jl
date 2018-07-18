@@ -15,13 +15,8 @@ A `LOBPCGIterator` is created to pre-allocate all the memory required by the met
 
 
 ## References
+Implementation is based on [^Knyazev1993] and [^Scipy].
 
-[Knyazev1993]:
+[^Knyazev1993]: Andrew V. Knyazev. "Toward the Optimal Preconditioned Eigensolver: Locally Optimal Block Preconditioned Conjugate Gradient Method" SIAM Journal on Scientific Computing, 23(2):517–541 2001.
 
-    Andrew V. Knyazev. "Toward the Optimal Preconditioned Eigensolver: Locally
-    Optimal Block Preconditioned Conjugate Gradient Method" SIAM Journal
-    on Scientific Computing, 23(2):517–541, 2001.
-
-[Scipy LOBPCG implementation]:
-
-    https://github.com/scipy/scipy/blob/v1.1.0/scipy/sparse/linalg/eigen/lobpcg/lobpcg.py#L109-L568
+[^Scipy]: See [Scipy LOBPCG implementation](https://github.com/scipy/scipy/blob/v1.1.0/scipy/sparse/linalg/eigen/lobpcg/lobpcg.py#L109-L568)
