@@ -1,4 +1,5 @@
-__precompile__(true)
+VERSION < v"0.7.0-beta2.199" && __precompile__()
+
 """
 Main module for `IterativeSolvers.jl` -- a Julia package for solving linear systems,
 eigensystems, and singular value problems.
