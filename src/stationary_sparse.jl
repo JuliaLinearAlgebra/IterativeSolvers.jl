@@ -232,7 +232,7 @@ function iterate(j::JacobiIterable{T}, iteration::Int=start(j)) where {T}
     nothing, iteration + 1
 end
 
-jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) =
+JacobiIterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) =
     JacobiIterable{eltype(x), typeof(x), typeof(x), typeof(b)}(
         OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)
 
@@ -248,7 +248,10 @@ Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This chec
 is performed once beforehand.
 """
 function jacobi!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int=10)
-    iterable = jacobi_iterable(x, A, b, maxiter = maxiter)
+    iterable = JacobiIterable(x, A, b, maxiter = maxiter)
+    jacobi!(iterable)
+end
+function jacobi!(iterable)
     for item = iterable end
     iterable.x
 end
@@ -267,7 +270,7 @@ mutable struct GaussSeidelIterable{solT, rhsT}
     maxiter::Int
 end
 
-function gauss_seidel_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10)
+function GaussSeidelIterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10)
     D = DiagonalIndices(A)
     GaussSeidelIterable(StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), x, b, maxiter)
 end
@@ -295,7 +298,10 @@ Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This chec
 is performed once beforehand.
 """
 function gauss_seidel!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10)
-    iterable = gauss_seidel_iterable(x, A, b, maxiter = maxiter)
+    iterable = GaussSeidelIterable(x, A, b, maxiter = maxiter)
+    gauss_seidel!(iterable)
+end
+function gauss_seidel!(iterable::GaussSeidelIterable)
     for item = iterable end
     iterable.x
 end
@@ -333,7 +339,7 @@ function iterate(s::SORIterable{T}, iteration::Int=start(s)) where {T}
     nothing, iteration + 1
 end
 
-function sor_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
+function SORIterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
     D = DiagonalIndices(A)
     T = eltype(x)
     SORIterable{T,typeof(x),typeof(x),typeof(b),eltype(ω)}(
@@ -353,7 +359,10 @@ Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This chec
 is performed once beforehand.
 """
 function sor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
-    iterable = sor_iterable(x, A, b, ω, maxiter = maxiter)
+    iterable = SORIterable(x, A, b, ω, maxiter = maxiter)
+    sor!(iterable)
+end
+function sor!(iterable::SORIterable)
     for item = iterable end
     iterable.x
 end
@@ -374,7 +383,7 @@ mutable struct SSORIterable{T, solT, vecT, rhsT, numT <: Real}
     maxiter::Int
 end
 
-function ssor_iterable(x::AbstractVector{T}, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10) where {T}
+function SSORIterable(x::AbstractVector{T}, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10) where {T}
     D = DiagonalIndices(A)
     SSORIterable{T,typeof(x),typeof(x),typeof(b),typeof(ω)}(
         StrictlyLowerTriangular(A, D),
@@ -418,7 +427,10 @@ Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This chec
 is performed once beforehand.
 """
 function ssor!(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
-    iterable = ssor_iterable(x, A, b, ω, maxiter = maxiter)
+    iterable = SSORIterable(x, A, b, ω, maxiter = maxiter)
+    ssor!(iterable)
+end
+function ssor!(iterable::SSORIterable)
     for item = iterable end
     iterable.x
 end

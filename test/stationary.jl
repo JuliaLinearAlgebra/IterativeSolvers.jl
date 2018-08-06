@@ -57,8 +57,8 @@ end
     b = A * x
 
     # Gauss-Seidel and SOR should coincide when ω = 1
-    gauss_seidel_it = IterativeSolvers.gauss_seidel_iterable(zeros(10), A, b, maxiter = 5)
-    sor_it = IterativeSolvers.sor_iterable(zeros(10), A, b, 1.0, maxiter = 5)
+    gauss_seidel_it = IterativeSolvers.GaussSeidelIterable(zeros(10), A, b, maxiter = 5)
+    sor_it = IterativeSolvers.SORIterable(zeros(10), A, b, 1.0, maxiter = 5)
 
     for _ = zip(gauss_seidel_it, sor_it)
         @test gauss_seidel_it.x ≈ sor_it.x

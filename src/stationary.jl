@@ -11,6 +11,17 @@ function check_diag(A::AbstractMatrix)
     end
 end
 
+mutable struct DenseJacobiIterable{matT,vecT,solT,rhsT}
+    A::matT
+    x::solT
+    next::vecT
+    b::rhsT
+    maxiter::Int
+end
+function DenseJacobiIterable(x, A::AbstractMatrix, b; maxiter::Int=10)
+    DenseJacobiIterable(A, x, similar(x), b, maxiter)
+end
+
 """
     jacobi(A, b) -> x
 
@@ -28,19 +39,15 @@ Allocates a single temporary vector and traverses `A` columnwise.
 Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
-function jacobi!(x, A::AbstractMatrix, b; maxiter::Int=10)
-    check_diag(A)
-    iterable = DenseJacobiIterable(A, x, similar(x), b, maxiter)
-    for _ = iterable end
-    x
+function jacobi!(x, A::AbstractMatrix, b; maxiter::Int=10, checkdiag = true)
+    checkdiag && check_diag(A)
+    iterable = DenseJacobiIterable(x, A, b; maxiter=maxiter)
+    jacobi!(iterable, checkdiag=false)
 end
-
-mutable struct DenseJacobiIterable{matT,vecT,solT,rhsT}
-    A::matT
-    x::solT
-    next::vecT
-    b::rhsT
-    maxiter::Int
+function jacobi!(iterable::DenseJacobiIterable; checkdiag = true)
+    checkdiag && check_diag(iterable.A)
+    for _ = iterable end
+    iterable.x
 end
 
 start(::DenseJacobiIterable) = 1
@@ -71,6 +78,16 @@ function iterate(j::DenseJacobiIterable, iteration::Int=start(j))
     nothing, iteration + 1
 end
 
+mutable struct DenseGaussSeidelIterable{matT,solT,rhsT}
+    A::matT
+    x::solT
+    b::rhsT
+    maxiter::Int
+end
+function DenseGaussSeidelIterable(x, A::AbstractMatrix, b; maxiter::Int=10)
+    DenseGaussSeidelIterable(A, x, b, maxiter)
+end
+
 """
     gauss_seidel(A, b) -> x
 
@@ -88,18 +105,15 @@ Works fully in-place and traverses `A` columnwise.
 Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
-function gauss_seidel!(x, A::AbstractMatrix, b; maxiter::Int=10)
-    check_diag(A)
-    iterable = DenseGaussSeidelIterable(A, x, b, maxiter)
-    for _ = iterable end
-    x
+function gauss_seidel!(x, A::AbstractMatrix, b; maxiter::Int=10, checkdiag=true)
+    checkdiag && check_diag(A)
+    iterable = DenseGaussSeidelIterable(x, A, b; maxiter=maxiter)
+    gauss_seidel!(iterable, checkdiag=false)
 end
-
-mutable struct DenseGaussSeidelIterable{matT,solT,rhsT}
-    A::matT
-    x::solT
-    b::rhsT
-    maxiter::Int
+function gauss_seidel!(iterable::DenseGaussSeidelIterable; checkdiag=true)
+    checkdiag && check_diag(iterable.A)
+    for _ = iterable end
+    iterable.x
 end
 
 start(::DenseGaussSeidelIterable) = 1
@@ -128,6 +142,18 @@ function iterate(s::DenseGaussSeidelIterable, iteration::Int=start(s))
     nothing, iteration + 1
 end
 
+mutable struct DenseSORIterable{matT,solT,vecT,rhsT,numT}
+    A::matT
+    x::solT
+    tmp::vecT
+    b::rhsT
+    ω::numT
+    maxiter::Int
+end
+function DenseSORIterablesor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
+    DenseSORIterable(A, x, similar(x), b, ω, maxiter)
+end
+
 """
     sor(A, b, ω::Real) -> x
 
@@ -146,20 +172,15 @@ Allocates a single temporary vector and traverses `A` columnwise.
 Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
-function sor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
-    check_diag(A)
-    iterable = DenseSORIterable(A, x, similar(x), b, ω, maxiter)
-    for _ = iterable end
-    x
+function sor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10, checkdiag=true)
+    checkdiag && check_diag(A)
+    iterable = DenseSORIterablesor!(x, A, b, ω; maxiter=maxiter)
+    sor!(iterable, checkdiag=false)
 end
-
-mutable struct DenseSORIterable{matT,solT,vecT,rhsT,numT}
-    A::matT
-    x::solT
-    tmp::vecT
-    b::rhsT
-    ω::numT
-    maxiter::Int
+function sor!(iterable::DenseSORIterable; checkdiag=true)
+    checkdiag && check_diag(iterable.A)
+    for _ = iterable end
+    iterable.x
 end
 
 start(::DenseSORIterable) = 1
@@ -187,6 +208,18 @@ function iterate(s::DenseSORIterable, iteration::Int=start(s))
     nothing, iteration + 1
 end
 
+mutable struct DenseSSORIterable{matT,solT,vecT,rhsT,numT}
+    A::matT
+    x::solT
+    tmp::vecT
+    b::rhsT
+    ω::numT
+    maxiter::Int
+end
+function DenseSSORIterable(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
+    DenseSSORIterable(A, x, similar(x), b, ω, maxiter)
+end
+
 """
     ssor(A, b, ω::Real) -> x
 
@@ -206,20 +239,15 @@ Allocates a single temporary vector and traverses `A` columnwise.
 Throws `LinearAlgebra.SingularException` when the diagonal has a zero. This check
 is performed once beforehand.
 """
-function ssor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10)
-    check_diag(A)
-    iterable = DenseSSORIterable(A, x, similar(x), b, ω, maxiter)
-    for _ = iterable end
-    x
+function ssor!(x, A::AbstractMatrix, b, ω::Real; maxiter::Int=10, checkdiag=true)
+    checkdiag && check_diag(A)
+    iterable = DenseSSORIterable(x, A, b, ω; maxiter=maxiter)
+    ssor!(iterable, checkdiag=false)
 end
-
-mutable struct DenseSSORIterable{matT,solT,vecT,rhsT,numT}
-    A::matT
-    x::solT
-    tmp::vecT
-    b::rhsT
-    ω::numT
-    maxiter::Int
+function ssor!(iterable; checkdiag=true)
+    checkdiag && check_diag(iterable.A)
+    for _ = iterable end
+    iterable.x
 end
 
 start(::DenseSSORIterable) = 1
