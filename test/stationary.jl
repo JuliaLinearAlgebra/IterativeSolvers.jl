@@ -14,7 +14,7 @@ using SparseArrays
 n = 10
 m = 6
 ω = 1.2
-srand(1234322)
+Random.seed!(1234322)
 
 @testset "SparseMatrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     @testset "Sparse? $sparse" for sparse = (true, false)

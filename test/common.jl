@@ -3,7 +3,7 @@ using IterativeSolvers
 using Test
 using Random
 
-srand(1234321)
+Random.seed!(1234321)
 
 @testset "Basic operations" begin
 

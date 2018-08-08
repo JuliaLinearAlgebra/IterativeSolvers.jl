@@ -45,7 +45,7 @@ end
 
 function indefinite(n)
     # Generate an indefinite "hard" matrix
-    srand(1)
+    Random.seed!(1)
     A = speye(n) + sprand(n, n, 5.0 / n)
     A = (A + A') / 2
     x = ones(n)
@@ -68,10 +68,10 @@ end
 function bicgstabl()
     A, b = advection_dominated()
 
-    b1 = @benchmark IterativeSolvers.bicgstabl($A, $b, 2, max_mv_products = 1000, convex_combination = false) setup = (srand(1))
-    b2 = @benchmark IterativeSolvers.bicgstabl($A, $b, 2, max_mv_products = 1000, convex_combination = true) setup = (srand(1))
-    b3 = @benchmark IterativeSolvers.bicgstabl($A, $b, 4, max_mv_products = 1000, convex_combination = false) setup = (srand(1))
-    b4 = @benchmark IterativeSolvers.bicgstabl($A, $b, 4, max_mv_products = 1000, convex_combination = true) setup = (srand(1))
+    b1 = @benchmark IterativeSolvers.bicgstabl($A, $b, 2, max_mv_products = 1000, convex_combination = false) setup = (Random.seed!(1))
+    b2 = @benchmark IterativeSolvers.bicgstabl($A, $b, 2, max_mv_products = 1000, convex_combination = true) setup = (Random.seed!(1))
+    b3 = @benchmark IterativeSolvers.bicgstabl($A, $b, 4, max_mv_products = 1000, convex_combination = false) setup = (Random.seed!(1))
+    b4 = @benchmark IterativeSolvers.bicgstabl($A, $b, 4, max_mv_products = 1000, convex_combination = true) setup = (Random.seed!(1))
 
     b1, b2, b3, b4
 end

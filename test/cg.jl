@@ -17,7 +17,7 @@ ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 
 @testset "Conjugate Gradients" begin
 
-srand(1234321)
+Random.seed!(1234321)
 
 @testset "Small full system" begin
     n = 10

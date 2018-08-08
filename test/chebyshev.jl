@@ -19,7 +19,7 @@ end
 @testset "Chebyshev" begin
 
 n = 10
-srand(1234321)
+Random.seed!(1234321)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = randSPD(T, n)

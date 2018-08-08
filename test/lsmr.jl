@@ -60,7 +60,7 @@ function sol_matrix(m, n)
 end
 
 @testset "LSMR" begin
-    srand(1234321)
+    Random.seed!(1234321)
 
     @testset "Small dense matrix" for T = (Float32, Float64)
         A = rand(T, 10, 5)

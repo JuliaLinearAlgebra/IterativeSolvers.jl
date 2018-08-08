@@ -5,7 +5,7 @@ using LinearAlgebra
 
 @testset "SVD Lanczos" begin
 
-srand(1234567)
+Random.seed!(1234567)
 
 #Thick restart methods
 @testset "Thick restart with method=$method" for method in (:ritz, :harmonic)
@@ -51,7 +51,7 @@ srand(1234567)
         end
 
         @testset "Rectangular Matrix{$T}" begin
-            srand(1)
+            Random.seed!(1)
             m = 300
             n = 200
             k = 5

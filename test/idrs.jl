@@ -7,7 +7,7 @@ using LinearAlgebra
 
 n = 10
 m = 6
-srand(1234567)
+Random.seed!(1234567)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = rand(T, n, n) + n * I

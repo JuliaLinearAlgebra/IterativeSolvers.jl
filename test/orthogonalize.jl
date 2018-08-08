@@ -4,7 +4,7 @@ using Random
 
 @testset "Orthogonalization" begin
 
-srand(1234321)
+Random.seed!(1234321)
 n = 10
 m = 3
 

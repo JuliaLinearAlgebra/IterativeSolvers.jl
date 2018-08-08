@@ -5,7 +5,7 @@ using LinearAlgebra
 using Random
 using SparseArrays
 
-srand(1234321)
+Random.seed!(1234321)
 
 @testset "LSQR" begin
 
