@@ -52,7 +52,7 @@ end
 
 function powm_iterable!(A, x; tol = eps(real(eltype(A))) * size(A, 2) ^ 3, maxiter = size(A, 1))
     T = eltype(x)
-    PowerMethodIterable(A, x, tol, maxiter, zero(T), similar(x), similar(x), realmax(real(T)))
+    PowerMethodIterable(A, x, tol, maxiter, zero(T), similar(x), similar(x), floatmax(real(T)))
 end
 
 """

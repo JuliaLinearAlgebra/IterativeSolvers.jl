@@ -27,7 +27,7 @@ function max_err(R)
 end
 
 @testset "Locally Optimal Block Preconditioned Conjugate Gradient" begin
-    srand(1234323)
+    Random.seed!(1234323)
     @testset "Single eigenvalue" begin
         n = 10
         @testset "Small full system" begin

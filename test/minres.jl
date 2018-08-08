@@ -23,7 +23,7 @@ function skew_hermitian_problem(T, n)
     A, x, b
 end
 
-srand(123)
+Random.seed!(123)
 n = 15
 
 
