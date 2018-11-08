@@ -15,7 +15,6 @@ Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
 Build a zeros vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
 """
 zerox(A, b) = zeros(Adivtype(A, b), size(A, 2))
-zerox(A, b::GPUArray) = zerox(A::GPUArray, b) = throw("Please pre-allocate the result vector on the GPU and use an inplace function.")
 
 """
 No-op preconditioner
