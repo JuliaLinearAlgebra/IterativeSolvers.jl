@@ -6,6 +6,8 @@ eigensystems, and singular value problems.
 """
 module IterativeSolvers
 
+using GPUArrays
+
 include("common.jl")
 include("orthogonalize.jl")
 include("history.jl")

@@ -116,7 +116,7 @@ end
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
-    statevars::CGStateVariables = CGStateVariables{eltype(x),typeof(x)}(zero(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
     initially_zero::Bool = false
 )
     u = statevars.u
@@ -159,6 +159,8 @@ end
 Same as [`cg!`](@ref), but allocates a solution vector `x` initialized with zeros.
 """
 cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
+cg(A, b::GPUArray; kwargs...) = cg!(zeros(typeof(b), size(A, 2)), A, b; initially_zero = true, kwargs...)
+cg(A, b::GPUArray{<:Integer}; kwargs...) = throw("The RHS cannot be an integer vector on the GPU. Either move it to the CPU, or pre-allocate a results vector on the GPU and use the inplace `cg!`.")
 
 """
     cg!(x, A, b; kwargs...) -> x, [history]
@@ -198,11 +200,15 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 - `:tol` => `::Real`: stopping tolerance.
 - `:resnom` => `::Vector`: residual norm at each iteration.
 """
-function cg!(x, A, b;
+function cg!(x, A, b; kwargs...)
+    xor(x isa GPUArray, b isa GPUArray) && throw("Both the result vector and the RHS must be on the same device, either the GPU or the CPU.")
+    _cg!(x, A, b; kwargs...)
+end
+function _cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
-    statevars::CGStateVariables = CGStateVariables{eltype(x), typeof(x)}(zero(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...
