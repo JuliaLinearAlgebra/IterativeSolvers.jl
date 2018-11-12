@@ -114,6 +114,12 @@ function Base.show(io::IO, r::LOBPCGResults)
     return
 end
 
+gmul!(C, A, B) = mul!(C, A, B)
+gmul!(C, A::GPUArray, B::AbstractArray) = gmul!(C, A, typeof(A)(B))
+gmul!(C, A::AbstractArray, B::GPUArray) = gmul!(C, typeof(B)(A), B)
+gmul!(C::AbstractArray, A::GPUArray, B::GPUArray) = C .= A * B
+gmul!(C::GPUArray, A::GPUArray, B::GPUArray) = mul!(C, A, B)
+
 struct Blocks{Generalized, T, TA<:AbstractArray{T}}
     block::TA # X, R or P
     A_block::TA # AX, AR or AP
@@ -122,19 +128,19 @@ end
 Blocks(X, AX) = Blocks{false, eltype(X), typeof(X)}(X, AX, X)
 Blocks(X, AX, BX) = Blocks{true, eltype(X), typeof(X)}(X, AX, BX)
 function A_mul_X!(b::Blocks, A)
-    mul!(b.A_block, A, b.block)
+    gmul!(b.A_block, A, b.block)
     return
 end
 function A_mul_X!(b::Blocks, A, n)
-    @views mul!(b.A_block[:, 1:n], A, b.block[:, 1:n])
+    @views gmul!(b.A_block[:, 1:n], A, b.block[:, 1:n])
     return
 end
 function B_mul_X!(b::Blocks{true}, B)
-    mul!(b.B_block, B, b.block)
+    gmul!(b.B_block, B, b.block)
     return
 end
 function B_mul_X!(b::Blocks{true}, B, n)
-    @views mul!(b.B_block[:, 1:n], B, b.block[:, 1:n])
+    @views gmul!(b.B_block[:, 1:n], B, b.block[:, 1:n])
     return
 end
 function B_mul_X!(b::Blocks{false}, B, n = 0)
@@ -164,7 +170,7 @@ function Constraint(Y, B, X, ::BWrapper)
         BY = Y
     else
         BY = similar(Y)
-        mul!(BY, B, Y)
+        gmul!(BY, B, Y)
     end
     return Constraint(Y, BY, X, NotBWrapper())
 end
@@ -172,7 +178,7 @@ function Constraint(Y, BY, X, ::NotBWrapper)
     T = eltype(X)
     if Y isa SubArray
         gramYBY = @view Matrix{T}(I, size(Y.parent, 2), size(Y.parent, 2))[1:size(Y, 2), 1:size(Y, 2)]
-        mul!(gramYBY, adjoint(Y), BY)
+        gmul!(gramYBY, adjoint(Y), BY)
         gramYBV = @view zeros(T, size(Y.parent, 2), size(X, 2))[1:size(Y, 2), :]
     else
         gramYBY = adjoint(Y)*BY
@@ -214,10 +220,10 @@ function (constr!::Constraint)(X, X_temp)
         sizeX = size(X, 2)
         sizeY = size(constr!.Y, 2)
         gramYBV_view = constr!.gramYBV[1:sizeY, 1:sizeX]
-        mul!(gramYBV_view, adjoint(constr!.BY), X)
+        gmul!(gramYBV_view, adjoint(constr!.BY), X)
         tmp_view = constr!.tmp[1:sizeY, 1:sizeX]
         ldiv!(tmp_view, constr!.gram_chol, gramYBV_view)
-        mul!(X_temp, constr!.Y, tmp_view)
+        gmul!(X_temp, constr!.Y, tmp_view)
         @inbounds X .= X .- X_temp
     end
     nothing
@@ -259,18 +265,18 @@ function BlockGram(XBlocks::Blocks{Generalized, T}) where {Generalized, T}
     PAP = zeros(T, sizeX, sizeX)
     return BlockGram{Generalized, Matrix{T}}(XAX, XAR, XAP, RAR, RAP, PAP)
 end
-XAX!(BlockGram, XBlocks) = mul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.A_block)
-XAP!(BlockGram, XBlocks, PBlocks, n) = @views mul!(BlockGram.XAP[:, 1:n], adjoint(XBlocks.block), PBlocks.A_block[:, 1:n])
-XAR!(BlockGram, XBlocks, RBlocks, n) = @views mul!(BlockGram.XAR[:, 1:n], adjoint(XBlocks.block), RBlocks.A_block[:, 1:n])
-RAR!(BlockGram, RBlocks, n) = @views mul!(BlockGram.RAR[1:n, 1:n], adjoint(RBlocks.block[:, 1:n]), RBlocks.A_block[:, 1:n])
-RAP!(BlockGram, RBlocks, PBlocks, n) = @views mul!(BlockGram.RAP[1:n, 1:n], adjoint(RBlocks.A_block[:, 1:n]), PBlocks.block[:, 1:n])
-PAP!(BlockGram, PBlocks, n) = @views mul!(BlockGram.PAP[1:n, 1:n], adjoint(PBlocks.block[:, 1:n]), PBlocks.A_block[:, 1:n])
-XBP!(BlockGram, XBlocks, PBlocks, n) = @views mul!(BlockGram.XAP[:, 1:n], adjoint(XBlocks.block), PBlocks.B_block[:, 1:n])
-XBR!(BlockGram, XBlocks, RBlocks, n) = @views mul!(BlockGram.XAR[:, 1:n], adjoint(XBlocks.block), RBlocks.B_block[:, 1:n])
-RBP!(BlockGram, RBlocks, PBlocks, n) = @views mul!(BlockGram.RAP[1:n, 1:n], adjoint(RBlocks.B_block[:, 1:n]), PBlocks.block[:, 1:n])
-#XBX!(BlockGram, XBlocks) = mul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.B_block)
-#RBR!(BlockGram, RBlocks, n) = @views mul!(BlockGram.RAR[1:n, 1:n], adjoint(RBlocks.block[:, 1:n]), RBlocks.B_block[:, 1:n])
-#PBP!(BlockGram, PBlocks, n) = @views mul!(BlockGram.PAP[1:n, 1:n], adjoint(PBlocks.block[:, 1:n]), PBlocks.B_block[:, 1:n])
+XAX!(BlockGram, XBlocks) = gmul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.A_block)
+XAP!(BlockGram, XBlocks, PBlocks, n) = @views gmul!(BlockGram.XAP[:, 1:n], adjoint(XBlocks.block), PBlocks.A_block[:, 1:n])
+XAR!(BlockGram, XBlocks, RBlocks, n) = @views gmul!(BlockGram.XAR[:, 1:n], adjoint(XBlocks.block), RBlocks.A_block[:, 1:n])
+RAR!(BlockGram, RBlocks, n) = @views gmul!(BlockGram.RAR[1:n, 1:n], adjoint(RBlocks.block[:, 1:n]), RBlocks.A_block[:, 1:n])
+RAP!(BlockGram, RBlocks, PBlocks, n) = @views gmul!(BlockGram.RAP[1:n, 1:n], adjoint(RBlocks.A_block[:, 1:n]), PBlocks.block[:, 1:n])
+PAP!(BlockGram, PBlocks, n) = @views gmul!(BlockGram.PAP[1:n, 1:n], adjoint(PBlocks.block[:, 1:n]), PBlocks.A_block[:, 1:n])
+XBP!(BlockGram, XBlocks, PBlocks, n) = @views gmul!(BlockGram.XAP[:, 1:n], adjoint(XBlocks.block), PBlocks.B_block[:, 1:n])
+XBR!(BlockGram, XBlocks, RBlocks, n) = @views gmul!(BlockGram.XAR[:, 1:n], adjoint(XBlocks.block), RBlocks.B_block[:, 1:n])
+RBP!(BlockGram, RBlocks, PBlocks, n) = @views gmul!(BlockGram.RAP[1:n, 1:n], adjoint(RBlocks.B_block[:, 1:n]), PBlocks.block[:, 1:n])
+#XBX!(BlockGram, XBlocks) = gmul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.B_block)
+#RBR!(BlockGram, RBlocks, n) = @views gmul!(BlockGram.RAR[1:n, 1:n], adjoint(RBlocks.block[:, 1:n]), RBlocks.B_block[:, 1:n])
+#PBP!(BlockGram, PBlocks, n) = @views gmul!(BlockGram.PAP[1:n, 1:n], adjoint(PBlocks.block[:, 1:n]), PBlocks.B_block[:, 1:n])
 
 function I!(G, xr)
     @inbounds for j in xr, i in xr
@@ -372,9 +378,9 @@ function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=fa
     AX = XBlocks.A_block
     @views gram_view = ortho!.gramVBV[1:sizeX, 1:sizeX]
     @views if useview
-        mul!(gram_view, adjoint(X[:, 1:sizeX]), BX[:, 1:sizeX])
+        gmul!(gram_view, adjoint(X[:, 1:sizeX]), BX[:, 1:sizeX])
     else
-        mul!(gram_view, adjoint(X), BX)
+        gmul!(gram_view, adjoint(X), BX)
     end
     realdiag!(gram_view)
     cholf = cholesky!(Hermitian(gram_view))
@@ -514,7 +520,7 @@ function LOBPCGIterator(A, B, largest::Bool, X, nev::Int, P=nothing, C=nothing)
     Y = @view new_C[:, 1:sizeC]
     BY = @view new_BC[:, 1:sizeC]
     if !(B isa Nothing)
-        mul!(BY, B, Y)
+        gmul!(BY, B, Y)
     end
     constr! = Constraint(Y, BY, X, NotBWrapper())
     precond! = RPreconditioner(P, X)
@@ -532,7 +538,7 @@ function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
 end
 function residuals!(iterator)
     sizeX = size(iterator.XBlocks.block, 2)
-    @views mul!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(iterator.ritz_values[1:sizeX]))
+    @views gmul!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(iterator.ritz_values[1:sizeX]))
     @inbounds iterator.RBlocks.block .= iterator.XBlocks.A_block .- iterator.RBlocks.block
     # Finds residual norms
     @inbounds for j in 1:size(iterator.RBlocks.block, 2)
@@ -555,8 +561,21 @@ function update_mask!(iterator, residualTolerance)
 end
 
 function update_active!(mask, bs::Int, blockPairs...)
-    @inbounds @views for (activeblock, block) in blockPairs
-        activeblock[:, 1:bs] .= block[:, mask]
+    if blockPairs[1][1] isa GPUArray         
+        @inbounds @views for (activeblock, block) in blockPairs
+            ind = findfirst(mask)
+            i = 1
+            activeblock[:, i] .= block[:, ind]
+            while i < bs
+                ind = findnext(mask, ind+1)
+                i += 1
+                activeblock[:, i] .= block[:, ind]
+            end
+        end
+    else
+        @inbounds @views for (activeblock, block) in blockPairs
+            activeblock[:, 1:bs] .= block[:, mask]
+        end    
     end
     return
 end
@@ -642,17 +661,17 @@ function update_X_P!(iterator::LOBPCGIterator{Generalized}, bs1, bs2) where Gene
         end
     end
     if bs1 > 0
-        mul!(iterator.PBlocks.block, r_blockview, r_eigview)
-        mul!(iterator.PBlocks.A_block, ra_blockview, r_eigview)
+        gmul!(iterator.PBlocks.block, r_blockview, r_eigview)
+        gmul!(iterator.PBlocks.A_block, ra_blockview, r_eigview)
         if Generalized
-            mul!(iterator.PBlocks.B_block, rb_blockview, r_eigview)
+            gmul!(iterator.PBlocks.B_block, rb_blockview, r_eigview)
         end
     end
     if bs2 > 0
-        mul!(iterator.tempXBlocks.block, p_blockview, p_eigview)
-        mul!(iterator.tempXBlocks.A_block, pa_blockview, p_eigview)
+        gmul!(iterator.tempXBlocks.block, p_blockview, p_eigview)
+        gmul!(iterator.tempXBlocks.A_block, pa_blockview, p_eigview)
         if Generalized
-            mul!(iterator.tempXBlocks.B_block, pb_blockview, p_eigview)
+            gmul!(iterator.tempXBlocks.B_block, pb_blockview, p_eigview)
         end
         @inbounds iterator.PBlocks.block .= iterator.PBlocks.block .+ iterator.tempXBlocks.block
         @inbounds iterator.PBlocks.A_block .= iterator.PBlocks.A_block .+ iterator.tempXBlocks.A_block
@@ -662,14 +681,14 @@ function update_X_P!(iterator::LOBPCGIterator{Generalized}, bs1, bs2) where Gene
     end
     block = iterator.XBlocks.block
     tempblock = iterator.tempXBlocks.block
-    mul!(tempblock, block, x_eigview)
+    gmul!(tempblock, block, x_eigview)
     block = iterator.XBlocks.A_block
     tempblock = iterator.tempXBlocks.A_block
-    mul!(tempblock, block, x_eigview)
+    gmul!(tempblock, block, x_eigview)
     if Generalized
         block = iterator.XBlocks.B_block
         tempblock = iterator.tempXBlocks.B_block
-        mul!(tempblock, block, x_eigview)
+        gmul!(tempblock, block, x_eigview)
     end
     @inbounds begin
         if bs1 > 0
