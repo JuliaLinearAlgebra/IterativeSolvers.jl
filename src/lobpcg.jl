@@ -30,8 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 export lobpcg, lobpcg!, LOBPCGIterator
 
-using LinearAlgebra
-using Random
+using LinearAlgebra, Random
 
 struct LOBPCGState{TR,TL}
     iteration::Int
@@ -536,19 +535,15 @@ function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
     bs == -1 ? A_mul_X!(blocks, A) : A_mul_X!(blocks, A, bs)
     return
 end
+residual_col_norm(block, j) = @views norm(block[:, j])
 function residuals!(iterator)
     sizeX = size(iterator.XBlocks.block, 2)
     @views gmul!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(iterator.ritz_values[1:sizeX]))
     @inbounds iterator.RBlocks.block .= iterator.XBlocks.A_block .- iterator.RBlocks.block
     # Finds residual norms
-    @inbounds for j in 1:size(iterator.RBlocks.block, 2)
-        iterator.residuals[j] = 0
-        for i in 1:size(iterator.RBlocks.block, 1)
-            x = iterator.RBlocks.block[i,j]
-            iterator.residuals[j] += real(x*conj(x))
-        end
-        iterator.residuals[j] = sqrt(iterator.residuals[j])
-    end
+    sizeR = size(iterator.RBlocks.block, 2)
+    @inbounds iterator.residuals[1:sizeR] .= residual_col_norm.((iterator.RBlocks.block,), 1:sizeR)
+    
     return
 end
 
