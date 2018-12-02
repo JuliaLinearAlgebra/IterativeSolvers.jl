@@ -181,7 +181,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Conjugate Gradients",
     "title": "On the GPU",
     "category": "section",
-    "text": "The method should work fine on the GPU. As a minimal working example, consider:using LinearAlgebra, CuArrays, IterativeSolvers\n\nn = 100\nA = cu(rand(n, n))\nA = A + A\' + 2*n*I\nb = cu(rand(n))\nx = cg(A, b)note: Note\nMake sure that all state vectors are stored on the GPU. CG will not copy the right-hand side to the GPU if the provided initial guess x is stored on the GPU."
+    "text": "The method should work fine on the GPU. As a minimal working example, consider:using LinearAlgebra, CuArrays, IterativeSolvers\n\nn = 100\nA = cu(rand(n, n))\nA = A + A\' + 2*n*I\nb = cu(rand(n))\nx = cg(A, b)note: Note\nMake sure that all state vectors are stored on the GPU. For instance when calling cg!(x, A, b), one might have an issue when x is stored on the GPU, while b is stored on the CPU – IterativeSolvers.jl does not copy the vectors to the same device."
 },
 
 {
