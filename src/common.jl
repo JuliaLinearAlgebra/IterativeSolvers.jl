@@ -12,9 +12,15 @@ Adivtype(A, b) = typeof(one(eltype(b))/one(eltype(A)))
 
 """
     zerox(A, b)
-Build a zeros vector `Vector{T}`, where `T` is `Adivtype(A,b)`.
+
+Build a zeros vector similar to `b` of eltype `Adivtype(A,b)`.
 """
-zerox(A, b) = zeros(Adivtype(A, b), size(A, 2))
+function zerox(A, b)
+    T = Adivtype(A, b)
+    x = similar(b, T, size(A, 2))
+    fill!(x, zero(T))
+    return x
+end
 
 """
 No-op preconditioner
