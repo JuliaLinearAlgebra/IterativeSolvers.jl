@@ -24,7 +24,7 @@ x = cg(A, b)
 ```
 
 !!! note
-    Make sure that all state vectors are stored on the GPU. CG will *not* copy the right-hand side to the GPU if the provided initial guess `x` is stored on the GPU.
+    Make sure that all state vectors are stored on the GPU. For instance when calling `cg!(x, A, b)`, one might have an issue when `x` is stored on the GPU, while `b` is stored on the CPU -- IterativeSolvers.jl does not copy the vectors to the same device.
 
 
 ## Implementation details
