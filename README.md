@@ -13,13 +13,8 @@
 
 ## Installing
 
-To install the package, use the following command inside Julia's REPL:
+To install the package, open the package manager in the REPL via ] and run
+
 ```julia
-Pkg.add("IterativeSolvers")
+pkg> add IterativeSolvers
 ```
-
-## Status
-
-- [Issue #1](https://github.com/JuliaMath/IterativeSolvers.jl/issues/1) documents the implementation roadmap for iterative solvers.
-
-- The interfaces between the various algorithms are still in flux, but aim to be consistent.

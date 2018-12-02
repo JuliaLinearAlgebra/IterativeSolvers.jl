@@ -36,8 +36,8 @@ using Test
 
         for data in plots
             @test length(data) == 1
-            @test data[1].d[:label] == "resnorm"
-            @test data[1].d[:seriestype] == :line
+            @test data[1].plotattributes[:label] == "resnorm"
+            @test data[1].plotattributes[:seriestype] == :line
         end
     end
 
@@ -54,7 +54,7 @@ using Test
 
         for data in plots
             @test length(data) == 2
-            @test data[2].d[:linecolor] == :white
+            @test data[2].plotattributes[:linecolor] == :white
         end
     end
 
@@ -71,7 +71,7 @@ using Test
 
         for data in plots
             @test length(data) == 2
-            @test data[2].d[:linecolor] == :red
+            @test data[2].plotattributes[:linecolor] == :red
         end
     end
 end

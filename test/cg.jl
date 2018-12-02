@@ -83,4 +83,13 @@ end
     end
 end
 
+@testset "CG with a view" begin
+    A = rand(10, 10)
+    A = A + A' + 100I
+    x = view(rand(10, 2), :, 1)
+    b = rand(10)
+    x, hist = cg!(x, A, b, log = true)
+    @test hist.isconverged
+end
+
 end
