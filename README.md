@@ -8,8 +8,8 @@
 
 ## Resources
 
-- [Manual](https://JuliaMath.github.io/IterativeSolvers.jl/latest/)
-- [Contributing](https://juliamath.github.io/IterativeSolvers.jl/latest/about/CONTRIBUTING)
+- [Manual](https://juliamath.github.io/IterativeSolvers.jl/dev/)
+- [Contributing](https://juliamath.github.io/IterativeSolvers.jl/dev/about/CONTRIBUTING/)
 
 ## Installing
 
