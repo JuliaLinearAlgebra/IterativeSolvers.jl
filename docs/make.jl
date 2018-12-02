@@ -34,11 +34,4 @@ makedocs(
 	]
 )
 
-deploydocs(
-	repo = "github.com/JuliaMath/IterativeSolvers.jl.git",
-	target = "build",
-	osname = "linux",
-	julia  = "0.7",
-	deps = nothing,
-	make = nothing,
-)
+deploydocs(repo = "github.com/JuliaMath/IterativeSolvers.jl.git")
