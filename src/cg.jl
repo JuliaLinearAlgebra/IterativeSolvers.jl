@@ -116,7 +116,7 @@ end
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
-    statevars::CGStateVariables = CGStateVariables{eltype(x),typeof(x)}(zero(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
     initially_zero::Bool = false
 )
     u = statevars.u
@@ -202,7 +202,7 @@ function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
-    statevars::CGStateVariables = CGStateVariables{eltype(x), typeof(x)}(zero(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...
