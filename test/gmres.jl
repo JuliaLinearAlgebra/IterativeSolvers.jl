@@ -33,7 +33,7 @@ n = 10
     @test norm(A * x - b) / norm(b) ≤ tol
 end
 
-@testset "SparseMatrixCSC{$T}" for T in (Float64, ComplexF64)
+@testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
     A = sprand(T, n, n, 0.5) + I
     b = rand(T, n)
     F = lu(A)

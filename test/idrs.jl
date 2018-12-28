@@ -29,7 +29,7 @@ Random.seed!(1234567)
     end
 end
 
-@testset "SparseMatrixCSC{$T}" for T in (Float64, ComplexF64)
+@testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
     A = sprand(T, n, n, 0.5) + n * I
     b = rand(T, n)
     tol = √eps(real(T))
