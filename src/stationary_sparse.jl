@@ -12,8 +12,8 @@ struct DiagonalIndices{Tv, Ti <: Integer}
         diag = Vector{Ti}(undef, A.n)
 
         for col = 1 : A.n
-            r1 = A.colptr[col]
-            r2 = A.colptr[col + 1] - 1
+            r1 = Int64(A.colptr[col])
+            r2 = Int64(A.colptr[col + 1] - 1)
             r1 = searchsortedfirst(A.rowval, col, r1, r2, Base.Order.Forward)
             if r1 > r2 || A.rowval[r1] != col || iszero(A.nzval[r1])
                 throw(LinearAlgebra.SingularException(col))
