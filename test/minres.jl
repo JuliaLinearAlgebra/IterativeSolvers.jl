@@ -51,7 +51,7 @@ end
     @test hist.isconverged
 end
 
-@testset "SparseMatrixCSC{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
+@testset "SparseMatrixCSC{$T, $Ti}" for T in (Float32, Float64, ComplexF32, ComplexF64), Ti in (Int64, Int32)
     A = let
         B = sprand(n, n, 2 / n)
         B + B' + I

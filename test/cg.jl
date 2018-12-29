@@ -58,7 +58,7 @@ end
     rmul!(rhs, inv(norm(rhs)))
     tol = 1e-5
 
-    @testset "Matrix" begin
+    @testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, Float32), Ti in (Int64, Int32)
         xCG = cg(A, rhs; tol=tol, maxiter=100)
         xJAC = cg(A, rhs; Pl=P, tol=tol, maxiter=100)
         @test norm(A * xCG - rhs) ≤ tol
