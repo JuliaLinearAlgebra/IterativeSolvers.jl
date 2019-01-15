@@ -831,6 +831,7 @@ function lobpcg(A, B, largest, X0;
     n = size(X, 1)
     sizeX = size(X, 2)
     sizeX > n && throw("X column dimension exceeds the row dimension")
+    3*sizeX > n && throw("The LOBPCG algorithms is not stable to use when the matrix size is less than 3 times the block size. Please use a dense solver instead.")
 
     iterator = LOBPCGIterator(A, B, largest, X, P, C)
 
@@ -930,6 +931,7 @@ function lobpcg(A, B, largest::Bool, X0, nev::Int;
     n = size(X0, 1)
     sizeX = size(X0, 2)
     nev > n && throw("Number of eigenvectors desired exceeds the row dimension.")
+    3*sizeX > n && throw("The LOBPCG algorithms is not stable to use when the matrix size is less than 3 times the block size. Please use a dense solver instead.")
 
     sizeX = min(nev, sizeX)
     X = X0[:, 1:sizeX]
