@@ -26,16 +26,17 @@ Random.seed!(1234321)
         A = rand(T, n, n)
         A = A' * A + I
         b = rand(T, n)
-        tol = √eps(real(T))
+        reltol = √eps(real(T))
 
-        r = cg(A, b; tol=tol, maxiter=2n, log=true)
+        r = cg(A, b; reltol=reltol, maxiter=2n, log=true)
         x, ch = r.x, r.history
         @test isa(ch, ConvergenceHistory)
-        @test norm(A*x - b) / norm(b) ≤ tol
+        @test norm(A*x - b) / norm(b) ≤ reltol
+        @test norm(A*x - b) ≤ r.tol
         @test ch.isconverged
 
         # If you start from the exact solution, you should converge immediately
-        r = cg!(A \ b, A, b; tol=10tol, log=true)
+        r = cg!(A \ b, A, b; reltol=10reltol, log=true)
         x, ch = r.x, r.history
         @test niters(ch) ≤ 1
         @test nprods(ch) ≤ 2
