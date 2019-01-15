@@ -49,7 +49,8 @@ Most solvers contain the `log` keyword. This is to be used when obtaining
 more information is required, to use it place the set `log` to `true`.
 
 ```julia
-x, ch = cg(Master, rand(10, 10), rand(10) log=true)
+r = cg(Master, rand(10, 10), rand(10) log=true)
+x, ch = r.x, r.history
 svd, L, ch = svdl(Master, rand(100, 100), log=true)
 ```
 

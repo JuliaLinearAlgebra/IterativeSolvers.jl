@@ -20,7 +20,8 @@ n = 100
 A = cu(rand(n, n))
 A = A + A' + 2*n*I
 b = cu(rand(n))
-x = cg(A, b)
+r = cg(A, b)
+x = r.x
 ```
 
 !!! note
