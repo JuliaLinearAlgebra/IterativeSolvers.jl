@@ -16,9 +16,15 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual method.
 
 # Arguments
 
+<<<<<<< HEAD
 - `A`: linear operator;
 - `b`: right-hand side.
 - `x`: Initial guess, will be updated in-place;
+=======
+- `x`: Initial guess, will be updated in-place;
+- `A`: linear operator;
+- `b`: right-hand side.
+>>>>>>> 8c9ae8a8aee84bfa4974c21cfb134c11ab265870
 
 ## Keywords
 
@@ -28,7 +34,10 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual method.
 - `tol`: relative tolerance;
 - `Pl`: left preconditioner;
 - `Pr`: right preconditioner;
+<<<<<<< HEAD
 - `maxiter::Int = size(A, 2)`: Maximum number of iterations
+=======
+>>>>>>> 8c9ae8a8aee84bfa4974c21cfb134c11ab265870
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iterations.
 
@@ -43,6 +52,7 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual method.
 - `x`: approximate solution;
 - `history`: convergence history.
 """
+<<<<<<< HEAD
 
 #########################
 # Method Implementation #
@@ -57,6 +67,12 @@ function qmr!(x,A, b;
   Pr = Identity(),
   tol = sqrt(eps(real(eltype(b)))),
   maxiter = size(A, 2),
+=======
+function qmr!(x, A, b;
+  Pl = Identity(),
+  Pr = Identity(),
+  tol = sqrt(eps(real(eltype(b)))),
+>>>>>>> 8c9ae8a8aee84bfa4974c21cfb134c11ab265870
   log::Bool = false,
   initially_zero::Bool = false,
   verbose::Bool = false)
