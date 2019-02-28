@@ -12,7 +12,7 @@ function matlab_example(T,n)
     M1 = spdiagm(-1 => fill(-1/2,n-1), 0 => ones(n))
     M2 = spdiagm(0 => fill(4,n), 1 => fill(-1,n-1))
     x = ones(T,100)
-    A,x,b
+    A,x,b,M1,M2
 end
 
 Random.seed!(123)
@@ -23,8 +23,8 @@ Random.seed!(123)
 
     x0 = rand(T,n)
 
-    x1, hist1 = qmr(A, b, maxiter = 15, tol = tol, log = true)
-    x2, hist2 = qmr!(x0, A, b, maxiter = 15, tol = tol, log = true)
+    x1, hist1 = qmr(A, b, maxiter = 15, tol = tol, log = true,Pl=M1,Pr=M2)
+    x2, hist2 = qmr!(x0, A, b, maxiter = 15, tol = tol, log = true,Pl=M1,Pr=M2)
 
     @test isa(hist1, ConvergenceHistory)
     @test norm(b - A * x1) / norm(b) ≤ tol
