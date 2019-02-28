@@ -51,6 +51,12 @@ function qmr!(x,A, b;
   log::Bool = false,
   initially_zero::Bool = false,
   verbose::Bool = false)
+  # Implemented using qmr method given in
+  #  [1] https://link.springer.com/content/pdf/10.1007%2FBF01385726.pdf
+  # Algorithm 3.1
+
+  # Test if singular then break
+  # Test if Hermitian -> use conjugate gradient
 
   history = ConvergenceHistory(partial = !log)
   history[:tol] = tol
@@ -63,12 +69,21 @@ function qmr!(x,A, b;
   β = []
   θ = []
 
+
+  # [1] 3.1.0
+
+  # Choose x₀ ∈ Cᴺ and set r₀ = b - Ax₀, ρ₀ = |r₀|, v₁ = r₀/ρ₀
+  # Choose w₁ ∈ Cᴺ with |w₁|= 1
+
   r = b-A*x
   ν_vec = [zeros((length(r),1)),r]
-  y = Pl \ ν_vec[2]
+  y = Pl \ ν_vec[2] # Applying preconditioner to r
+
   ρ = [0,norm(y,2)]
+
   w_vec = [zeros((length(r),1)),r]
   z =  Pr' \ w_vec[2]
+
   ζ = [0,norm(z,2)]
 
   γ = [1]
@@ -76,17 +91,37 @@ function qmr!(x,A, b;
 
   for i in 2:maxiter
 
+    # [1] 3.1.1 Perform the nth iteration of the look-ahead Lanczos Algorithm 2.1;
+    # This yields matrices Vⁿ, Vⁿ⁺¹, Hⁿₑ which satisfy (3.5);
     if ρ[i] == 0 || ζ[1] == 0
       history.isconverged = false;
       break
     end
 
-    ν[i] = ν_vec[i]/ρ[i];y = y / ρ[i]
-    w[i] = w_vec[i]/ζ[i];z = z / ζ[i]
+
+    ν[i] = ν_vec[i]/ρ[i]
+    y = y / ρ[i] # nth right Lanczos vector
+    w[i] = w_vec[i]/ζ[i]
+    z = z / ζ[i] # nth left Lanczos vector
     δ[i] = z'*y
 
-    if δ[i] == 0
+    if δ[i] == 0 # this will cause divide by zero next iteration, must break
       history.isconverged = false;
+      if norm(z) == 0
+        # regular termination
+        # krylov subspace made by z and A said to be A-invariant
+        # basis constructed for this invariant subspace
+        break
+      end
+      if norm(y) == 0
+        # regular termination
+        # krylov subspace made by y and Aᵀ said to be Aᵗ-invariant
+        # basis constructed for this invariant subspace
+        break
+      end
+      if norm(y) != 0 & norm(z) != 0
+        # we have serious breakdown which can be avoided with lookahead
+      end
       break
     end
 
@@ -149,3 +184,18 @@ function qmr!(x,A, b;
 
   log ? (x,history) :  x
 end
+
+
+# Testing
+n = 10
+T = ComplexF64
+A = spdiagm(-1 => fill(-1.0,n-1), 1 => fill(4.0,n-1))
+b = sum(A,dims=2)
+M1 = spdiagm(-1 => fill(-1/2,n-1), 0 => ones(n))
+M2 = spdiagm(0 => fill(4.0 ,n), 1 => fill(-1.0,n-1))
+# x = ones(T,100)
+x0 = rand(T,n)
+qmr!(x0,A,b)
+
+# m = [1 2im;3 4]
+# m'
