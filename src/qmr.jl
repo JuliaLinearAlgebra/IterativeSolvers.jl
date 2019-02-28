@@ -58,41 +58,45 @@ function qmr!(x,A, b;
   # Test if singular then break
   # Test if Hermitian -> use conjugate gradient
 
+  # Startup history file
   history = ConvergenceHistory(partial = !log)
   history[:tol] = tol
   reserve!(history, :resnorm, maxiter)
 
+  # Empty initial videos
   δ = []
+  ν = []
+  w = []
+  y_vec = []
+  z_vec = []
   p = []
   q = []
   ϵ = []
+  p_vec = []
   β = []
   θ = []
-
 
   # [1] 3.1.0
 
   # Choose x₀ ∈ Cᴺ and set r₀ = b - Ax₀, ρ₀ = |r₀|, v₁ = r₀/ρ₀
   # Choose w₁ ∈ Cᴺ with |w₁|= 1
-
-  r = b-A*x
-  ν_vec = [zeros((length(r),1)),r]
-  y = Pl \ ν_vec[2] # Applying preconditioner to r
-
-  ρ = [0,norm(y,2)]
-
-  w_vec = [zeros((length(r),1)),r]
-  z =  Pr' \ w_vec[2]
-
-  ζ = [0,norm(z,2)]
+  # Set up initial conditions
+  x_last = copy(x)
+  r = [b-A*x_last]
+  ν_vec = [r[1]]
+  y = Pl \ ν_vec[1]
+  ρ = [norm(y,2)]
+  w_vec = [r[1]]
+  z =  Pr' \ w_vec[1]
+  ζ = [norm(z,2)]
 
   γ = [1]
   η = [-1]
 
-  for i in 2:maxiter
-
+  for i in 1:maxiter
     # [1] 3.1.1 Perform the nth iteration of the look-ahead Lanczos Algorithm 2.1;
     # This yields matrices Vⁿ, Vⁿ⁺¹, Hⁿₑ which satisfy (3.5);
+    # Check initial state
     if ρ[i] == 0 || ζ[1] == 0
       history.isconverged = false;
       break
@@ -128,34 +132,35 @@ function qmr!(x,A, b;
     y_vec = Pr \ y
     z_vec = Pl' \ z
 
-    if i == 2
-      p[2] = y_vec; q[2] = z_vec
+    if i == 1
+      p[i] = y_vec; q[i] = z_vec
     else
       p[i] = y_vec - ((ζ[i]*δ[i])/(ϵ[i-1]))*p[i-1]
       q[i] = z_vec - ((ρ[i]*δ[i])/(ϵ[i-1]))*q[i-1]
     end
 
     p_vec = A*p[i]
-    ϵ[i] = q[i]'*p_vec
 
+    # More failure cases
+    ϵ[i] = dot(q[i],p_vec)
+    β[i] = ϵ[i] / δ[i]
     if ϵ[i] == 0
       history.isconverged = false;
       break;
     end
-
-    β[i] = ϵ[i] / δ[i]
-
     if β[i] == 0
       history.isconverged = false;
       break;
     end
 
     ν_vec[i+1] = p_vec - β[i]*ν[i]
-    y = ν_vec[i+1] \ Pl
+    y = Pl \ ν_vec[i+1]
     ρ[i+1] = norm(y,2)
     w_vec[i+1] = A'*q[i] - β[i]*w[i]
-    z = w_vec[i+1] \ Pr'
+    z = Pr' \ w_vec[i+1]
     ζ[i+1] = norm(z,2)
+
+    # Update QR Factorization
     θ[i] = ρ[i+1] / (γ[i-1] * abs(β[i]))
     γ[i] = 1 / sqrt(1 + θ[i]^2)
 
@@ -166,13 +171,14 @@ function qmr!(x,A, b;
 
     η[i] = (-η[i-1]*ρ[i]*γ[i]^2)/(β[i]*γ[i-1]^2)
 
-    if i == 2
-      d[2] = η[2]*p[2]; s[2] = η[2]*p_vec
+    if i == 1
+      d[i] = η[i]*p[i]; s[i] = η[i]*p_vec
     else
       d[i] = η[i]*p[i] + (θ[i-1]*γ[i])^2*d[i-1]
       s[i] = η[i]*p_vec + (θ[i-1]*γ[i])^2*s[i-1]
     end
 
+    # Update solution and test for convergence
     x[i] = x[i-1] + d[i]
     r[i] = r[i-1] - s[i]
     push!(history, :resnorm, r[i])
