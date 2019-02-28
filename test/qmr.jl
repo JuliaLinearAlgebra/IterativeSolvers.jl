@@ -32,3 +32,5 @@ Random.seed!(123)
     @test norm(b - A * x2) / norm(b) ≤ tol
     @test x2 == x0
 end
+
+end
