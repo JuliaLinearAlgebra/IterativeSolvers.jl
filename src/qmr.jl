@@ -1,6 +1,12 @@
+import Base: iterate
 export qmr, qmr!
 
+
+# using IterativeSolvers
 using LinearAlgebra
+using Test
+using SparseArrays
+using Random
 
 """
     qmr(A, b; kwargs...) -> x, [history]
@@ -107,6 +113,7 @@ function qmr!(x,A, b;
     y = y / ρ[i] # nth right Lanczos vector
     w[i] = w_vec[i]/ζ[i]
     z = z / ζ[i] # nth left Lanczos vector
+
     δ[i] = z'*y
 
     if δ[i] == 0 # this will cause divide by zero next iteration, must break
@@ -193,7 +200,7 @@ end
 
 
 # Testing
-n = 10
+n = 4
 T = ComplexF64
 A = spdiagm(-1 => fill(-1.0,n-1), 1 => fill(4.0,n-1))
 b = sum(A,dims=2)
@@ -201,7 +208,6 @@ M1 = spdiagm(-1 => fill(-1/2,n-1), 0 => ones(n))
 M2 = spdiagm(0 => fill(4.0 ,n), 1 => fill(-1.0,n-1))
 # x = ones(T,100)
 x0 = rand(T,n)
-qmr!(x0,A,b)
+x = qmr!(x0,A,b)
 
-# m = [1 2im;3 4]
-# m'
+inv(Array(A))*b
