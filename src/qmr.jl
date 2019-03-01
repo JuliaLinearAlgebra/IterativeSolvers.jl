@@ -57,7 +57,7 @@ function qmr!(x,A, b;
   history[:tol] = tol
   reserve!(history, :resnorm, maxiter)
 
-  # Empty initial videos
+  # Empty initial vectors
   δ = []
   ν = []
   w = []
@@ -69,35 +69,39 @@ function qmr!(x,A, b;
   p_vec = []
   β = []
   θ = []
+  d = []
+  s = []
 
   # Set up initial conditions
-  x_last = copy(x)
-  r = [b-A*x_last]
+  x_vec = [copy(x)]
+  r = [b-A*x_vec[1]]
   ν_vec = [r[1]]
-  y = Pl \ ν_vec[1]
+  y = Pl \ ν_vec[1] #? Why solving within solver
   ρ = [norm(y,2)]
   w_vec = [r[1]]
-  z =  Pr' \ w_vec[1]
+  z =  Pr' \ w_vec[1]#? Why solving within solver
   ζ = [norm(z,2)]
 
-  γ = [1]
-  η = [-1]
+  γ = [1.]
+  η = [-1.]
 
   for i in 1:maxiter
     # Check initial state
     if ρ[i] == 0 || ζ[1] == 0
-      history.isconverged = false;
+      history.isconverged = false
       break
     end
 
     # Generate Lanczos Vectors ν and w
-    ν[i] = ν_vec[i]/ρ[i];y /= ρ[i]
-    w[i] = w_vec[i]/ζ[i];z /= ζ[i]
+    push!(ν, ν_vec[i]/ρ[i])
+    y /= ρ[i]
+    push!(w,w_vec[i]/ζ[i])
+    z /= ζ[i]
 
     # Another failure case
-    δ[i] = dot(z,y)
+    push!(δ,dot(z,y))
     if δ[i] == 0
-      history.isconverged = false;
+      history.isconverged = false
       break
     end
 
@@ -105,60 +109,62 @@ function qmr!(x,A, b;
     z_vec = Pl' \ z
 
     if i == 1
-      p[i] = y_vec; q[i] = z_vec
+      push!(p,y_vec)
+      push!(q,z_vec)
     else
-      p[i] = y_vec - ((ζ[i]*δ[i])/(ϵ[i-1]))*p[i-1]
-      q[i] = z_vec - ((ρ[i]*δ[i])/(ϵ[i-1]))*q[i-1]
+      push!(p,y_vec - ((ζ[i]*δ[i])/(ϵ[i-1]))*p[i-1])
+      push!(q,z_vec - ((ρ[i]*δ[i])/(ϵ[i-1]))*q[i-1])
     end
 
     p_vec = A*p[i]
 
     # More failure cases
-    ϵ[i] = dot(q[i],p_vec)
-    β[i] = ϵ[i] / δ[i]
+    push!(ϵ,dot(q[i],p_vec))
+    push!(β,ϵ[i] / δ[i])
     if ϵ[i] == 0
-      history.isconverged = false;
-      break;
+      history.isconverged = false
+      break
     end
     if β[i] == 0
-      history.isconverged = false;
-      break;
+      history.isconverged = false
+      break
     end
 
-    ν_vec[i+1] = p_vec - β[i]*ν[i]
+    push!(ν_vec,p_vec - β[i]*ν[i])
     y = Pl \ ν_vec[i+1]
-    ρ[i+1] = norm(y,2)
-    w_vec[i+1] = A'*q[i] - β[i]*w[i]
+    push!(ρ,norm(y,2))
+    push!(w_vec,A'*q[i] - β[i]*w[i])
     z = Pr' \ w_vec[i+1]
-    ζ[i+1] = norm(z,2)
+    push!(ζ,norm(z,2))
 
     # Update QR Factorization
-    θ[i] = ρ[i+1] / (γ[i-1] * abs(β[i]))
-    γ[i] = 1 / sqrt(1 + θ[i]^2)
+    push!(θ, ρ[i+1] / (γ[i] * abs(β[i])))
+    push!(γ,1 / sqrt(1 + θ[i]^2))
 
-    if γ[i] == 0
-      history.isconverged = false;
-      break;
+    if γ[i+1] == 0
+      history.isconverged = false
+      break
     end
 
-    η[i] = (-η[i-1]*ρ[i]*γ[i]^2)/(β[i]*γ[i-1]^2)
+    push!(η,(-η[i]*ρ[i]*γ[i]^2)/(β[i]*γ[i]^2))
 
     if i == 1
-      d[i] = η[i]*p[i]; s[i] = η[i]*p_vec
+      push!(d,η[i]*p[i])
+      push!(s,η[i]*p_vec)
     else
-      d[i] = η[i]*p[i] + (θ[i-1]*γ[i])^2*d[i-1]
-      s[i] = η[i]*p_vec + (θ[i-1]*γ[i])^2*s[i-1]
+      push!(d,η[i]*p[i] + (θ[i-1]*γ[i])^2*d[i-1])
+      push!(s,η[i]*p_vec + (θ[i-1]*γ[i])^2*s[i-1])
     end
 
     # Update solution and test for convergence
-    x[i] = x[i-1] + d[i]
-    r[i] = r[i-1] - s[i]
-    push!(history, :resnorm, r[i])
-    if r[i] <= tol
-      history.isconverged = true;
-      break;
+    push!(x_vec,x_vec[i] + d[i])
+    push!(r,r[i] - s[i])
+    push!(history, :resnorm, norm(r[i+1]))
+    if norm(r[i+1]) <= tol
+      history.isconverged = true
+      break
     end
   end
 
-  log ? (x,history) :  x
+  log ? (x_vec[end],history) :  x_vec[end]
 end
