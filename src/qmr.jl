@@ -73,8 +73,6 @@ function qmr!(x, A, b;
   r = b - A*x
   bnorm = norm(b)
   res₀ = norm(r)
-  res_vec = zeros(btype,maxiter+1)
-  res_vec[1] = res₀
   vt = r
   y = Pr \ vt
   ρ₀ = norm(y)
@@ -141,7 +139,6 @@ function qmr!(x, A, b;
     r -= s
 
     res₁ = norm(r) / bnorm
-    res_vec[iter+1] = norm(r)
 
     # Check for convergance
     if (res₁ < tol)
@@ -164,7 +161,7 @@ function qmr!(x, A, b;
     γ₀ = γ₁
     ρ₀ = ρ₁
     nextiter!(history)
-    log && push!(history,:resnorm,norm(r))
+    log && push!(history,:resnorm,res₁)
   end
 
   verbose && println()
