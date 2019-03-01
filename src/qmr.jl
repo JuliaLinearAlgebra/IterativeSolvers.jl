@@ -1,6 +1,12 @@
+import Base: iterate
 export qmr, qmr!
 
+
+# using IterativeSolvers
 using LinearAlgebra
+using Test
+using SparseArrays
+using Random
 
 """
     qmr(A, b; kwargs...) -> x, [history]
@@ -51,6 +57,12 @@ function qmr!(x,A, b;
   log::Bool = false,
   initially_zero::Bool = false,
   verbose::Bool = false)
+  # Implemented using qmr method given in
+  #  [1] https://link.springer.com/content/pdf/10.1007%2FBF01385726.pdf
+  # Algorithm 3.1
+
+  # Test if singular then break
+  # Test if Hermitian -> use conjugate gradient
 
   # Startup history file
   history = ConvergenceHistory(partial = !log)
@@ -72,6 +84,10 @@ function qmr!(x,A, b;
   d = []
   s = []
 
+  # [1] 3.1.0
+
+  # Choose x₀ ∈ Cᴺ and set r₀ = b - Ax₀, ρ₀ = |r₀|, v₁ = r₀/ρ₀
+  # Choose w₁ ∈ Cᴺ with |w₁|= 1
   # Set up initial conditions
   x_vec = [copy(x)]
   r = [b-A*x_vec[1]]
@@ -86,6 +102,8 @@ function qmr!(x,A, b;
   η = [-1.]
 
   for i in 1:maxiter
+    # [1] 3.1.1 Perform the nth iteration of the look-ahead Lanczos Algorithm 2.1;
+    # This yields matrices Vⁿ, Vⁿ⁺¹, Hⁿₑ which satisfy (3.5);
     # Check initial state
     if ρ[i] == 0 || ζ[1] == 0
       history.isconverged = false
@@ -168,3 +186,17 @@ function qmr!(x,A, b;
 
   log ? (x_vec[end],history) :  x_vec[end]
 end
+
+
+# Testing
+n = 4
+T = ComplexF64
+A = spdiagm(-1 => fill(-1.0,n-1), 1 => fill(4.0,n-1))
+b = sum(A,dims=2)
+M1 = spdiagm(-1 => fill(-1/2,n-1), 0 => ones(n))
+M2 = spdiagm(0 => fill(4.0 ,n), 1 => fill(-1.0,n-1))
+# x = ones(T,100)
+x0 = rand(T,n)
+x = qmr!(x0,A,b)
+
+inv(Array(A))*b
