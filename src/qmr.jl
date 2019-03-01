@@ -49,7 +49,7 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual method without loo
 - `x`: approximate solution;
 - `history`: convergence history.
 """
-function qmr!(x,A, b;
+function qmr!(x, A, b;
   Pl = I,
   Pr = I,
   tol = sqrt(eps(real(eltype(b)))),
@@ -57,146 +57,126 @@ function qmr!(x,A, b;
   log::Bool = false,
   initially_zero::Bool = false,
   verbose::Bool = false)
-  # Implemented using qmr method given in
-  #  [1] https://link.springer.com/content/pdf/10.1007%2FBF01385726.pdf
-  # Algorithm 3.1
-
-  # Test if singular then break
-  # Test if Hermitian -> use conjugate gradient
 
   # Startup history file
   history = ConvergenceHistory(partial = !log)
   history[:tol] = tol
-  reserve!(history, :resnorm, maxiter)
+  reserve!(history,:resnorm,maxiter)
 
-  # Empty initial vectors
-  δ = []
-  ν = []
-  w = []
-  y_vec = []
-  z_vec = []
-  p = []
-  q = []
-  ϵ = []
-  p_vec = []
-  β = []
-  θ = []
-  d = []
-  s = []
+  # Lambda for right preconditioner
+  M1m1x = x-> Pr \x
+  M1tm1x = x-> Pr' \x
 
-  # [1] 3.1.0
+  # Lamda for left preconditioner
+  M2m1x = x-> Pl \x
+  M2tm1x = x-> Pl' \x
 
-  # Choose x₀ ∈ Cᴺ and set r₀ = b - Ax₀, ρ₀ = |r₀|, v₁ = r₀/ρ₀
-  # Choose w₁ ∈ Cᴺ with |w₁|= 1
-  # Set up initial conditions
-  x_vec = [copy(x)]
-  r = [b-A*x_vec[1]]
-  ν_vec = [r[1]]
-  y = Pl \ ν_vec[1] #? Why solving within solver
-  ρ = [norm(y,2)]
-  w_vec = [r[1]]
-  z =  Pr' \ w_vec[1]#? Why solving within solver
-  ζ = [norm(z,2)]
+  # Lambda for multiplying by A
+  Ax = x -> A*x
+  Atx = x -> A'*x
 
-  γ = [1.]
-  η = [-1.]
+  r = b - A*x
+  bnorm = norm(b)
+  res₀ = norm(r)
+  res_vec = [res₀]
+  vt = r
+  y = M1m1x(vt)
+  ρ₀ = norm(y)
+  wt = r
+  z = M2tm1x(wt)
+  xi1 = norm(z)
+  γ₀ = 1.
+  η₀ = -1.
 
-  for i in 1:maxiter
-    # [1] 3.1.1 Perform the nth iteration of the look-ahead Lanczos Algorithm 2.1;
-    # This yields matrices Vⁿ, Vⁿ⁺¹, Hⁿₑ which satisfy (3.5);
-    # Check initial state
-    if ρ[i] == 0 || ζ[1] == 0
-      history.isconverged = false
-      break
+  # Setting up working variables
+
+  # Type of elements in b
+  btype = eltype(b)
+  ϵ₀ = 0
+  v = zeros(btype,length(b))
+  w = zeros(btype,length(b))
+  p = zeros(btype,length(b))
+  q = zeros(btype,length(b))
+  β₁ = zero(btype)
+  ρ₁ = zero(btype)
+  θ₀ = zero(btype)
+  θ₁ = zero(btype)
+  γ₁ = zero(btype)
+  η₁ = zero(btype)
+  d = zeros(btype,length(b))
+  s = zeros(btype,length(b))
+  res₁ = zero(btype)
+  last_iter = zero(Int64)
+
+  for iter = 1:maxiter
+    ## If ρ₀ == 0 or xi1 == 0, method fails.
+    v = vt / ρ₀
+    y /= ρ₀
+    w = wt / xi1
+    z /= xi1
+    δ₁ = z' * y   # If δ₁ == 0, method fails.
+    yt = M2m1x(y)
+    zt = M1tm1x(z)
+    if (iter == 1)
+      p = yt
+      q = zt
+    else# 2nd or higher
+      p = yt - (xi1*δ₁/ϵ₀) * p
+      q = zt - (ρ₀*δ₁/ϵ₀) * q
     end
+    pt = Ax(p)
+    ϵ₀ = (q' * pt)[1]          # If ϵ₀ == 0, method fails.
+    β₁ = ϵ₀ / δ₁   # If β₁ == 0, method fails.
+    vt = pt - β₁ * v
+    y = M1m1x(vt)
+    ρ₁ = norm(y)
+    wt = Atx(q) - β₁ * w
+    z = M2tm1x(wt)
+    xi1 = norm(z)
+    θ₁ = ρ₁ / (γ₀ * abs(β₁))
+    γ₁ = 1 / sqrt(1 + θ₁^2)   # If γ₁ == 0, method fails.
+    η₁ = -η₀ * ρ₀ * γ₁^2 / (β₁ * γ₀^2)
 
-    # Generate Lanczos Vectors ν and w
-    push!(ν, ν_vec[i]/ρ[i])
-    y /= ρ[i]
-    push!(w,w_vec[i]/ζ[i])
-    z /= ζ[i]
-
-    # Another failure case
-    push!(δ,dot(z,y))
-    if δ[i] == 0
-      history.isconverged = false
-      break
-    end
-
-    y_vec = Pr \ y
-    z_vec = Pl' \ z
-
-    if i == 1
-      push!(p,y_vec)
-      push!(q,z_vec)
+    if (iter == 1)
+      d = η₁ * p
+      s = η₁ * pt
     else
-      push!(p,y_vec - ((ζ[i]*δ[i])/(ϵ[i-1]))*p[i-1])
-      push!(q,z_vec - ((ρ[i]*δ[i])/(ϵ[i-1]))*q[i-1])
+      d = η₁ * p + (θ₀*γ₁)^2 * d
+      s = η₁ * pt + (θ₀ * γ₁)^2 * s
     end
+    x += d
+    r -= s
 
-    p_vec = A*p[i]
+    res₁ = norm(r) / bnorm
+    push!(res_vec,norm(r))
 
-    # More failure cases
-    push!(ϵ,dot(q[i],p_vec))
-    push!(β,ϵ[i] / δ[i])
-    if ϵ[i] == 0
-      history.isconverged = false
+    # Check for convergance
+    if (res₁ < tol)
+      # Solver Converged with tolerance
+      if log
+        history.isconverged = true
+      end
+      last_iter = iter
+      break
+    elseif (res₀ <= res₁)
+      # Local minimum found
+      if log
+        history.isconverged = true
+      end
+      last_iter = iter
       break
     end
-    if β[i] == 0
-      history.isconverged = false
-      break
-    end
-
-    push!(ν_vec,p_vec - β[i]*ν[i])
-    y = Pl \ ν_vec[i+1]
-    push!(ρ,norm(y,2))
-    push!(w_vec,A'*q[i] - β[i]*w[i])
-    z = Pr' \ w_vec[i+1]
-    push!(ζ,norm(z,2))
-
-    # Update QR Factorization
-    push!(θ, ρ[i+1] / (γ[i] * abs(β[i])))
-    push!(γ,1 / sqrt(1 + θ[i]^2))
-
-    if γ[i+1] == 0
-      history.isconverged = false
-      break
-    end
-
-    push!(η,(-η[i]*ρ[i]*γ[i]^2)/(β[i]*γ[i]^2))
-
-    if i == 1
-      push!(d,η[i]*p[i])
-      push!(s,η[i]*p_vec)
-    else
-      push!(d,η[i]*p[i] + (θ[i-1]*γ[i])^2*d[i-1])
-      push!(s,η[i]*p_vec + (θ[i-1]*γ[i])^2*s[i-1])
-    end
-
-    # Update solution and test for convergence
-    push!(x_vec,x_vec[i] + d[i])
-    push!(r,r[i] - s[i])
-    push!(history, :resnorm, norm(r[i+1]))
-    if norm(r[i+1]) <= tol
-      history.isconverged = true
-      break
-    end
+    θ₀ = θ₁
+    η₀ = η₁
+    γ₀ = γ₁
+    ρ₀ = ρ₁
+    nextiter!(history)
+    log && push!(history,:resnorm,norm(r))
   end
 
-  log ? (x_vec[end],history) :  x_vec[end]
+  verbose && println()
+  log && shrink!(history)
+
+  relres = res₁
+  log ? (x, history) :  x
 end
-
-
-# Testing
-n = 4
-T = ComplexF64
-A = spdiagm(-1 => fill(-1.0,n-1), 1 => fill(4.0,n-1))
-b = sum(A,dims=2)
-M1 = spdiagm(-1 => fill(-1/2,n-1), 0 => ones(n))
-M2 = spdiagm(0 => fill(4.0 ,n), 1 => fill(-1.0,n-1))
-# x = ones(T,100)
-x0 = rand(T,n)
-x = qmr!(x0,A,b)
-
-inv(Array(A))*b

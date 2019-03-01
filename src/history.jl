@@ -205,7 +205,7 @@ end
 """
     nextiter!(ml)
 
-Adds one the the number of iterations in [`ConvergenceHistory`](@ref) `ch`. This is
+Adds one to the number of iterations in [`ConvergenceHistory`](@ref) `ch`. This is
 necessary to avoid overwriting information with `push!(ml)`. It is also able
 to update other information of the method.
 """

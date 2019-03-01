@@ -4,47 +4,31 @@ using LinearAlgebra
 using SparseArrays
 using Random
 
-@testset "QMR" begin
+@testset ("QMR") begin
+    Random.seed!(1234321)
+    n = 20
 
-    function matlab_example(T,n)
-        A = spdiagm(-1 => fill(-1,n-1), 1 => fill(4,n-1))
-        b = sum(A,dims=2)
-        M1 = spdiagm(-1 => fill(-1/2,n-1), 0 => ones(n))
-        M2 = spdiagm(0 => fill(4,n), 1 => fill(-1,n-1))
-        x = ones(T,100)
-        A,x,b,M1,M2
+    @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
+        A = rand(T, n, n) + 15I
+        x = ones(T, n)
+        b = A * x
+
+        tol = √eps(real(T))
+
+        # Solve without preconditioner
+        x1, his1 = qmr(A, b, log = true, tol = tol)
+        @test isa(his1, ConvergenceHistory)
+        @test norm(A * x1 - b) / norm(b) ≤ tol
+
+        # With an initial guess
+        x_guess = rand(T, n)
+        x2, his2 = qmr!(x_guess, A, b, log = true, tol = tol)
+        @test isa(his2, ConvergenceHistory)
+        @test norm(A * x2 - b) / norm(b) ≤ tol
+
+        # Do an exact LU decomp of a nearby matrix
+        F = lu(A + rand(T, n, n))
+        x3, his3 = qmr(A, b, Pl = F, log = true, tol = tol)
+        @test norm(A * x3 - b) / norm(b) ≤ tol
     end
-
-    Random.seed!(123)
-
-    @testset "MATLAB Example Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-        A, x, b, M1, M2 = matlab_example(T, 100)
-        tol = 1e-8
-
-        x0 = rand(T,100)
-
-        x1, hist1 = qmr(A, b, maxiter = 15, tol = tol, log = true,Pl=M1,Pr=M2)
-        x2, hist2 = qmr!(x0, A, b, maxiter = 15, tol = tol, log = true,Pl=M1,Pr=M2)
-
-        @test isa(hist1, ConvergenceHistory)
-        @test norm(b - A * x1) / norm(b) ≤ tol
-        @test hist1.isconverged
-        @test norm(b - A * x2) / norm(b) ≤ tol
-        @test x2 == x0
-    end
-
 end
-
-function matlab_example(T,n)
-    A = spdiagm(-1 => fill(-1,n-1), 1 => fill(4,n-1))
-    b = sum(A,dims=2)
-    M1 = spdiagm(-1 => fill(-1/2,n-1), 0 => ones(n))
-    M2 = spdiagm(0 => fill(4,n), 1 => fill(-1,n-1))
-    x = ones(T,100)
-    A,x,b,M1,M2
-end
-
-A, x, b, M1, M2 = matlab_example(Float64, 100)
-
-x, history = qmr!(x, A, b, maxiter = 15, tol = 1e-6, log = true,Pl=M1,Pr=M2)
-A\b
