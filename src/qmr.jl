@@ -73,8 +73,6 @@ function qmr!(x, A, b;
   r = b - A*x
   bnorm = norm(b)
   res₀ = norm(r)
-  res_vec = zeros(btype,maxiter+1)
-  res_vec[1] = res₀
   vt = r
   y = Pr \ vt
   ρ₀ = norm(y)
@@ -99,7 +97,6 @@ function qmr!(x, A, b;
   d = zeros(btype,length(b))
   s = zeros(btype,length(b))
   res₁ = zero(btype)
-  last_iter = zero(Int64)
 
   for iter = 1:maxiter
     ## If ρ₀ == 0 or xi1 == 0, method fails.
@@ -141,7 +138,6 @@ function qmr!(x, A, b;
     r -= s
 
     res₁ = norm(r) / bnorm
-    res_vec[iter+1] = norm(r)
 
     # Check for convergance
     if (res₁ < tol)
@@ -149,14 +145,12 @@ function qmr!(x, A, b;
       if log
         history.isconverged = true
       end
-      last_iter = iter
       break
     elseif (res₀ <= res₁)
       # Local minimum found
       if log
         history.isconverged = true
       end
-      last_iter = iter
       break
     end
     θ₀ = θ₁
@@ -164,12 +158,11 @@ function qmr!(x, A, b;
     γ₀ = γ₁
     ρ₀ = ρ₁
     nextiter!(history)
-    log && push!(history,:resnorm,norm(r))
+    log && push!(history,:resnorm,res₁)
   end
 
   verbose && println()
   log && shrink!(history)
 
-  relres = res₁
   log ? (x, history) :  x
 end
