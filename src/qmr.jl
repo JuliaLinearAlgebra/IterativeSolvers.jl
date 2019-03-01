@@ -1,13 +1,6 @@
 import Base: iterate
 export qmr, qmr!
 
-
-# using IterativeSolvers
-using LinearAlgebra
-using Test
-using SparseArrays
-using Random
-
 """
     qmr(A, b; kwargs...) -> x, [history]
 
@@ -63,35 +56,35 @@ function qmr!(x, A, b;
   history[:tol] = tol
   reserve!(history,:resnorm,maxiter)
 
+  # Type of elements in b
+  btype = eltype(b)
+
   # Lambda for right preconditioner
-  M1m1x = x-> Pr \x
-  M1tm1x = x-> Pr' \x
+  M1m1x = x-> Pr \ x
+  M1tm1x = x-> Pr' \ x
 
   # Lamda for left preconditioner
-  M2m1x = x-> Pl \x
-  M2tm1x = x-> Pl' \x
+  M2m1x = x-> Pl \ x
+  M2tm1x = x-> Pl' \ x
 
   # Lambda for multiplying by A
-  Ax = x -> A*x
   Atx = x -> A'*x
 
   r = b - A*x
   bnorm = norm(b)
   res₀ = norm(r)
-  res_vec = [res₀]
+  res_vec = zeros(btype,maxiter+1)
+  res_vec[1] = res₀
   vt = r
-  y = M1m1x(vt)
+  y = Pr \ vt
   ρ₀ = norm(y)
   wt = r
-  z = M2tm1x(wt)
+  z = Pl' \ wt
   xi1 = norm(z)
   γ₀ = 1.
   η₀ = -1.
 
   # Setting up working variables
-
-  # Type of elements in b
-  btype = eltype(b)
   ϵ₀ = 0
   v = zeros(btype,length(b))
   w = zeros(btype,length(b))
@@ -115,8 +108,8 @@ function qmr!(x, A, b;
     w = wt / xi1
     z /= xi1
     δ₁ = z' * y   # If δ₁ == 0, method fails.
-    yt = M2m1x(y)
-    zt = M1tm1x(z)
+    yt = Pl \ y
+    zt = Pr' \ z
     if (iter == 1)
       p = yt
       q = zt
@@ -124,14 +117,14 @@ function qmr!(x, A, b;
       p = yt - (xi1*δ₁/ϵ₀) * p
       q = zt - (ρ₀*δ₁/ϵ₀) * q
     end
-    pt = Ax(p)
+    pt = A*p
     ϵ₀ = (q' * pt)[1]          # If ϵ₀ == 0, method fails.
     β₁ = ϵ₀ / δ₁   # If β₁ == 0, method fails.
     vt = pt - β₁ * v
-    y = M1m1x(vt)
+    y = Pr \ vt
     ρ₁ = norm(y)
-    wt = Atx(q) - β₁ * w
-    z = M2tm1x(wt)
+    wt = A' * q - β₁ * w
+    z = Pl' \ wt
     xi1 = norm(z)
     θ₁ = ρ₁ / (γ₀ * abs(β₁))
     γ₁ = 1 / sqrt(1 + θ₁^2)   # If γ₁ == 0, method fails.
@@ -148,7 +141,7 @@ function qmr!(x, A, b;
     r -= s
 
     res₁ = norm(r) / bnorm
-    push!(res_vec,norm(r))
+    res_vec[iter+1] = norm(r)
 
     # Check for convergance
     if (res₁ < tol)
