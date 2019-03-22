@@ -559,9 +559,10 @@ function extend!(
     end
 
     β = L.β
+    adjointA = adjoint(A)
     for j=l+1:k
         log.mtvps+=1
-        mul!(q, adjoint(A), p) #q = A'p
+        mul!(q, adjointA, p) #q = A'p
 
         if orthright #Orthogonalize right Lanczos vector
             #Do double classical Gram-Schmidt reorthogonalization
