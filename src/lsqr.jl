@@ -123,10 +123,11 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
     v = copy(x)
     beta = norm(u)
     alpha = zero(Tr)
+    adjointA = adjoint(A)
     if beta > 0
         log.mtvps=1
         u .*= inv(beta)
-        mul!(v, adjoint(A), u)
+        mul!(v, adjointA, u)
         alpha = norm(v)
     end
     if alpha > 0
@@ -166,7 +167,7 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
             Anorm = sqrt(abs2(Anorm) + abs2(alpha) + abs2(beta) + dampsq)
             # Note that the following three lines are a band aid for a GEMM: X: C := αA'B + βC.
             # This is already supported in mul! for sparse and distributed matrices, but not yet dense
-            mul!(tmpn, adjoint(A), u)
+            mul!(tmpn, adjointA, u)
             v .= -beta .* v .+ tmpn
             alpha  = norm(v)
             if alpha > 0

@@ -114,7 +114,8 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
     u = b
     β = norm(u)
     u .*= inv(β)
-    mul!(v, adjoint(A), u)
+    adjointA = adjoint(A)
+    mul!(v, adjointA, u)
     α = norm(v)
     v .*= inv(α)
 
@@ -168,7 +169,7 @@ function lsmr_method!(log::ConvergenceHistory, x, A, b, v, h, hbar;
             if β > 0
                 log.mtvps+=1
                 u .*= inv(β)
-                mul!(tmp_v, adjoint(A), u)
+                mul!(tmp_v, adjointA, u)
                 v .= tmp_v .+ v .* -β
                 α = norm(v)
                 v .*= inv(α)
