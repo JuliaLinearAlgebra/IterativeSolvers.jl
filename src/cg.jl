@@ -116,7 +116,7 @@ end
 function cg_iterator!(x, A, b, Pl = Identity();
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
-    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables(zero(x), zero(x), zero(x)),
     initially_zero::Bool = false
 )
     u = statevars.u
@@ -128,7 +128,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
     # Compute r with an MV-product or not.
     if initially_zero
         mv_products = 0
-        c = similar(x)
+        c = zero(x)
         residual = norm(b)
         reltol = residual * tol # Save one dot product
     else
@@ -136,7 +136,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
         mul!(c, A, x)
         r .-= c
         residual = norm(r)
-        reltol = norm(b) * tol
+        reltol = norm(r) * tol
     end
 
     # Return the iterable
@@ -202,7 +202,7 @@ function cg!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
-    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
+    statevars::CGStateVariables = CGStateVariables(zero(x), zero(x), zero(x)),
     verbose::Bool = false,
     Pl = Identity(),
     kwargs...
