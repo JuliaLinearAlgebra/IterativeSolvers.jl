@@ -34,13 +34,13 @@ Random.seed!(1234321)
         @test ch.isconverged
 
         # If you start from the exact solution, you should converge immediately
-        x,ch = cg!(A \ b, A, b; tol=10tol, log=true)
+        x,ch = cg!(A \ b, A, b; tol=10, log=true)
         @test niters(ch) ≤ 1
         @test nprods(ch) ≤ 2
 
         # Test with cholfact should converge immediately
         F = cholesky(A, Val(false))
-        x,ch = cg(A, b; Pl=F, log=true)
+        x,ch = cg(A, b; Pl=F, tol=10, log=true)
         @test niters(ch) ≤ 2
         @test nprods(ch) ≤ 2
 
@@ -69,16 +69,16 @@ end
     @testset "Function" begin
         xCG = cg(Af, rhs; tol=tol, maxiter=100)
         xJAC = cg(Af, rhs; Pl=P, tol=tol, maxiter=100)
-        @test norm(A * xCG - rhs) ≤ tol
-        @test norm(A * xJAC - rhs) ≤ tol
+        @test norm(A * xCG - rhs) ≤ tol*norm(rhs)
+        @test norm(A * xJAC - rhs) ≤ tol*norm(rhs)
     end
 
     @testset "Function with specified starting guess" begin
         x0 = randn(size(rhs))
         xCG, hCG = cg!(copy(x0), Af, rhs; tol=tol, maxiter=100, log=true)
         xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=P, tol=tol, maxiter=100, log=true)
-        @test norm(A * xCG - rhs) ≤ tol
-        @test norm(A * xJAC - rhs) ≤ tol
+        @test norm(A * xCG - rhs) ≤ tol*norm(Af*x0 - rhs)
+        @test norm(A * xJAC - rhs) ≤ tol*norm(Af*x0 - rhs)
         @test niters(hJAC) == niters(hCG)
     end
 end
@@ -90,6 +90,19 @@ end
     b = rand(10)
     x, hist = cg!(x, A, b, log = true)
     @test hist.isconverged
+end
+
+@testset "Stopping criterion" begin
+    n = 3
+    A = Matrix(I, n, n)
+    b = randn(n)
+
+    x = b + 1e-5*randn(n) # Initialize x close to the solution b
+    tol = 1e-3
+    initial_residual = norm(A*x - b)
+
+    output, history = cg!(x, A, b, tol=tol, initially_zero=false, log=true, verbose=true)
+    @test norm(A*x - b) <= tol*initial_residual
 end
 
 end
