@@ -128,7 +128,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
     # Compute r with an MV-product or not.
     if initially_zero
         mv_products = 0
-        c = zero(x)
+        c .= zero(eltype(c))
         residual = norm(b)
         reltol = residual * tol # Save one dot product
     else
