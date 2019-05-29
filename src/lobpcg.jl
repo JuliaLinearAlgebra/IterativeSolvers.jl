@@ -338,7 +338,8 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
 end
 
 abstract type AbstractOrtho end
-struct CholQR{TA} <: AbstractOrtho
+
+struct CholQROrtho{TA} <: AbstractOrtho
     gramVBV::TA # to be used in view
 end
 
@@ -362,7 +363,7 @@ function realdiag!(M::AbstractMatrix{TC}) where TC <: Complex
     return M
 end
 
-function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=false, update_BX=false) where Generalized
+function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=false, update_BX=false) where Generalized
     useview = sizeX != -1
     if sizeX == -1
         sizeX = size(XBlocks.block, 2)
@@ -478,7 +479,7 @@ function LOBPCGIterator(A, B, largest::Bool, X, precond!::RPreconditioner, const
     iteration = Ref(1)
     currentBlockSize = Ref(nev)
     generalized = !(B isa Nothing)
-    ortho! = CholQR(zeros(T, nev, nev))
+    ortho! = CholQROrtho(zeros(T, nev, nev))
 
     gramABlock = BlockGram(XBlocks)
     gramBBlock = BlockGram(XBlocks)
