@@ -403,14 +403,14 @@ function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_
             X[:, 1:sizeX] .= 0
             I!(X, sizeX)
             lmul!(qrf.Q, X[:, 1:sizeX])
-            if Generalized && update_BX
+            if Generalized
                 mul!(BX[:, 1:sizeX], B, X[:, 1:sizeX])
                 mul!(gram_view, adjoint(X[:, 1:sizeX]), BX[:, 1:sizeX])
                 realdiag!(gram_view)
                 cholf = cholesky!(Hermitian(gram_view), check=true)
                 R = cholf.factors
                 rdiv!(X[:, 1:sizeX], UpperTriangular(R))
-                rdiv!(BX[:, 1:sizeX], UpperTriangular(R))
+                update_BX && rdiv!(BX[:, 1:sizeX], UpperTriangular(R))
             end
             update_AX && mul!(AX[:,1:sizeX], A, X[:,1:sizeX])
         else
@@ -424,9 +424,7 @@ function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_
                 cholf = cholesky!(Hermitian(gram_view), check=true)
                 R = cholf.factors
                 rdiv!(X, UpperTriangular(R))
-                if update_BX
-                    rdiv!(BX, UpperTriangular(R))
-                end
+                update_BX && rdiv!(BX, UpperTriangular(R))
             end
             update_AX && mul!(AX, A, X)
         end
