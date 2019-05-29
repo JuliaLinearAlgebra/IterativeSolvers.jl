@@ -373,6 +373,7 @@ function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_
     X = XBlocks.block
     BX = XBlocks.B_block # Assumes it is premultiplied
     AX = XBlocks.A_block
+    T = eltype(X)
     @views gram_view = ortho!.gramVBV[1:sizeX, 1:sizeX]
     @views if useview
         mul!(gram_view, adjoint(X[:, 1:sizeX]), BX[:, 1:sizeX])
@@ -380,7 +381,7 @@ function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_
         mul!(gram_view, adjoint(X), BX)
     end
     realdiag!(gram_view)
-    cholf = cholesky!(Hermitian(gram_view))
+    cholf = cholesky!(Hermitian(gram_view + eps(T)*I))
     R = cholf.factors
     @views if useview
         rdiv!(X[:, 1:sizeX], UpperTriangular(R))
