@@ -341,8 +341,10 @@ end
 # A * X and B * X should be updated accordingly
 abstract type AbstractOrtho end
 
-struct CholQROrtho{TA} <: AbstractOrtho
-    gramVBV::TA # to be used in view
+struct CholQROrtho{TA, TB, TM} <: AbstractOrtho
+    A::TA
+    B::TB
+    gramVBV::TM # to be used in view
 end
 
 function rdiv!(A, B::UpperTriangular)
@@ -373,6 +375,8 @@ function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_
     X = XBlocks.block
     BX = XBlocks.B_block # Assumes it is premultiplied
     AX = XBlocks.A_block
+    A = ortho!.A
+    B = ortho!.B
     T = real(eltype(X))
     @views gram_view = ortho!.gramVBV[1:sizeX, 1:sizeX]
     @views if useview
@@ -381,7 +385,8 @@ function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_
         mul!(gram_view, adjoint(X), BX)
     end
     realdiag!(gram_view)
-    cholf = cholesky!(Hermitian(gram_view + eps(T)*I))
+    cholf = cholesky!(Hermitian(gram_view), check=false)
+    if issuccess(cholf)
     R = cholf.factors
     @views if useview
         rdiv!(X[:, 1:sizeX], UpperTriangular(R))
@@ -391,6 +396,40 @@ function (ortho!::CholQROrtho)(XBlocks::Blocks{Generalized}, sizeX = -1; update_
         rdiv!(X, UpperTriangular(R))
         update_AX && rdiv!(AX, UpperTriangular(R))
         Generalized && update_BX && rdiv!(BX, UpperTriangular(R))
+    end
+    else
+        qrf = qr!(X)
+        @views if useview
+            X[:, 1:sizeX] .= 0
+            I!(X, sizeX)
+            lmul!(qrf.Q, X[:, 1:sizeX])
+            if Generalized && update_BX
+                mul!(BX[:, 1:sizeX], B, X[:, 1:sizeX])
+                mul!(gram_view, adjoint(X[:, 1:sizeX]), BX[:, 1:sizeX])
+                realdiag!(gram_view)
+                cholf = cholesky!(Hermitian(gram_view), check=true)
+                R = cholf.factors
+                rdiv!(X[:, 1:sizeX], UpperTriangular(R))
+                rdiv!(BX[:, 1:sizeX], UpperTriangular(R))
+            end
+            update_AX && mul!(AX[:,1:sizeX], A, X[:,1:sizeX])
+        else
+            X .= 0
+            I!(X, size(X, 2))
+            lmul!(qrf.Q, X)
+            if Generalized
+                mul!(BX, B, X)
+                mul!(gram_view, adjoint(X), BX)
+                realdiag!(gram_view)
+                cholf = cholesky!(Hermitian(gram_view), check=true)
+                R = cholf.factors
+                rdiv!(X, UpperTriangular(R))
+                if update_BX
+                    rdiv!(BX, UpperTriangular(R))
+                end
+            end
+            update_AX && mul!(AX, A, X)
+        end
     end
 
     return
@@ -482,7 +521,7 @@ function LOBPCGIterator(A, B, largest::Bool, X, precond!::RPreconditioner, const
     iteration = Ref(1)
     currentBlockSize = Ref(nev)
     generalized = !(B isa Nothing)
-    ortho! = CholQROrtho(zeros(T, nev, nev))
+    ortho! = CholQROrtho(A, B, zeros(T, nev, nev))
 
     gramABlock = BlockGram(XBlocks)
     gramBBlock = BlockGram(XBlocks)
