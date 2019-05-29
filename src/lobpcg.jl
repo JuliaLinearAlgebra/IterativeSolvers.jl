@@ -337,6 +337,8 @@ function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
     return
 end
 
+# Any orthogonalization algorithm should guarantee that X' B X is the identity
+# A * X and B * X should be updated accordingly
 abstract type AbstractOrtho end
 
 struct CholQROrtho{TA} <: AbstractOrtho
