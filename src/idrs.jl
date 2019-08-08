@@ -84,8 +84,8 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
         T_s = zero(R)
     end
 
-    if normR <= tol           # Initial guess is a good enough solution
-        return X, ConvergenceHistory(0<= res[end] < tol, tol, length(res), res)
+    if normR <= tol # Initial guess is a good enough solution
+        return X
     end
 
     Z = zero(C)
