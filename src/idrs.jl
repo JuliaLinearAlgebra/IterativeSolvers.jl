@@ -85,6 +85,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     end
 
     if normR <= tol # Initial guess is a good enough solution
+        setconv(log, 0<=normR<tol)
         return X
     end
 
@@ -159,7 +160,6 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
             push!(log, :resnorm, normR)
             verbose && @printf("%3d\t%1.2e\n",iter,normR)
             if normR < tol || iter == maxiter
-                shrink!(log)
                 setconv(log, 0<=normR<tol)
                 return X
             end
