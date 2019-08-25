@@ -57,33 +57,6 @@ function LanczosDecomp(x, A::matT, b; initially_zero = false) where {matT}
         resnorm)
 end
 
-struct LookAheadLanczosDecomp{T, matT, mat_tT, vecT}
-    A::matT
-    At::mat_tT
-    Ax::vecT
-
-    v_prev::matT # Orthonormal basis vectors for A
-    v_curr::matT # Orthonormal basis vectors for A
-    v_next::matT # Orthonormal basis vectors for A
-
-    w_prev::matT # Orthonormal basis vectors for A'
-    w_curr::matT # Orthonormal basis vectors for A'
-    w_next::matT # Orthonormal basis vectors for A'
-
-    δ_curr::matT # adjoint(w)* v
-    δ_prev::matT
-
-    WtAv_curr::matT
-    WtAv_prev::matT
-
-    H::Matrix{T} # Hessenberg Matrix, computed on CPU
-end
-function LookAheadLanczosDecomp(A::matT, b) where {matT}
-    # TODO: implement
-    # v̂_(n+1) = Av_n - V_l δ_l \ W_l' A v_n - V_l-1 δ_(l-1) W_(l-1)' A v_n
-    # ŵ_(n+1) = A'w_n - W_l δ_l' \ V_l' A' w_n - W_l-1 δ_(l-1)' V_(l-1)' A' v_n
-end
-
 start(::LanczosDecomp) = 1
 done(l::LanczosDecomp, iteration::Int) = false
 function iterate(l::LanczosDecomp, iteration::Int=start(l))
@@ -122,12 +95,9 @@ function iterate(l::LanczosDecomp, iteration::Int=start(l))
     return nothing, iteration + 1
 end
 
-
-mutable struct QMRIterable{T, xT, rT, preclT, precrT, lanczosT}
+mutable struct QMRIterable{T, xT, rT, lanczosT}
     x::xT
 
-    Pl::preclT
-    Pr::precrT
     lanczos::lanczosT
     resnorm::rT
     reltol::rT
@@ -146,8 +116,6 @@ mutable struct QMRIterable{T, xT, rT, preclT, precrT, lanczosT}
 end
 
 function QMRIterable(x, A, b;
-    Pl = Identity(),
-    Pr = Identity(),
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     initially_zero::Bool = false,
@@ -155,18 +123,7 @@ function QMRIterable(x, A, b;
     )
     T = eltype(x)
 
-    # Approximate solution
-    if lookahead
-        lanczos = LookAheadLanczosDecomp(x, A, b, initially_zero = initially_zero)
-    else
-        lanczos = LanczosDecomp(x, A, b, initially_zero = initially_zero)
-    end
-    # A' = Pl \ A / Pr
-    # b' = Pl \ (b - Ax_0)
-    # A'y = b'
-    # y  = Pr * (x - x_0)
-    # x_n = x_0 + Pr \ y
-    # r_n = Pl r'_n
+    lanczos = LanczosDecomp(x, A, b, initially_zero = initially_zero)
 
     resnorm = lanczos.resnorm
     g = [resnorm; zero(T)]
@@ -183,7 +140,6 @@ function QMRIterable(x, A, b;
     reltol = tol * lanczos.resnorm
 
     QMRIterable(x,
-        Pl, Pr,
         lanczos, resnorm, reltol,
         maxiter,
         g, H,
@@ -277,9 +233,6 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual (QMR) method.
   vector;
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `tol`: relative tolerance;
-- `Pl`: left preconditioner;
-- `Pr`: right preconditioner;
-- `lookahead::Bool`: use look-ahead Lanczos process
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iteration.
 
@@ -294,10 +247,14 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual (QMR) method.
 - `x`: approximate solution;
 
 - `history`: convergence history.
+
+[^Saad2003]:
+    Saad, Y. (2003). Interactive method for sparse linear system.
+[^Freund1990]:
+    Freund, W. R., & Nachtigal, N. M. (1990). QMR : for a Quasi-Minimal
+    Residual Linear Method Systems. (December).
 """
 function qmr!(x, A, b;
-    Pl = Identity(),
-    Pr = Identity(),
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     lookahead::Bool = false,
@@ -309,7 +266,7 @@ function qmr!(x, A, b;
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter)
 
-    iterable = QMRIterable(x, A, b; Pl = Pl, Pr = Pr, tol = tol, maxiter = maxiter, initially_zero = initially_zero)
+    iterable = QMRIterable(x, A, b; tol = tol, maxiter = maxiter, initially_zero = initially_zero)
 
     verbose && @printf("=== qmr ===\n%4s\t%7s\n","iter","resnorm")
 
