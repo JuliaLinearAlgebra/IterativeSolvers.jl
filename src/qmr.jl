@@ -87,10 +87,8 @@ function iterate(l::LanczosDecomp, iteration::Int=start(l))
     rmul!(l.v_next, inv(l.δ))
     rmul!(l.w_next, inv(l.β_curr))
 
-    l.w_prev .= l.w_curr
-    l.w_curr .= l.w_next
-    l.v_prev .= l.v_curr
-    l.v_curr .= l.v_next
+    l.w_next, l.w_curr, l.w_prev = l.w_prev, l.w_next, l.w_curr
+    l.v_next, l.v_curr, l.v_prev = l.v_prev, l.v_next, l.v_curr
 
     return nothing, iteration + 1
 end
