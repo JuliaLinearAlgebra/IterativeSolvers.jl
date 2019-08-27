@@ -113,7 +113,7 @@ mutable struct QMRIterable{T, xT, rT, lanczosT}
     p_curr::xT
 end
 
-function QMRIterable(x, A, b;
+function qmr_iterable!(x, A, b;
     tol = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     initially_zero::Bool = false,
@@ -264,7 +264,7 @@ function qmr!(x, A, b;
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter)
 
-    iterable = QMRIterable(x, A, b; tol = tol, maxiter = maxiter, initially_zero = initially_zero)
+    iterable = qmr_iterable!(x, A, b; tol = tol, maxiter = maxiter, initially_zero = initially_zero)
 
     verbose && @printf("=== qmr ===\n%4s\t%7s\n","iter","resnorm")
 
