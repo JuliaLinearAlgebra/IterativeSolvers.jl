@@ -44,4 +44,17 @@ end
     @test history.iters == 2
     @test length(history[:resnorm]) == 2
 end
+
+@testset "Near solution (#222)" begin
+    x = rand(5)
+    A = rand(5, 5)
+    b = rand(5)
+
+    x, history = idrs!(x, A, b, log=true)
+    x_new = copy(x)
+    x_new, history = idrs!(x_new, A, b, log=true)
+
+    @test x_new ≈ x
+end
+
 end
