@@ -813,7 +813,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The iterator approach",
     "title": "Iterative solvers as iterators",
     "category": "section",
-    "text": "In advanced use cases you might want to access the internal data structures of the solver, inject code to be run after each iteration, have total control over allocations or reduce overhead in initialization. The iterator approach of IterativeSolvers.jl makes this possible.note: Note\nAt this point BiCGStab(l), CG, Chebyshev, GMRES, MINRES and the stationary methods are implemented as iterators. However, the package does not yet export the iterators and helper methods themselves."
+    "text": "In advanced use cases you might want to access the internal data structures of the solver, inject code to be run after each iteration, have total control over allocations or reduce overhead in initialization. The iterator approach of IterativeSolvers.jl makes this possible.note: Note\nAt this point BiCGStab(l), CG, Chebyshev, GMRES, MINRES, QMR and the stationary methods are implemented as iterators. However, the package does not yet export the iterators and helper methods themselves."
 },
 
 {
@@ -829,7 +829,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The iterator approach",
     "title": "Example: avoiding unnecessary initialization",
     "category": "section",
-    "text": "The Jacobi method for SparseMatrixCSC has some overhead in intialization; not only do we need to allocate a temporary vector, we also have to search for indices of the diagonal (and check their values are nonzero). The current implementation initializes the iterable as:jacobi_iterable(x, A::SparseMatrixCSC, b; maxiter::Int = 10) =\n    JacobiIterable{eltype(x), typeof(x)}(OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)Now if you apply Jacobi iteration multiple times with the same matrix for just a few iterations, it makes sense to initialize the iterable only once and reuse it afterwards:A = sprand(10_000, 10_000, 10 / 10_000) + 20I\nb1 = rand(10_000)\nb2 = rand(10_000)\nx = rand(10_000)\n\nmy_iterable = IterativeSolvers.jacobi_iterable(x, A, b1, maxiter = 4)\n\nfor item in my_iterable \n    println(\"Iteration for rhs 1\")\nend\n\n@show norm(b1 - A * x) / norm(b1)\n\n# Copy the next right-hand side into the iterable\ncopyto!(my_iterable.b, b2)\n\nfor item in my_iterable\n    println(\"Iteration for rhs 2\")\nend\n\n@show norm(b2 - A * x) / norm(b2)This would output:Iteration for rhs 1\nIteration for rhs 1\nIteration for rhs 1\nIteration for rhs 1\nnorm(b1 - A * x) / norm(b1) = 0.08388528015119746\nIteration for rhs 2\nIteration for rhs 2\nIteration for rhs 2\nIteration for rhs 2\nnorm(b2 - A * x) / norm(b2) = 0.0003681972775644809"
+    "text": "The Jacobi method for SparseMatrixCSC has some overhead in intialization; not only do we need to allocate a temporary vector, we also have to search for indices of the diagonal (and check their values are nonzero). The current implementation initializes the iterable as:jacobi_iterable(x, A::SparseMatrixCSC, b; maxiter::Int = 10) =\n    JacobiIterable{eltype(x), typeof(x)}(OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)Now if you apply Jacobi iteration multiple times with the same matrix for just a few iterations, it makes sense to initialize the iterable only once and reuse it afterwards:A = sprand(10_000, 10_000, 10 / 10_000) + 20I\nb1 = rand(10_000)\nb2 = rand(10_000)\nx = rand(10_000)\n\nmy_iterable = IterativeSolvers.jacobi_iterable(x, A, b1, maxiter = 4)\n\nfor item in my_iterable\n    println(\"Iteration for rhs 1\")\nend\n\n@show norm(b1 - A * x) / norm(b1)\n\n# Copy the next right-hand side into the iterable\ncopyto!(my_iterable.b, b2)\n\nfor item in my_iterable\n    println(\"Iteration for rhs 2\")\nend\n\n@show norm(b2 - A * x) / norm(b2)This would output:Iteration for rhs 1\nIteration for rhs 1\nIteration for rhs 1\nIteration for rhs 1\nnorm(b1 - A * x) / norm(b1) = 0.08388528015119746\nIteration for rhs 2\nIteration for rhs 2\nIteration for rhs 2\nIteration for rhs 2\nnorm(b2 - A * x) / norm(b2) = 0.0003681972775644809"
 },
 
 {
@@ -837,7 +837,7 @@ var documenterSearchIndex = {"docs": [
     "page": "The iterator approach",
     "title": "Other use cases",
     "category": "section",
-    "text": "Other use cases include: computing the (harmonic) Ritz values from the Hessenberg matrix in GMRES;\ncomparing the approximate residual of methods such as GMRES and BiCGStab(l) with the true residual during the iterations;\nupdating a preconditioner in flexible methods."
+    "text": "Other use cases include:computing the (harmonic) Ritz values from the Hessenberg matrix in GMRES;\ncomparing the approximate residual of methods such as GMRES and BiCGStab(l) with the true residual during the iterations;\nupdating a preconditioner in flexible methods."
 },
 
 {
