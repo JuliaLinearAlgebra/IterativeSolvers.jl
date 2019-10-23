@@ -22,6 +22,7 @@ include("bicgstabl.jl")
 include("gmres.jl")
 include("chebyshev.jl")
 include("idrs.jl")
+include("qmr.jl")
 
 # Eigensolvers
 include("simple.jl")

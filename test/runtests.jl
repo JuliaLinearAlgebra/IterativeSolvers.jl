@@ -25,6 +25,9 @@ include("gmres.jl")
 #IDRS
 include("idrs.jl")
 
+# QMR
+include("qmr.jl")
+
 #Chebyshev
 include("chebyshev.jl")
 

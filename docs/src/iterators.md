@@ -3,7 +3,7 @@
 In advanced use cases you might want to access the internal data structures of the solver, inject code to be run after each iteration, have total control over allocations or reduce overhead in initialization. The iterator approach of IterativeSolvers.jl makes this possible.
 
 !!! note
-    At this point [BiCGStab(l)](@ref BiCGStabl), [CG](@ref CG), [Chebyshev](@ref Chebyshev), [GMRES](@ref GMRES), [MINRES](@ref MINRES) and the [stationary methods](@ref Stationary) are implemented as iterators. However, the package does not yet export the iterators and helper methods themselves.
+    At this point [BiCGStab(l)](@ref BiCGStabl), [CG](@ref CG), [Chebyshev](@ref Chebyshev), [GMRES](@ref GMRES), [MINRES](@ref MINRES), [QMR](@ref QMR) and the [stationary methods](@ref Stationary) are implemented as iterators. However, the package does not yet export the iterators and helper methods themselves.
 
 ## How iterators are implemented
 The solvers listed above are basically a thin wrapper around an iterator. Among other things, they initialize the iterable, loop through the iterator and return the result:
@@ -36,7 +36,7 @@ x = rand(10_000)
 
 my_iterable = IterativeSolvers.jacobi_iterable(x, A, b1, maxiter = 4)
 
-for item in my_iterable 
+for item in my_iterable
     println("Iteration for rhs 1")
 end
 
@@ -68,8 +68,7 @@ norm(b2 - A * x) / norm(b2) = 0.0003681972775644809
 ```
 
 ## Other use cases
-Other use cases include: 
+Other use cases include:
 - computing the (harmonic) Ritz values from the Hessenberg matrix in GMRES;
 - comparing the approximate residual of methods such as GMRES and BiCGStab(l) with the true residual during the iterations;
 - updating a preconditioner in flexible methods.
-
