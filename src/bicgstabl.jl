@@ -130,10 +130,9 @@ function iterate(it::BiCGStabIterable, iteration::Int=start(it))
     F = lu!(view(it.M, L, L))
     ldiv!(it.γ, F, view(it.M, L, 1))
 
-    # This could even be BLAS 3 when combined.
-    BLAS.gemv!('N', -one(T), view(it.us, :, L), it.γ, one(T), view(it.us, :, 1))
-    BLAS.gemv!('N', one(T), view(it.rs, :, 1 : it.l), it.γ, one(T), it.x)
-    BLAS.gemv!('N', -one(T), view(it.rs, :, L), it.γ, one(T), view(it.rs, :, 1))
+    mul!(view(it.us, :, 1), view(it.us, :, L), it.γ, -one(T), one(T))
+    mul!(it.x, view(it.rs, :, 1 : it.l), it.γ, one(T), one(T))
+    mul!(view(it.rs, :, 1), view(it.rs, :, L), it.γ, -one(T), one(T))
 
     it.ω = it.γ[it.l]
     it.residual = norm(view(it.rs, :, 1))

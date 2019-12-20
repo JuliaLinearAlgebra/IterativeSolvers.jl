@@ -35,7 +35,7 @@ function iterate(p::PowerMethodIterable, iteration::Int=start(p))
 
     # (Previous) residual vector r = Ax - λx
     copyto!(p.r, p.Ax)
-    BLAS.axpy!(-p.θ, p.x, p.r)
+    axpy!(-p.θ, p.x, p.r)
 
     # Normed residual
     p.residual = norm(p.r)

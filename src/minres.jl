@@ -1,6 +1,6 @@
 export minres_iterable, minres, minres!
 using Printf
-import LinearAlgebra: BLAS.axpy!, givensAlgorithm
+import LinearAlgebra: axpy!, givensAlgorithm
 import Base: iterate
 
 mutable struct MINRESIterable{matT, solT, vecT <: DenseVector, smallVecT <: DenseVector, rotT <: Number, realT <: Real}

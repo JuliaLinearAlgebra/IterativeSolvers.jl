@@ -278,9 +278,7 @@ end
 
 function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr::Identity, k::Int, Ax) where {T}
     # Update x ← x + V * y
-
-    # TODO: find the SugarBLAS alternative
-    BLAS.gemv!('N', one(T), view(arnoldi.V, :, 1 : k - 1), y, one(T), x)
+    mul!(x, view(arnoldi.V, :, 1 : k - 1), y, one(T), one(T))
 end
 
 function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int, Ax) where {T}
