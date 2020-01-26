@@ -262,7 +262,7 @@ function qmr!(x, A, b;
 )
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
-    log && reserve!(history, :resnorm, maxiter)
+    log && reserve!(typeof(tol), history, :resnorm, maxiter)
 
     iterable = qmr_iterable!(x, A, b; tol = tol, maxiter = maxiter, initially_zero = initially_zero)
 
