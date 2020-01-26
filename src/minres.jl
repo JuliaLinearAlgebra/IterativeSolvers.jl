@@ -200,7 +200,7 @@ function minres!(x, A, b;
 )
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
-    log && reserve!(history, :resnorm, maxiter)
+    log && reserve!(typeof(tol), history, :resnorm, maxiter)
 
     iterable = minres_iterable!(x, A, b;
         skew_hermitian = skew_hermitian,
