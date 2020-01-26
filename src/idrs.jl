@@ -46,7 +46,7 @@ function idrs!(x, A, b;
     )
     history = ConvergenceHistory(partial=!log)
     history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
+    reserve!(typeof(tol), history,:resnorm, maxiter)
     idrs_method!(history, x, A, b, s, tol, maxiter; kwargs...)
     log && shrink!(history)
     log ? (x, history) : x
