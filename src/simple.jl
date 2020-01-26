@@ -126,7 +126,7 @@ function powm!(B, x;
 )
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
-    reserve!(history, :resnorm, maxiter)
+    reserve!(typeof(tol), history, :resnorm, maxiter)
     verbose && @printf("=== powm ===\n%4s\t%7s\n", "iter", "resnorm")
 
     iterable = powm_iterable!(B, x, tol = tol, maxiter = maxiter)
