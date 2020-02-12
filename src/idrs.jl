@@ -103,7 +103,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
 
     om::eltype(C) = 1
     while normR > tol && iter ≤ maxiter
-        for i in 1:s,
+        for i in 1:s
             f[i] = dot(P[i], R)
         end
         for k in 1:s
