@@ -205,10 +205,14 @@ function gmres!(x, A, b;
 end
 
 function update_residual!(r::Residual, arnoldi::ArnoldiDecomp, k::Int)
-    # Cheaply computes the current residual
-    r.nullvec[k + 1] = -conj(dot(view(r.nullvec, 1 : k), view(arnoldi.H, 1 : k, k)) / arnoldi.H[k + 1, k])
-    r.accumulator += abs2(r.nullvec[k + 1])
-    r.current = r.β / √r.accumulator
+    if iszero(arnoldi.H[k + 1, k])
+        r.current = zero(r.current)
+    else
+        # Cheaply computes the current residual
+        r.nullvec[k + 1] = -conj(dot(view(r.nullvec, 1 : k), view(arnoldi.H, 1 : k, k)) / arnoldi.H[k + 1, k])
+        r.accumulator += abs2(r.nullvec[k + 1])
+        r.current = r.β / √r.accumulator
+    end
 end
 
 function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool = false) where {T}
