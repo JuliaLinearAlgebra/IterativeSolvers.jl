@@ -62,4 +62,11 @@ end
     x = gmres(A, b; tol=tol, maxiter=2000)
     @test norm(A * x - b) / norm(b) ≤ tol
 end
+
+@testset "Off-diagonal in hessenberg matrix exactly zero" begin
+    A = Matrix(1.0I, 2, 2)
+    b = [1.0, 2.2]
+    x = gmres(A, b)
+    @test all(x .== b)
+end
 end
