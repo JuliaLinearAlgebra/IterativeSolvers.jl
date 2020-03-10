@@ -1,5 +1,5 @@
 get(ENV, "TRAVIS_OS_NAME", "")       == "linux" || exit()
-get(ENV, "TRAVIS_JULIA_VERSION", "") == "1.0"   || exit()
+get(ENV, "TRAVIS_JULIA_VERSION", "") == "1.3"   || exit()
 
 using Coverage
 
