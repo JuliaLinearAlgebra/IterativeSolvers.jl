@@ -10,8 +10,8 @@ RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
+RecipesBase = "^0.6, 0.8"
 julia = "1"
-RecipesBase = "^0.6"
 
 [extras]
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
