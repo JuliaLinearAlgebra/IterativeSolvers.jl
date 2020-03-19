@@ -1,6 +1,6 @@
 name = "IterativeSolvers"
 uuid = "42fd0dbc-a981-5370-80f2-aaf504508153"
-version = "0.8.2"
+version = "0.8.3"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -10,7 +10,7 @@ RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
-RecipesBase = "^0.6, 0.8"
+RecipesBase = "0.6, 0.7, 0.8"
 julia = "1"
 
 [extras]
