@@ -29,6 +29,7 @@ jacobi_iterable(x, A::SparseMatrixCSC, b; maxiter::Int = 10) =
 Now if you apply Jacobi iteration multiple times with the same matrix for just a few iterations, it makes sense to initialize the iterable only once and reuse it afterwards:
 
 ```julia
+import IterativeSolvers, IterativeSolvers.sprand, IterativeSolvers.I
 A = sprand(10_000, 10_000, 10 / 10_000) + 20I
 b1 = rand(10_000)
 b2 = rand(10_000)
