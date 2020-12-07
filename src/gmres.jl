@@ -181,7 +181,7 @@ function gmres!(x, A, b;
 )
     history = ConvergenceHistory(partial = !log, restart = restart)
     history[:tol] = tol
-    log && reserve!(history, :resnorm, maxiter)
+    log && reserve!(typeof(tol), history, :resnorm, maxiter)
 
     iterable = gmres_iterable!(x, A, b; Pl = Pl, Pr = Pr, tol = tol, maxiter = maxiter, restart = restart, initially_zero = initially_zero)
 

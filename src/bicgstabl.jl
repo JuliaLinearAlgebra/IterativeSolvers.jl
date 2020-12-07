@@ -185,7 +185,7 @@ function bicgstabl!(x, A, b, l = 2;
     history[:tol] = tol
 
     # This doesn't yet make sense: the number of iters is smaller.
-    log && reserve!(history, :resnorm, max_mv_products)
+    log && reserve!(typeof(tol), history, :resnorm, max_mv_products)
 
     # Actually perform CG
     iterable = bicgstabl_iterator!(x, A, b, l; Pl = Pl, tol = tol, max_mv_products = max_mv_products, kwargs...)

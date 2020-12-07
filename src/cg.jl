@@ -209,7 +209,7 @@ function cg!(x, A, b;
 )
     history = ConvergenceHistory(partial = !log)
     history[:tol] = tol
-    log && reserve!(history, :resnorm, maxiter + 1)
+    log && reserve!(typeof(tol), history, :resnorm, maxiter + 1)
 
     # Actually perform CG
     iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, statevars = statevars, kwargs...)
