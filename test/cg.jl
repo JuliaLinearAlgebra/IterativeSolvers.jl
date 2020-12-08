@@ -34,11 +34,11 @@ Random.seed!(1234321)
         @test ch.isconverged
 
         # If you start from the exact solution, you should converge immediately
-        x,ch = cg!(A \ b, A, b; reltol=10*reltol, log=true)
+        x,ch = cg!(A \ b, A, b; abstol=2n*eps(real(T)), reltol=zero(real(T)), log=true)
         @test niters(ch) ≤ 1
         @test nprods(ch) ≤ 2
 
-        # Test with cholfact should converge immediately
+        # Test with cholfact as preconditioner should converge immediately
         F = cholesky(A, Val(false))
         x,ch = cg(A, b; Pl=F, log=true)
         @test niters(ch) ≤ 2
@@ -56,6 +56,7 @@ end
 
     rhs = randn(size(A, 2))
     rmul!(rhs, inv(norm(rhs)))
+    abstol = 1e-5
     reltol = 1e-5
 
     @testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, Float32), Ti in (Int64, Int32)
@@ -75,8 +76,8 @@ end
 
     @testset "Function with specified starting guess" begin
         x0 = randn(size(rhs))
-        xCG, hCG = cg!(copy(x0), Af, rhs; reltol=reltol, maxiter=100, log=true)
-        xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=P, reltol=reltol, maxiter=100, log=true)
+        xCG, hCG = cg!(copy(x0), Af, rhs; abstol=abstol, reltol=0.0, maxiter=100, log=true)
+        xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=P, abstol=abstol, reltol=0.0, maxiter=100, log=true)
         @test norm(A * xCG - rhs) ≤ reltol
         @test norm(A * xJAC - rhs) ≤ reltol
         @test niters(hJAC) == niters(hCG)
@@ -107,9 +108,7 @@ end
         x = x0 + sqrt(eps(real(T))) * perturbation
         initial_residual = norm(A * x - b)
         x, ch = cg!(x, A, b, log=true)
-        @test_broken 2 ≤ niters(ch) ≤ n
-        # This test is currently broken since `norm(b)` is used in `cg_iterator!`
-        # instead of the initial `residual` as described in the documentation.
+        @test 2 ≤ niters(ch) ≤ n
 
         # If the initial residual is small and a large absolute tolerance is used,
         # no iterations are necessary

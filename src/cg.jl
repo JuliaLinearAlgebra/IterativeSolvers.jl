@@ -145,11 +145,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
         r .-= c
     end
     residual = norm(r)
-    # TODO: According to the docs, the code below should use the initial residual
-    #       instead of the norm of the RHS `b` to set the relative tolerance.
-    # See also https://github.com/JuliaMath/IterativeSolvers.jl/pull/244
-    # tolerance = max(reltol * residual, abstol)
-    tolerance = max(reltol * norm(b), abstol)
+    tolerance = max(reltol * residual, abstol)
 
     # Return the iterable
     if isa(Pl, Identity)
