@@ -42,18 +42,21 @@ mutable struct GMRESIterable{preclT, precrT, solT, rhsT, vecT, arnoldiT <: Arnol
     restart::Int
     k::Int
     maxiter::Int
-    reltol::resT
+    tol::resT
     β::resT
 end
 
-converged(g::GMRESIterable) = g.residual.current ≤ g.reltol
+converged(g::GMRESIterable) = g.residual.current ≤ g.tol
 
 start(::GMRESIterable) = 0
 
 done(g::GMRESIterable, iteration::Int) = iteration ≥ g.maxiter || converged(g)
 
 function iterate(g::GMRESIterable, iteration::Int=start(g))
-    if done(g, iteration) return nothing end
+    # Check for termination first
+    if done(g, iteration)
+        return nothing
+    end
 
     # Arnoldi step: expand
     expand!(g.arnoldi, g.Pl, g.Pr, g.k, g.Ax)
@@ -100,14 +103,21 @@ function iterate(g::GMRESIterable, iteration::Int=start(g))
 end
 
 function gmres_iterable!(x, A, b;
-    Pl = Identity(),
-    Pr = Identity(),
-    tol = sqrt(eps(real(eltype(b)))),
-    restart::Int = min(20, size(A, 2)),
-    maxiter::Int = size(A, 2),
-    initially_zero::Bool = false
-)
+                         Pl = Identity(),
+                         Pr = Identity(),
+                         abstol::Real = zero(real(eltype(b))),
+                         reltol::Real = sqrt(eps(real(eltype(b)))),
+                         tol = nothing, # TODO: Deprecations introduced in v0.8
+                         restart::Int = min(20, size(A, 2)),
+                         maxiter::Int = size(A, 2),
+                         initially_zero::Bool = false)
     T = eltype(x)
+
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :gmres_iterable!)
+        reltol = tol
+    end
 
     # Approximate solution
     arnoldi = ArnoldiDecomp(A, restart, T)
@@ -119,11 +129,11 @@ function gmres_iterable!(x, A, b;
     residual.current = init!(arnoldi, x, b, Pl, Ax, initially_zero = initially_zero)
     init_residual!(residual, residual.current)
 
-    reltol = tol * residual.current
+    tolerance = max(reltol * residual.current, abstol)
 
     GMRESIterable(Pl, Pr, x, b, Ax,
         arnoldi, residual,
-        mv_products, restart, 1, maxiter, reltol, residual.current
+        mv_products, restart, 1, maxiter, tolerance, residual.current
     )
 end
 
@@ -150,7 +160,10 @@ Solves the problem ``Ax = b`` with restarted GMRES.
 - `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one
   matrix-vector product can be saved when computing the initial
   residual vector;
-- `tol`: relative tolerance;
+- `abstol::Real = zero(real(eltype(b)))`,
+  `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
+  tolerance for the stopping condition
+  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
 - `restart::Int = min(20, size(A, 2))`: restarts GMRES after specified number of iterations;
 - `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;
 - `Pl`: left preconditioner;
@@ -170,20 +183,29 @@ Solves the problem ``Ax = b`` with restarted GMRES.
 - `history`: convergence history.
 """
 function gmres!(x, A, b;
-  Pl = Identity(),
-  Pr = Identity(),
-  tol = sqrt(eps(real(eltype(b)))),
-  restart::Int = min(20, size(A, 2)),
-  maxiter::Int = size(A, 2),
-  log::Bool = false,
-  initially_zero::Bool = false,
-  verbose::Bool = false
-)
+                Pl = Identity(),
+                Pr = Identity(),
+                abstol::Real = zero(real(eltype(b))),
+                reltol::Real = sqrt(eps(real(eltype(b)))),
+                tol = nothing, # TODO: Deprecations introduced in v0.8
+                restart::Int = min(20, size(A, 2)),
+                maxiter::Int = size(A, 2),
+                log::Bool = false,
+                initially_zero::Bool = false,
+                verbose::Bool = false)
     history = ConvergenceHistory(partial = !log, restart = restart)
     history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter)
 
-    iterable = gmres_iterable!(x, A, b; Pl = Pl, Pr = Pr, tol = tol, maxiter = maxiter, restart = restart, initially_zero = initially_zero)
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg!)
+        reltol = tol
+    end
+
+    iterable = gmres_iterable!(x, A, b; Pl = Pl, Pr = Pr,
+                               abstol = abstol, reltol = reltol, maxiter = maxiter,
+                               restart = restart, initially_zero = initially_zero)
 
     verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","resnorm")
 
