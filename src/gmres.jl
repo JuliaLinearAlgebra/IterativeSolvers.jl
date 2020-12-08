@@ -200,7 +200,7 @@ function gmres!(x, A, b;
 
     # TODO: Deprecations introduced in v0.8
     if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg!)
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :gmres!)
         reltol = tol
     end
 

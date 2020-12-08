@@ -163,7 +163,7 @@ function chebyshev!(x, A, b, λmin::Real, λmax::Real;
 
     # TODO: Deprecations introduced in v0.8
     if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg!)
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :chebyshev!)
         reltol = tol
     end
 
