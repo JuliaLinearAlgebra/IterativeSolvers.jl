@@ -155,7 +155,8 @@ function chebyshev!(x, A, b, λmin::Real, λmax::Real;
                     verbose::Bool=false,
                     initially_zero::Bool=false)
     history = ConvergenceHistory(partial=!log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
     reserve!(history, :resnorm, maxiter)
 
     verbose && @printf("=== chebyshev ===\n%4s\t%7s\n","iter","resnorm")

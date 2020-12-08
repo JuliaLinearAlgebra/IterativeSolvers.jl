@@ -221,7 +221,8 @@ function cg!(x, A, b;
              Pl = Identity(),
              kwargs...)
     history = ConvergenceHistory(partial = !log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter + 1)
 
     # TODO: Deprecations introduced in v0.8
