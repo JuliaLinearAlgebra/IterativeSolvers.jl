@@ -88,10 +88,7 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
         r .-= c
     end
     resnorm = norm(r)
-    # TODO: According to the docs, the code below should use the initial residual
-    #       instead of the norm of the RHS `b` to set the relative tolerance.
-    # tolerance = max(reltol * resnorm, abstol)
-    tolerance = max(reltol * norm(b), abstol)
+    tolerance = max(reltol * resnorm, abstol)
 
     ChebyshevIterable(Pl, A, x, r, u, c,
         zero(real(T)),
