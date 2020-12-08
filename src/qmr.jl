@@ -61,7 +61,9 @@ start(::LanczosDecomp) = 1
 done(l::LanczosDecomp, iteration::Int) = false
 function iterate(l::LanczosDecomp, iteration::Int=start(l))
     # Following Algorithm 7.1 of Saad
-    if done(l, iteration) return nothing end
+    if done(l, iteration)
+        return nothing
+    end
 
     mul!(l.v_next, l.A, l.v_curr)
 
@@ -79,7 +81,9 @@ function iterate(l::LanczosDecomp, iteration::Int=start(l))
 
     vw = dot(l.v_next, l.w_next)
     l.δ = sqrt(abs(vw))
-    if iszero(l.δ) return nothing end
+    if iszero(l.δ)
+        return nothing
+    end
 
     l.β_prev = l.β_curr
     l.β_curr = vw / l.δ
@@ -98,11 +102,11 @@ mutable struct QMRIterable{T, xT, rT, lanczosT}
 
     lanczos::lanczosT
     resnorm::rT
-    reltol::rT
+    tol::rT
     maxiter::Int
 
     g::Vector{T} # right-hand size following Hessenberg multiplication
-    H::Vector{T}  # Hessenberg Matrix, computed on CPU
+    H::Vector{T} # Hessenberg Matrix, computed on CPU
 
     c_prev::T
     c_curr::T
@@ -114,12 +118,19 @@ mutable struct QMRIterable{T, xT, rT, lanczosT}
 end
 
 function qmr_iterable!(x, A, b;
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Int = size(A, 2),
-    initially_zero::Bool = false,
-    lookahead::Bool = false
-    )
+                       abstol::Real = zero(real(eltype(b))),
+                       reltol::Real = sqrt(eps(real(eltype(b)))),
+                       tol = nothing, # TODO: Deprecations introduced in v0.8
+                       maxiter::Int = size(A, 2),
+                       initially_zero::Bool = false,
+                       lookahead::Bool = false)
     T = eltype(x)
+
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :qmr_iterable!)
+        reltol = tol
+    end
 
     lanczos = LanczosDecomp(x, A, b, initially_zero = initially_zero)
 
@@ -135,10 +146,10 @@ function qmr_iterable!(x, A, b;
     p_prev = zero(x)
     p_curr = zero(x)
 
-    reltol = tol * lanczos.resnorm
+    tolerance = max(reltol * lanczos.resnorm, abstol)
 
     QMRIterable(x,
-        lanczos, resnorm, reltol,
+        lanczos, resnorm, tolerance,
         maxiter,
         g, H,
         c_prev, c_curr, s_prev, s_curr,
@@ -146,12 +157,15 @@ function qmr_iterable!(x, A, b;
     )
 end
 
-converged(q::QMRIterable) = q.resnorm ≤ q.reltol
+converged(q::QMRIterable) = q.resnorm ≤ q.tol
 start(::QMRIterable) = 1
 done(q::QMRIterable, iteration::Int) = iteration > q.maxiter || converged(q)
 
 function iterate(q::QMRIterable, iteration::Int=start(q))
-    if done(q, iteration) return nothing end
+    # Check for termination first
+    if done(q, iteration)
+        return nothing
+    end
 
     iterate(q.lanczos, iteration)
 
@@ -230,7 +244,10 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual (QMR) method.
   matrix-vector product can be saved when computing the initial residual
   vector;
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
-- `tol`: relative tolerance;
+- `abstol::Real = zero(real(eltype(b)))`,
+  `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
+  tolerance for the stopping condition
+  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iteration.
 
@@ -253,18 +270,27 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual (QMR) method.
     Residual Linear Method Systems. (December).
 """
 function qmr!(x, A, b;
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Int = size(A, 2),
-    lookahead::Bool = false,
-    log::Bool = false,
-    initially_zero::Bool = false,
-    verbose::Bool = false
-)
+              abstol::Real = zero(real(eltype(b))),
+              reltol::Real = sqrt(eps(real(eltype(b)))),
+              tol = nothing, # TODO: Deprecations introduced in v0.8
+              maxiter::Int = size(A, 2),
+              lookahead::Bool = false,
+              log::Bool = false,
+              initially_zero::Bool = false,
+              verbose::Bool = false)
     history = ConvergenceHistory(partial = !log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
 
-    iterable = qmr_iterable!(x, A, b; tol = tol, maxiter = maxiter, initially_zero = initially_zero)
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :qmr!)
+        reltol = tol
+    end
+
+    iterable = qmr_iterable!(x, A, b; abstol = abstol, reltol = reltol,
+                             maxiter = maxiter, initially_zero = initially_zero)
 
     verbose && @printf("=== qmr ===\n%4s\t%7s\n","iter","resnorm")
 
