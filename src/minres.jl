@@ -216,7 +216,8 @@ function minres!(x, A, b;
                  maxiter::Int = size(A, 2),
                  initially_zero::Bool = false)
     history = ConvergenceHistory(partial = !log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
 
     # TODO: Deprecations introduced in v0.8
