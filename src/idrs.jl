@@ -3,14 +3,14 @@ export idrs, idrs!
 using Random
 
 """
-    idrs(A, b; s = 8) -> x, [history]
+    idrs(A, b; s = 8, kwargs...) -> x, [history]
 
 Same as [`idrs!`](@ref), but allocates a solution vector `x` initialized with zeros.
 """
 idrs(A, b; kwargs...) = idrs!(zerox(A,b), A, b; kwargs...)
 
 """
-    idrs!(x, A, b; s = 8) -> x, [history]
+    idrs!(x, A, b; s = 8, kwargs...) -> x, [history]
 
 Solve the problem ``Ax = b`` approximately with IDR(s), where `s` is the dimension of the
 shadow space.
@@ -24,7 +24,11 @@ shadow space.
 ## Keywords
 
 - `s::Integer = 8`: dimension of the shadow space;
-- `tol`: relative tolerance;
+- `abstol::Real = zero(real(eltype(b)))`,
+  `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
+  tolerance for the stopping condition
+  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  is the residual in the `k`th iteration;
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iterations.
@@ -41,13 +45,25 @@ shadow space.
 - `history`: convergence history.
 """
 function idrs!(x, A, b;
-    s = 8, tol=sqrt(eps(real(eltype(b)))), maxiter=size(A, 2),
-    log::Bool=false, kwargs...
-    )
+               s = 8,
+               abstol::Real = zero(real(eltype(b))),
+               reltol::Real = sqrt(eps(real(eltype(b)))),
+               tol = nothing, # TODO: Deprecations introduced in v0.8
+               maxiter=size(A, 2),
+               log::Bool=false,
+               kwargs...)
     history = ConvergenceHistory(partial=!log)
-    history[:tol] = tol
-    reserve!(history,:resnorm, maxiter)
-    idrs_method!(history, x, A, b, s, tol, maxiter; kwargs...)
+    history[:abstol] = abstol
+    history[:reltol] = reltol
+    log && reserve!(history, :resnorm, maxiter)
+
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg!)
+        reltol = tol
+    end
+
+    idrs_method!(history, x, A, b, s, abstol, reltol, maxiter; kwargs...)
     log && shrink!(history)
     log ? (x, history) : x
 end
@@ -70,13 +86,14 @@ end
 end
 
 function idrs_method!(log::ConvergenceHistory, X, A, C::T,
-    s::Number, tol::Number, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
+    s::Number, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
     ) where {T}
 
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - A*X
     normR = norm(R)
-	iter = 1
+    iter = 1
+    tol = max(reltol * normR, abstol)
 
     if smoothing
         X_s = copy(X)
