@@ -26,26 +26,31 @@ Random.seed!(1234321)
         A = rand(T, n, n)
         A = A' * A + I
         b = rand(T, n)
-        tol = √eps(real(T))
+        reltol = √eps(real(T))
 
-        x,ch = cg(A, b; tol=tol, maxiter=2n, log=true)
+        r = cg(A, b; reltol=reltol, maxiter=2n, log=true)
+        x, ch = r.x, r.history
         @test isa(ch, ConvergenceHistory)
-        @test norm(A*x - b) / norm(b) ≤ tol
+        @test norm(A*x - b) / norm(b) ≤ reltol
+        @test norm(A*x - b) ≤ r.tol
         @test ch.isconverged
 
         # If you start from the exact solution, you should converge immediately
-        x,ch = cg!(A \ b, A, b; tol=10tol, log=true)
+        r = cg!(A \ b, A, b; reltol=10reltol, log=true)
+        x, ch = r.x, r.history
         @test niters(ch) ≤ 1
         @test nprods(ch) ≤ 2
 
         # Test with cholfact should converge immediately
         F = cholesky(A, Val(false))
-        x,ch = cg(A, b; Pl=F, log=true)
+        r = cg(A, b; Pl=F, log=true)
+        x, ch = r.x, r.history
         @test niters(ch) ≤ 2
         @test nprods(ch) ≤ 2
 
         # All-zeros rhs should give all-zeros lhs
-        x0 = cg(A, zeros(T, n))
+        r = cg(A, zeros(T, n))
+        x0 = r.x
         @test x0 == zeros(T, n)
     end
 end
@@ -59,24 +64,30 @@ end
     tol = 1e-5
 
     @testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, Float32), Ti in (Int64, Int32)
-        xCG = cg(A, rhs; tol=tol, maxiter=100)
-        xJAC = cg(A, rhs; Pl=P, tol=tol, maxiter=100)
+        r = cg(A, rhs; tol=tol, maxiter=100)
+        xCG = r.x
+        r = cg(A, rhs; Pl=P, tol=tol, maxiter=100)
+        xJAC = r.x
         @test norm(A * xCG - rhs) ≤ tol
         @test norm(A * xJAC - rhs) ≤ tol
     end
 
     Af = LinearMap(A)
     @testset "Function" begin
-        xCG = cg(Af, rhs; tol=tol, maxiter=100)
-        xJAC = cg(Af, rhs; Pl=P, tol=tol, maxiter=100)
+        r = cg(Af, rhs; tol=tol, maxiter=100)
+        xCG = r.x
+        r = cg(Af, rhs; Pl=P, tol=tol, maxiter=100)
+        xJAC = r.x
         @test norm(A * xCG - rhs) ≤ tol
         @test norm(A * xJAC - rhs) ≤ tol
     end
 
     @testset "Function with specified starting guess" begin
         x0 = randn(size(rhs))
-        xCG, hCG = cg!(copy(x0), Af, rhs; tol=tol, maxiter=100, log=true)
-        xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=P, tol=tol, maxiter=100, log=true)
+        r = cg!(copy(x0), Af, rhs; tol=tol, maxiter=100, log=true)
+        xCG, hCG = r.x, r.history
+        r = cg!(copy(x0), Af, rhs; Pl=P, tol=tol, maxiter=100, log=true)
+        xJAC, hJAC = r.x, r.history
         @test norm(A * xCG - rhs) ≤ tol
         @test norm(A * xJAC - rhs) ≤ tol
         @test niters(hJAC) == niters(hCG)
@@ -88,7 +99,8 @@ end
     A = A + A' + 100I
     x = view(rand(10, 2), :, 1)
     b = rand(10)
-    x, hist = cg!(x, A, b, log = true)
+    r = cg!(x, A, b, log = true)
+    x, hist = r.x, r.history
     @test hist.isconverged
 end
 

@@ -8,7 +8,7 @@ mutable struct CGIterable{matT, solT, vecT, numT <: Real}
     r::vecT
     c::vecT
     u::vecT
-    reltol::numT
+    tol::numT
     residual::numT
     prev_residual::numT
     maxiter::Int
@@ -22,18 +22,49 @@ mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Numb
     r::vecT
     c::vecT
     u::vecT
-    reltol::numT
+    tol::numT
     residual::numT
     ρ::paramT
     maxiter::Int
     mv_products::Int
 end
 
-@inline converged(it::Union{CGIterable, PCGIterable}) = it.residual ≤ it.reltol
+struct CGResult{Tx, T, Thistory}
+    x::Tx
+    residual::T
+    tol::T
+    iterations::Int
+    maxiter::Int
+    converged::Bool
+    history::Thistory
+end
+function Base.show(io::IO, r::CGResult)
+    first_two(fr) = [x for (i, x) in enumerate(fr)][1:2]
+
+    @printf io "Result of CG Algorithm\n"
+    @printf io " * Algorithm: CG \n"
+
+    if length(join(r.x, ",")) < 40 || length(r.x) <= 2
+        @printf io " * x: [%s]\n" join(r.x, ",")
+    else
+        @printf io " * x: [%s, ...]\n" join(first_two(r.x), ",")
+    end
+
+    @printf io " * Convergence\n"
+    @printf io "   * Residual: %s\n" r.residual
+    @printf io "   * Tolerance: %s\n" r.tol
+    @printf io "   * Converged: %s\n" r.converged
+    @printf io "   * Iterations: %s\n" r.iterations
+    @printf io "   * Iterations limit: %s\n" r.maxiter
+
+    return
+end
+
+@inline isconverged(it::Union{CGIterable, PCGIterable}) = it.residual ≤ it.tol
 
 @inline start(it::Union{CGIterable, PCGIterable}) = 0
 
-@inline done(it::Union{CGIterable, PCGIterable}, iteration::Int) = iteration ≥ it.maxiter || converged(it)
+@inline done(it::Union{CGIterable, PCGIterable}, iteration::Int) = iteration ≥ it.maxiter || isconverged(it)
 
 
 ###############
@@ -114,7 +145,8 @@ struct CGStateVariables{T,Tx<:AbstractArray{T}}
 end
 
 function cg_iterator!(x, A, b, Pl = Identity();
-    tol = sqrt(eps(real(eltype(b)))),
+    reltol = sqrt(eps(real(eltype(b)))),
+    tol = zero(real(eltype(b))),
     maxiter::Int = size(A, 2),
     statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
     initially_zero::Bool = false
@@ -130,24 +162,24 @@ function cg_iterator!(x, A, b, Pl = Identity();
         mv_products = 0
         c = similar(x)
         residual = norm(b)
-        reltol = residual * tol # Save one dot product
+        tol = max(residual * reltol, tol) # Save one dot product
     else
         mv_products = 1
         mul!(c, A, x)
         r .-= c
         residual = norm(r)
-        reltol = norm(b) * tol
+        tol = max(norm(b) * reltol, tol)
     end
 
     # Return the iterable
     if isa(Pl, Identity)
         return CGIterable(A, x, r, c, u,
-            reltol, residual, one(residual),
+            tol, residual, one(residual),
             maxiter, mv_products
         )
     else
         return PCGIterable(Pl, A, x, r, c, u,
-            reltol, residual, one(eltype(x)),
+            tol, residual, one(eltype(x)),
             maxiter, mv_products
         )
     end
@@ -177,7 +209,8 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
   residual vector;
 - `Pl = Identity()`: left preconditioner of the method. Should be symmetric,
   positive-definite like `A`;
-- `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`;
+- `reltol::Real = sqrt(eps(real(eltype(b))))`: relative tolerance for stopping condition `|r_k| / |r_0| ≤ reltol`;
+- `tol` = zero(real(eltype(b))): tolerance for stopping condition `|r_k| ≤ tol`,
 - `maxiter::Int = size(A,2)`: maximum number of iterations;
 - `verbose::Bool = false`: print method information;
 - `log::Bool = false`: keep track of the residual norm in each iteration.
@@ -199,7 +232,8 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 - `:resnom` => `::Vector`: residual norm at each iteration.
 """
 function cg!(x, A, b;
-    tol = sqrt(eps(real(eltype(b)))),
+    reltol = sqrt(eps(real(eltype(b)))),
+    tol = zero(real(eltype(b))),
     maxiter::Int = size(A, 2),
     log::Bool = false,
     statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
@@ -208,15 +242,17 @@ function cg!(x, A, b;
     kwargs...
 )
     history = ConvergenceHistory(partial = !log)
-    history[:tol] = tol
     log && reserve!(history, :resnorm, maxiter + 1)
 
     # Actually perform CG
-    iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, statevars = statevars, kwargs...)
+    iterable = cg_iterator!(x, A, b, Pl; tol = tol, reltol = reltol, maxiter = maxiter, statevars = statevars, kwargs...)
+    history[:tol] = iterable.tol
     if log
         history.mvps = iterable.mv_products
     end
-    for (iteration, item) = enumerate(iterable)
+    iteration = 0
+    for item in iterable
+        iteration += 1
         if log
             nextiter!(history, mvps = 1)
             push!(history, :resnorm, iterable.residual)
@@ -225,8 +261,9 @@ function cg!(x, A, b;
     end
 
     verbose && println()
-    log && setconv(history, converged(iterable))
+    converged = isconverged(iterable)
+    log && setconv(history, converged)
     log && shrink!(history)
 
-    log ? (iterable.x, history) : iterable.x
+    return CGResult(iterable.x, iterable.residual, iterable.tol, iteration, maxiter, converged, history)
 end
