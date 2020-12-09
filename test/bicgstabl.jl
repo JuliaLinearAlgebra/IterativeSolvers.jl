@@ -48,18 +48,18 @@ end
         n = size(A, 2)
         b = ones(T, n)
         x0 = A \ b
-        perturbation = T[(-1)^i for i in 1:n]
+        perturbation = 10 * sqrt(eps(real(T))) * T[(-1)^i for i in 1:n]
 
         # If the initial residual is small and a small relative tolerance is used,
         # many iterations are necessary
-        x = x0 + sqrt(eps(real(T))) * perturbation
+        x = x0 + perturbation
         initial_residual = norm(A * x - b)
         x, ch = bicgstabl!(x, A, b, log=true)
         @test 1 ≤ niters(ch) ≤ n÷2 # BiCGStab(2) makes more than one RHS evaluations per iteration
 
         # If the initial residual is small and a large absolute tolerance is used,
         # no iterations are necessary
-        x = x0 + 10*sqrt(eps(real(T))) * perturbation
+        x = x0 + perturbation
         initial_residual = norm(A * x - b)
         x, ch = bicgstabl!(x, A, b, abstol=2*initial_residual, reltol=zero(real(T)), log=true)
         @test niters(ch) == 0
