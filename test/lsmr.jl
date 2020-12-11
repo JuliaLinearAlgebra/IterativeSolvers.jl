@@ -1,3 +1,5 @@
+module TestLSMR
+
 using IterativeSolvers
 using Test
 using LinearAlgebra
@@ -97,3 +99,5 @@ end
         @test norm((A'A + Matrix(Diagonal(v)) .^ 2)x - A'b) ≤ 1e-3
     end
 end
+
+end # module

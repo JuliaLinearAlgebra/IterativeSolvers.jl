@@ -1,3 +1,6 @@
+module TestHessenberg
+
+using LinearAlgebra
 using IterativeSolvers
 using Test
 
@@ -40,3 +43,5 @@ using Test
         @test abs(last(solution_with_residual)) ≈ norm(H * solution - rhs)
     end
 end
+
+end # module

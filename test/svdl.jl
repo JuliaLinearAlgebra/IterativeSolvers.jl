@@ -1,3 +1,5 @@
+module TestSVDL
+
 using IterativeSolvers
 using Test
 using Random
@@ -77,3 +79,5 @@ end #svdl
     @test_throws ArgumentError size(B,3)
     @test_throws BoundsError B[1,5]
 end
+
+end # module

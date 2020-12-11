@@ -1,3 +1,5 @@
+module TestHistory
+
 using IterativeSolvers
 using RecipesBase
 using Test
@@ -75,3 +77,5 @@ using Test
         end
     end
 end
+
+end # module

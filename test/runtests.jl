@@ -1,4 +1,3 @@
-using IterativeSolvers
 
 #Common functions and data structures
 include("common.jl")

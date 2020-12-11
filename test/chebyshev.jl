@@ -1,3 +1,5 @@
+module TestChebyshev
+
 using IterativeSolvers
 using Test
 using Random
@@ -58,3 +60,5 @@ Random.seed!(1234321)
     end
 end
 end
+
+end # module

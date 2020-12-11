@@ -1,3 +1,5 @@
+module TestLSQR
+
 using IterativeSolvers
 using Test
 using LinearMaps
@@ -38,3 +40,5 @@ end
     @test norm(b - A * x_lsqr) ≤ 1e-4
 end
 end
+
+end # module

@@ -1,3 +1,5 @@
+module TestCommon
+
 using Documenter
 using LinearAlgebra
 using IterativeSolvers
@@ -29,3 +31,5 @@ end
 
 DocMeta.setdocmeta!(IterativeSolvers, :DocTestSetup, :(using IterativeSolvers); recursive=true)
 doctest(IterativeSolvers, manual=false)
+
+end # module

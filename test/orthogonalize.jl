@@ -1,3 +1,6 @@
+module TestOrthogonalize
+
+using LinearAlgebra
 using IterativeSolvers
 using Test
 using Random
@@ -58,3 +61,5 @@ m = 3
     end
 end
 end
+
+end # module

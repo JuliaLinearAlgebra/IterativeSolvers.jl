@@ -1,3 +1,5 @@
+module TestGMRES
+
 using IterativeSolvers
 using Test
 using LinearMaps
@@ -70,3 +72,5 @@ end
     @test all(x .== b)
 end
 end
+
+end # module

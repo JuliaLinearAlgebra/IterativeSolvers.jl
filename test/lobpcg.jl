@@ -1,19 +1,20 @@
+module TestLOBPCG
+
 using IterativeSolvers
 using LinearMaps
 using LinearAlgebra
 using Test
 using Random
+using SparseArrays
 
-# Already defined in another file
-#=
+
 include("laplace_matrix.jl")
 
 struct JacobiPrec{TD}
     diagonal::TD
 end
 
-Base.ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
-=#
+LinearAlgebra.ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 
 function max_err(R)
     r = zeros(real(eltype(R)), size(R, 2))
@@ -358,3 +359,5 @@ end
         end
     end
 end
+
+end # module

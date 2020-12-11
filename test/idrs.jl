@@ -1,7 +1,10 @@
+module TestIDRs
+
 using IterativeSolvers
 using Test
 using Random
 using LinearAlgebra
+using SparseArrays
 
 @testset "IDR(s)" begin
 
@@ -58,3 +61,5 @@ end
 end
 
 end
+
+end # module
