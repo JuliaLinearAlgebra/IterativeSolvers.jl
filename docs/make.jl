@@ -2,7 +2,12 @@ using Documenter, IterativeSolvers
 
 makedocs(
 	modules = [IterativeSolvers],
-	format = :html,
+	format = Documenter.HTML(
+		# Disable pretty URLs during manual testing
+		prettyurls = get(ENV, "CI", nothing) == "true",
+		# Set canonical URL to GitHub pages URL
+		canonical = "https://juliamath.github.io/IterativeSolvers.jl/stable"
+  ),
 	doctest = false,
 	clean = true,
 	sitename = "IterativeSolvers.jl",
