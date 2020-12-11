@@ -30,6 +30,6 @@ end
 end
 
 DocMeta.setdocmeta!(IterativeSolvers, :DocTestSetup, :(using IterativeSolvers); recursive=true)
-doctest(IterativeSolvers, manual=false)
+doctest(IterativeSolvers, manual=true)
 
 end # module
