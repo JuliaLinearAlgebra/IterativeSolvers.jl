@@ -32,16 +32,17 @@ mutable struct MINRESIterable{matT, solT, vecT <: DenseVector, smallVecT <: Dens
     # Bookkeeping
     mv_products::Int
     maxiter::Int
-    tolerance::realT
+    tol::realT
     resnorm::realT
 end
 
 function minres_iterable!(x, A, b;
-    initially_zero::Bool = false,
-    skew_hermitian::Bool = false,
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter = size(A, 2)
-)
+                         initially_zero::Bool = false,
+                         skew_hermitian::Bool = false,
+                         abstol::Real = zero(real(eltype(b))),
+                         reltol::Real = sqrt(eps(real(eltype(b)))),
+                         tol = nothing, # TODO: Deprecations introduced in v0.8
+                         maxiter = size(A, 2))
     T = eltype(x)
     HessenbergT = skew_hermitian ? T : real(T)
 
@@ -52,6 +53,12 @@ function minres_iterable!(x, A, b;
     w_prev = similar(x)
     w_curr = similar(x)
     w_next = similar(x)
+
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :minres_iterable!)
+        reltol = tol
+    end
 
     mv_products = 0
 
@@ -64,7 +71,7 @@ function minres_iterable!(x, A, b;
     end
 
     resnorm = norm(v_curr)
-    reltol = resnorm * tol
+    tolerance = max(reltol * resnorm, abstol)
 
     # Last active column of the Hessenberg matrix
     # and last two entries of the right-hand side
@@ -84,18 +91,21 @@ function minres_iterable!(x, A, b;
         w_prev, w_curr, w_next,
         H, rhs,
         c_prev, s_prev, c_curr, s_curr,
-        mv_products, maxiter, reltol, resnorm
+        mv_products, maxiter, tolerance, resnorm
     )
 end
 
-converged(m::MINRESIterable) = m.resnorm ≤ m.tolerance
+converged(m::MINRESIterable) = m.resnorm ≤ m.tol
 
 start(::MINRESIterable) = 1
 
 done(m::MINRESIterable, iteration::Int) = iteration > m.maxiter || converged(m)
 
 function iterate(m::MINRESIterable, iteration::Int=start(m))
-    if done(m, iteration) return nothing end
+    # Check for termination first
+    if done(m, iteration)
+        return nothing
+    end
 
     # v_next = A * v_curr - H[2] * v_prev
     mul!(m.v_next, m.A, m.v_curr)
@@ -172,7 +182,13 @@ Solve Ax = b for (skew-)Hermitian matrices A using MINRES.
   matrix-vector product can be saved when computing the initial
   residual vector;
 - `skew_hermitian::Bool = false`: if `true` assumes that `A` is skew-symmetric or skew-Hermitian;
-- `tol`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`. Note that the residual is computed only approximately;
+- `abstol::Real = zero(real(eltype(b)))`,
+  `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
+  tolerance for the stopping condition
+  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  is the residual in the `k`th iteration
+  !!! note
+      The residual is computed only approximately.
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `Pl`: left preconditioner;
 - `Pr`: right preconditioner;
@@ -191,20 +207,28 @@ Solve Ax = b for (skew-)Hermitian matrices A using MINRES.
 - `history`: convergence history.
 """
 function minres!(x, A, b;
-    skew_hermitian::Bool = false,
-    verbose::Bool = false,
-    log::Bool = false,
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Int = size(A, 2),
-    initially_zero::Bool = false
-)
+                 skew_hermitian::Bool = false,
+                 verbose::Bool = false,
+                 log::Bool = false,
+                 abstol::Real = zero(real(eltype(b))),
+                 reltol::Real = sqrt(eps(real(eltype(b)))),
+                 tol = nothing, # TODO: Deprecations introduced in v0.8
+                 maxiter::Int = size(A, 2),
+                 initially_zero::Bool = false)
     history = ConvergenceHistory(partial = !log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
+
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :minres!)
+        reltol = tol
+    end
 
     iterable = minres_iterable!(x, A, b;
         skew_hermitian = skew_hermitian,
-        tol = tol,
+        abstol = abstol, reltol = reltol,
         maxiter = maxiter,
         initially_zero = initially_zero
     )

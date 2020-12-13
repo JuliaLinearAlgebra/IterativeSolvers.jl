@@ -17,17 +17,20 @@ mutable struct ChebyshevIterable{precT, matT, solT, vecT, realT <: Real}
     λ_diff::realT
 
     resnorm::realT
-    reltol::realT
+    tol::realT
     maxiter::Int
     mv_products::Int
 end
 
-converged(c::ChebyshevIterable) = c.resnorm ≤ c.reltol
-start(::ChebyshevIterable) = 0
-done(c::ChebyshevIterable, iteration::Int) = iteration ≥ c.maxiter || converged(c)
+@inline converged(it::ChebyshevIterable) = it.resnorm ≤ it.tol
+@inline start(::ChebyshevIterable) = 0
+@inline done(it::ChebyshevIterable, iteration::Int) = iteration ≥ it.maxiter || converged(it)
 
 function iterate(cheb::ChebyshevIterable, iteration::Int=start(cheb))
-    if done(cheb, iteration) return nothing end
+    # Check for termination first
+    if done(cheb, iteration)
+        return nothing
+    end
 
     T = eltype(cheb.x)
 
@@ -54,7 +57,12 @@ function iterate(cheb::ChebyshevIterable, iteration::Int=start(cheb))
 end
 
 function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
-    tol = sqrt(eps(real(eltype(b)))), maxiter = size(A, 2), Pl = Identity(), initially_zero = false)
+                             abstol::Real = zero(real(eltype(b))),
+                             reltol::Real = sqrt(eps(real(eltype(b)))),
+                             tol = nothing, # TODO: Deprecations introduced in v0.8
+                             maxiter = size(A, 2),
+                             Pl = Identity(),
+                             initially_zero = false)
 
     λ_avg = (λmax + λmin) / 2
     λ_diff = (λmax - λmin) / 2
@@ -65,23 +73,27 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
     u = zero(x)
     c = similar(x)
 
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :chebyshev_iterable!)
+        reltol = tol
+    end
+
     # One MV product less
     if initially_zero
-        resnorm = norm(r)
-        reltol = tol * resnorm
         mv_products = 0
     else
+        mv_products = 1
         mul!(c, A, x)
         r .-= c
-        resnorm = norm(r)
-        reltol = tol * norm(b)
-        mv_products = 1
     end
+    resnorm = norm(r)
+    tolerance = max(reltol * resnorm, abstol)
 
     ChebyshevIterable(Pl, A, x, r, u, c,
         zero(real(T)),
         λ_avg, λ_diff,
-        resnorm, reltol, maxiter, mv_products
+        resnorm, tolerance, maxiter, mv_products
     )
 end
 
@@ -112,7 +124,11 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
 - `initially_zero::Bool = false`: if `true` assumes that `iszero(x)` so that one
   matrix-vector product can be saved when computing the initial
   residual vector;
-- `tol`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`.
+- `abstol::Real = zero(real(eltype(b)))`,
+  `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
+  tolerance for the stopping condition
+  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  is the residual in the `k`th iteration;
 - `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;
 - `Pl = Identity()`: left preconditioner;
 - `log::Bool = false`: keep track of the residual norm in each iteration;
@@ -130,20 +146,29 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
 - `history`: convergence history.
 """
 function chebyshev!(x, A, b, λmin::Real, λmax::Real;
-    Pl = Identity(),
-    tol::Real=sqrt(eps(real(eltype(b)))),
-    maxiter::Int=size(A, 2),
-    log::Bool=false,
-    verbose::Bool=false,
-    initially_zero::Bool=false
-)
+                    abstol::Real = zero(real(eltype(b))),
+                    reltol::Real = sqrt(eps(real(eltype(b)))),
+                    tol = nothing, # TODO: Deprecations introduced in v0.8
+                    Pl = Identity(),
+                    maxiter::Int=size(A, 2),
+                    log::Bool=false,
+                    verbose::Bool=false,
+                    initially_zero::Bool=false)
     history = ConvergenceHistory(partial=!log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
     reserve!(history, :resnorm, maxiter)
 
     verbose && @printf("=== chebyshev ===\n%4s\t%7s\n","iter","resnorm")
 
-    iterable = chebyshev_iterable!(x, A, b, λmin, λmax; tol=tol, maxiter=maxiter, Pl=Pl, initially_zero=initially_zero)
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :chebyshev!)
+        reltol = tol
+    end
+
+    iterable = chebyshev_iterable!(x, A, b, λmin, λmax; abstol=abstol, reltol=reltol,
+                                   maxiter=maxiter, Pl=Pl, initially_zero=initially_zero)
     history.mvps = iterable.mv_products
     for (iteration, resnorm) = enumerate(iterable)
         nextiter!(history)
