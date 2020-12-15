@@ -1,3 +1,5 @@
+module TestDeprecations
+
 using IterativeSolvers
 using Test
 
@@ -13,3 +15,5 @@ using Test
     @test_deprecated minres(A, b, tol=1.0, maxiter=1)
     @test_deprecated qmr(A, b, tol=1.0, maxiter=1)
 end
+
+end # module
