@@ -13,7 +13,7 @@ mutable struct BiCGStabIterable{precT, matT, solT, vecT <: AbstractVector, small
 
     max_mv_products::Int
     mv_products::Int
-    reltol::realT
+    tol::realT
     residual::realT
 
     Pl::precT
@@ -25,11 +25,12 @@ mutable struct BiCGStabIterable{precT, matT, solT, vecT <: AbstractVector, small
 end
 
 function bicgstabl_iterator!(x, A, b, l::Int = 2;
-    Pl = Identity(),
-    max_mv_products = size(A, 2),
-    initial_zero = false,
-    tol = sqrt(eps(real(eltype(b))))
-)
+                             Pl = Identity(),
+                             max_mv_products = size(A, 2),
+                             abstol::Real = zero(real(eltype(b))),
+                             reltol::Real = sqrt(eps(real(eltype(b)))),
+                             tol = nothing, # TODO: Deprecations introduced in v0.8
+                             initial_zero = false)
     T = eltype(x)
     n = size(A, 1)
     mv_products = 0
@@ -40,6 +41,12 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
     us = zeros(T, n, l + 1)
 
     residual = view(rs, :, 1)
+
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :bicgstabl_iterator!)
+        reltol = tol
+    end
 
     # Compute the initial residual rs[:, 1] = b - A * x
     # Avoid computing A * 0.
@@ -62,17 +69,17 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
     # For the least-squares problem
     M = zeros(T, l + 1, l + 1)
 
-    # Stopping condition based on relative tolerance.
-    reltol = nrm * tol
+    # Stopping condition based on absolute and relative tolerance.
+    tolerance = max(reltol * nrm, abstol)
 
     BiCGStabIterable(A, l, x, r_shadow, rs, us,
-        max_mv_products, mv_products, reltol, nrm,
+        max_mv_products, mv_products, tolerance, nrm,
         Pl,
         γ, ω, σ, M
     )
 end
 
-@inline converged(it::BiCGStabIterable) = it.residual ≤ it.reltol
+@inline converged(it::BiCGStabIterable) = it.residual ≤ it.tol
 @inline start(::BiCGStabIterable) = 0
 @inline done(it::BiCGStabIterable, iteration::Int) = it.mv_products ≥ it.max_mv_products || converged(it)
 
@@ -157,10 +164,16 @@ bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zerox(A, b), A, b, l; initial_zer
 - `max_mv_products::Int = size(A, 2)`: maximum number of matrix vector products.
 For BiCGStab(l) this is a less dubious term than "number of iterations";
 - `Pl = Identity()`: left preconditioner of the method;
-- `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`.
-   Note that (1) the true residual norm is never computed during the iterations,
-   only an approximation; and (2) if a preconditioner is given, the stopping condition is based on the
-   *preconditioned residual*.
+- `abstol::Real = zero(real(eltype(b)))`,
+  `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
+  tolerance for the stopping condition
+  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  is the residual in the `k`th iteration;
+  !!! note
+      1. The true residual norm is never computed during the iterations,
+         only an approximation;
+      2. If a left preconditioner is given, the stopping condition is based on the
+         *preconditioned residual*.
 
 # Return values
 
@@ -174,21 +187,31 @@ For BiCGStab(l) this is a less dubious term than "number of iterations";
 - `history`: convergence history.
 """
 function bicgstabl!(x, A, b, l = 2;
-    tol = sqrt(eps(real(eltype(b)))),
-    max_mv_products::Int = size(A, 2),
-    log::Bool = false,
-    verbose::Bool = false,
-    Pl = Identity(),
-    kwargs...
-)
+                    abstol::Real = zero(real(eltype(b))),
+                    reltol::Real = sqrt(eps(real(eltype(b)))),
+                    tol = nothing, # TODO: Deprecations introduced in v0.8
+                    max_mv_products::Int = size(A, 2),
+                    log::Bool = false,
+                    verbose::Bool = false,
+                    Pl = Identity(),
+                    kwargs...)
     history = ConvergenceHistory(partial = !log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
 
     # This doesn't yet make sense: the number of iters is smaller.
     log && reserve!(history, :resnorm, max_mv_products)
 
-    # Actually perform CG
-    iterable = bicgstabl_iterator!(x, A, b, l; Pl = Pl, tol = tol, max_mv_products = max_mv_products, kwargs...)
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :bicgstabl!)
+        reltol = tol
+    end
+
+    # Actually perform iterative solve
+    iterable = bicgstabl_iterator!(x, A, b, l; Pl = Pl,
+                                   abstol = abstol, reltol = reltol,
+                                   max_mv_products = max_mv_products, kwargs...)
 
     if log
         history.mvps = iterable.mv_products

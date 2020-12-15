@@ -43,6 +43,5 @@ include("lsmr.jl")
 #History data structure
 include("history.jl")
 
-#Expensive tests - don't run by default
-#include("matrixmarket.jl")
-#include("matrixcollection.jl")
+# Test deprecations
+include("deprecations.jl")

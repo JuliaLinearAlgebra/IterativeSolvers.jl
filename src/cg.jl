@@ -8,7 +8,7 @@ mutable struct CGIterable{matT, solT, vecT, numT <: Real}
     r::vecT
     c::vecT
     u::vecT
-    reltol::numT
+    tol::numT
     residual::numT
     prev_residual::numT
     maxiter::Int
@@ -22,14 +22,14 @@ mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Numb
     r::vecT
     c::vecT
     u::vecT
-    reltol::numT
+    tol::numT
     residual::numT
     ρ::paramT
     maxiter::Int
     mv_products::Int
 end
 
-@inline converged(it::Union{CGIterable, PCGIterable}) = it.residual ≤ it.reltol
+@inline converged(it::Union{CGIterable, PCGIterable}) = it.residual ≤ it.tol
 
 @inline start(it::Union{CGIterable, PCGIterable}) = 0
 
@@ -41,7 +41,10 @@ end
 ###############
 
 function iterate(it::CGIterable, iteration::Int=start(it))
-    if done(it, iteration) return nothing end
+    # Check for termination first
+    if done(it, iteration)
+        return nothing
+    end
 
     # u := r + βu (almost an axpy)
     β = it.residual^2 / it.prev_residual^2
@@ -72,6 +75,7 @@ function iterate(it::PCGIterable, iteration::Int=start(it))
         return nothing
     end
 
+    # Apply left preconditioner
     ldiv!(it.c, it.Pl, it.r)
 
     ρ_prev = it.ρ
@@ -114,40 +118,44 @@ struct CGStateVariables{T,Tx<:AbstractArray{T}}
 end
 
 function cg_iterator!(x, A, b, Pl = Identity();
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Int = size(A, 2),
-    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
-    initially_zero::Bool = false
-)
+                      abstol::Real = zero(real(eltype(b))),
+                      reltol::Real = sqrt(eps(real(eltype(b)))),
+                      tol = nothing, # TODO: Deprecations introduced in v0.8
+                      maxiter::Int = size(A, 2),
+                      statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
+                      initially_zero::Bool = false)
     u = statevars.u
     r = statevars.r
     c = statevars.c
     u .= zero(eltype(x))
     copyto!(r, b)
 
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg_iterator!)
+        reltol = tol
+    end
+
     # Compute r with an MV-product or not.
     if initially_zero
         mv_products = 0
-        c = similar(x)
-        residual = norm(b)
-        reltol = residual * tol # Save one dot product
     else
         mv_products = 1
         mul!(c, A, x)
         r .-= c
-        residual = norm(r)
-        reltol = norm(b) * tol
     end
+    residual = norm(r)
+    tolerance = max(reltol * residual, abstol)
 
     # Return the iterable
     if isa(Pl, Identity)
         return CGIterable(A, x, r, c, u,
-            reltol, residual, one(residual),
+            tolerance, residual, one(residual),
             maxiter, mv_products
         )
     else
         return PCGIterable(Pl, A, x, r, c, u,
-            reltol, residual, one(eltype(x)),
+            tolerance, residual, one(eltype(x)),
             maxiter, mv_products
         )
     end
@@ -177,7 +185,11 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
   residual vector;
 - `Pl = Identity()`: left preconditioner of the method. Should be symmetric,
   positive-definite like `A`;
-- `tol::Real = sqrt(eps(real(eltype(b))))`: tolerance for stopping condition `|r_k| / |r_0| ≤ tol`;
+- `abstol::Real = zero(real(eltype(b)))`,
+  `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
+  tolerance for the stopping condition
+  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  is the residual in the `k`th iteration;
 - `maxiter::Int = size(A,2)`: maximum number of iterations;
 - `verbose::Bool = false`: print method information;
 - `log::Bool = false`: keep track of the residual norm in each iteration.
@@ -199,20 +211,29 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 - `:resnom` => `::Vector`: residual norm at each iteration.
 """
 function cg!(x, A, b;
-    tol = sqrt(eps(real(eltype(b)))),
-    maxiter::Int = size(A, 2),
-    log::Bool = false,
-    statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
-    verbose::Bool = false,
-    Pl = Identity(),
-    kwargs...
-)
+             abstol::Real = zero(real(eltype(b))),
+             reltol::Real = sqrt(eps(real(eltype(b)))),
+             tol = nothing, # TODO: Deprecations introduced in v0.8
+             maxiter::Int = size(A, 2),
+             log::Bool = false,
+             statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
+             verbose::Bool = false,
+             Pl = Identity(),
+             kwargs...)
     history = ConvergenceHistory(partial = !log)
-    history[:tol] = tol
+    history[:abstol] = abstol
+    history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter + 1)
 
+    # TODO: Deprecations introduced in v0.8
+    if tol !== nothing
+        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg!)
+        reltol = tol
+    end
+
     # Actually perform CG
-    iterable = cg_iterator!(x, A, b, Pl; tol = tol, maxiter = maxiter, statevars = statevars, kwargs...)
+    iterable = cg_iterator!(x, A, b, Pl; abstol = abstol, reltol = reltol, maxiter = maxiter,
+                            statevars = statevars, kwargs...)
     if log
         history.mvps = iterable.mv_products
     end
