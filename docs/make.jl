@@ -6,7 +6,7 @@ makedocs(
 		# Disable pretty URLs during manual testing
 		prettyurls = get(ENV, "CI", nothing) == "true",
 		# Set canonical URL to GitHub pages URL
-		canonical = "https://juliamath.github.io/IterativeSolvers.jl/stable"
+		canonical = "https://julialinearalgebra.github.io/IterativeSolvers.jl/stable"
   ),
 	doctest = false,
 	clean = true,
@@ -39,4 +39,4 @@ makedocs(
 	]
 )
 
-deploydocs(repo = "github.com/JuliaMath/IterativeSolvers.jl.git")
+deploydocs(repo = "github.com/JuliaLinearAlgebra/IterativeSolvers.jl.git")
