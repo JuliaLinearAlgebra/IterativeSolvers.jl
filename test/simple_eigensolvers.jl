@@ -1,3 +1,5 @@
+module TestSimpleEigensolver
+
 using IterativeSolvers
 using Test
 using LinearMaps
@@ -46,3 +48,5 @@ n = 10
     end
 end
 end
+
+end # module

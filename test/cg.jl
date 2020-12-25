@@ -1,3 +1,5 @@
+module TestCG
+
 using IterativeSolvers
 using LinearMaps
 using Test
@@ -120,3 +122,5 @@ end
 end
 
 end
+
+end # module

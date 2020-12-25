@@ -1,3 +1,5 @@
+module TestStationary
+
 import LinearAlgebra.SingularException
 import IterativeSolvers: DiagonalIndices, FastLowerTriangular,
        FastUpperTriangular, forward_sub!, backward_sub!, OffDiagonal,
@@ -211,3 +213,5 @@ end
     @test x ≈ b - tril(A, -1) * y
 end
 end
+
+end # module

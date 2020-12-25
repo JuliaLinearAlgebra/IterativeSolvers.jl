@@ -1,3 +1,5 @@
+module TestMINRES
+
 using IterativeSolvers
 using Test
 using Random
@@ -94,3 +96,5 @@ end
 end
 
 end
+
+end # module

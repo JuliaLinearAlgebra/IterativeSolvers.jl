@@ -1,3 +1,5 @@
+module TestGMRES
+
 using IterativeSolvers
 using Test
 using LinearMaps
@@ -96,3 +98,5 @@ end
     end
 end
 end
+
+end # module

@@ -1,3 +1,5 @@
+module TestBiCGStabl
+
 using IterativeSolvers
 using Test
 using Random
@@ -66,3 +68,5 @@ end
     end
 end
 end
+
+end # module

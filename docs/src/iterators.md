@@ -28,44 +28,47 @@ jacobi_iterable(x, A::SparseMatrixCSC, b; maxiter::Int = 10) =
 
 Now if you apply Jacobi iteration multiple times with the same matrix for just a few iterations, it makes sense to initialize the iterable only once and reuse it afterwards:
 
-```julia
-A = sprand(10_000, 10_000, 10 / 10_000) + 20I
-b1 = rand(10_000)
-b2 = rand(10_000)
-x = rand(10_000)
+```jldoctest
+julia> using LinearAlgebra, SparseArrays, IterativeSolvers
 
-my_iterable = IterativeSolvers.jacobi_iterable(x, A, b1, maxiter = 4)
+julia> A = spdiagm(-1 => -ones(3), 0 => 2*ones(4), 1 => -ones(3));
 
-for item in my_iterable
-    println("Iteration for rhs 1")
-end
+julia> b1 = [1.0, 2, 3, 4];
 
-@show norm(b1 - A * x) / norm(b1)
+julia> b2 = [-1.0, 1, -1, 1];
 
-# Copy the next right-hand side into the iterable
-copyto!(my_iterable.b, b2)
+julia> x = [0.0, -1, 1, 0];
 
-for item in my_iterable
-    println("Iteration for rhs 2")
-end
+julia> my_iterable = IterativeSolvers.jacobi_iterable(x, A, b1, maxiter = 2);
 
-@show norm(b2 - A * x) / norm(b2)
+julia> norm(b1 - A * x) / norm(b1)
+1.2909944487358056
+
+julia> for item in my_iterable
+           println("Iteration for rhs 1")
+       end
+Iteration for rhs 1
+Iteration for rhs 1
+
+julia> norm(b1 - A * x) / norm(b1)
+0.8228507357554791
+
+julia> # Copy the next right-hand side into the iterable
+       copyto!(my_iterable.b, b2);
+
+julia> norm(b2 - A * x) / norm(b2)
+2.6368778887161235
+
+julia> for item in my_iterable
+           println("Iteration for rhs 2")
+       end
+Iteration for rhs 2
+Iteration for rhs 2
+
+julia> norm(b2 - A * x) / norm(b2)
+1.610815496107484
 ```
 
-This would output:
-
-```
-Iteration for rhs 1
-Iteration for rhs 1
-Iteration for rhs 1
-Iteration for rhs 1
-norm(b1 - A * x) / norm(b1) = 0.08388528015119746
-Iteration for rhs 2
-Iteration for rhs 2
-Iteration for rhs 2
-Iteration for rhs 2
-norm(b2 - A * x) / norm(b2) = 0.0003681972775644809
-```
 
 ## Other use cases
 Other use cases include:

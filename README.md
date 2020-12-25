@@ -14,7 +14,7 @@
 
 ## Installing
 
-To install the package, open the package manager in the REPL via ] and run
+To install the package, open the package manager in the REPL via `]` and run
 
 ```julia
 pkg> add IterativeSolvers
