@@ -9,8 +9,8 @@
 
 ## Resources
 
-- [Manual](https://juliamath.github.io/IterativeSolvers.jl/dev/)
-- [Contributing](https://juliamath.github.io/IterativeSolvers.jl/dev/about/CONTRIBUTING/)
+- [Manual](https://julialinearalgebra.github.io/IterativeSolvers.jl/dev/)
+- [Contributing](https://julialinearalgebra.github.io/IterativeSolvers.jl/dev/about/CONTRIBUTING/)
 
 ## Installing
 
