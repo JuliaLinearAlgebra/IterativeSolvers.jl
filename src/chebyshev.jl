@@ -59,7 +59,6 @@ end
 function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
                              abstol::Real = zero(real(eltype(b))),
                              reltol::Real = sqrt(eps(real(eltype(b)))),
-                             tol = nothing, # TODO: Deprecations introduced in v0.8
                              maxiter = size(A, 2),
                              Pl = Identity(),
                              initially_zero = false)
@@ -72,12 +71,6 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
     copyto!(r, b)
     u = zero(x)
     c = similar(x)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :chebyshev_iterable!)
-        reltol = tol
-    end
 
     # One MV product less
     if initially_zero
@@ -148,7 +141,6 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
 function chebyshev!(x, A, b, λmin::Real, λmax::Real;
                     abstol::Real = zero(real(eltype(b))),
                     reltol::Real = sqrt(eps(real(eltype(b)))),
-                    tol = nothing, # TODO: Deprecations introduced in v0.8
                     Pl = Identity(),
                     maxiter::Int=size(A, 2),
                     log::Bool=false,
@@ -160,12 +152,6 @@ function chebyshev!(x, A, b, λmin::Real, λmax::Real;
     reserve!(history, :resnorm, maxiter)
 
     verbose && @printf("=== chebyshev ===\n%4s\t%7s\n","iter","resnorm")
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :chebyshev!)
-        reltol = tol
-    end
 
     iterable = chebyshev_iterable!(x, A, b, λmin, λmax; abstol=abstol, reltol=reltol,
                                    maxiter=maxiter, Pl=Pl, initially_zero=initially_zero)

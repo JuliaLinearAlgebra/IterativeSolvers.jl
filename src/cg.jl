@@ -120,7 +120,6 @@ end
 function cg_iterator!(x, A, b, Pl = Identity();
                       abstol::Real = zero(real(eltype(b))),
                       reltol::Real = sqrt(eps(real(eltype(b)))),
-                      tol = nothing, # TODO: Deprecations introduced in v0.8
                       maxiter::Int = size(A, 2),
                       statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
                       initially_zero::Bool = false)
@@ -129,12 +128,6 @@ function cg_iterator!(x, A, b, Pl = Identity();
     c = statevars.c
     u .= zero(eltype(x))
     copyto!(r, b)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg_iterator!)
-        reltol = tol
-    end
 
     # Compute r with an MV-product or not.
     if initially_zero
@@ -213,7 +206,6 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 function cg!(x, A, b;
              abstol::Real = zero(real(eltype(b))),
              reltol::Real = sqrt(eps(real(eltype(b)))),
-             tol = nothing, # TODO: Deprecations introduced in v0.8
              maxiter::Int = size(A, 2),
              log::Bool = false,
              statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
@@ -224,12 +216,6 @@ function cg!(x, A, b;
     history[:abstol] = abstol
     history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter + 1)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :cg!)
-        reltol = tol
-    end
 
     # Actually perform CG
     iterable = cg_iterator!(x, A, b, Pl; abstol = abstol, reltol = reltol, maxiter = maxiter,

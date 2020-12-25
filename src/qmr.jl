@@ -120,17 +120,10 @@ end
 function qmr_iterable!(x, A, b;
                        abstol::Real = zero(real(eltype(b))),
                        reltol::Real = sqrt(eps(real(eltype(b)))),
-                       tol = nothing, # TODO: Deprecations introduced in v0.8
                        maxiter::Int = size(A, 2),
                        initially_zero::Bool = false,
                        lookahead::Bool = false)
     T = eltype(x)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :qmr_iterable!)
-        reltol = tol
-    end
 
     lanczos = LanczosDecomp(x, A, b, initially_zero = initially_zero)
 
@@ -272,7 +265,6 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual (QMR) method.
 function qmr!(x, A, b;
               abstol::Real = zero(real(eltype(b))),
               reltol::Real = sqrt(eps(real(eltype(b)))),
-              tol = nothing, # TODO: Deprecations introduced in v0.8
               maxiter::Int = size(A, 2),
               lookahead::Bool = false,
               log::Bool = false,
@@ -282,12 +274,6 @@ function qmr!(x, A, b;
     history[:abstol] = abstol
     history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :qmr!)
-        reltol = tol
-    end
 
     iterable = qmr_iterable!(x, A, b; abstol = abstol, reltol = reltol,
                              maxiter = maxiter, initially_zero = initially_zero)

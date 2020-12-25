@@ -48,7 +48,6 @@ function idrs!(x, A, b;
                s = 8,
                abstol::Real = zero(real(eltype(b))),
                reltol::Real = sqrt(eps(real(eltype(b)))),
-               tol = nothing, # TODO: Deprecations introduced in v0.8
                maxiter=size(A, 2),
                log::Bool=false,
                kwargs...)
@@ -56,13 +55,6 @@ function idrs!(x, A, b;
     history[:abstol] = abstol
     history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :idrs!)
-        reltol = tol
-    end
-
     idrs_method!(history, x, A, b, s, abstol, reltol, maxiter; kwargs...)
     log && shrink!(history)
     log ? (x, history) : x

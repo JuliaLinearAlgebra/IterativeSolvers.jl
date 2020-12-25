@@ -41,7 +41,6 @@ function minres_iterable!(x, A, b;
                          skew_hermitian::Bool = false,
                          abstol::Real = zero(real(eltype(b))),
                          reltol::Real = sqrt(eps(real(eltype(b)))),
-                         tol = nothing, # TODO: Deprecations introduced in v0.8
                          maxiter = size(A, 2))
     T = eltype(x)
     HessenbergT = skew_hermitian ? T : real(T)
@@ -53,12 +52,6 @@ function minres_iterable!(x, A, b;
     w_prev = similar(x)
     w_curr = similar(x)
     w_next = similar(x)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :minres_iterable!)
-        reltol = tol
-    end
 
     mv_products = 0
 
@@ -212,19 +205,12 @@ function minres!(x, A, b;
                  log::Bool = false,
                  abstol::Real = zero(real(eltype(b))),
                  reltol::Real = sqrt(eps(real(eltype(b)))),
-                 tol = nothing, # TODO: Deprecations introduced in v0.8
                  maxiter::Int = size(A, 2),
                  initially_zero::Bool = false)
     history = ConvergenceHistory(partial = !log)
     history[:abstol] = abstol
     history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :minres!)
-        reltol = tol
-    end
 
     iterable = minres_iterable!(x, A, b;
         skew_hermitian = skew_hermitian,

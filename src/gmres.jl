@@ -107,17 +107,10 @@ function gmres_iterable!(x, A, b;
                          Pr = Identity(),
                          abstol::Real = zero(real(eltype(b))),
                          reltol::Real = sqrt(eps(real(eltype(b)))),
-                         tol = nothing, # TODO: Deprecations introduced in v0.8
                          restart::Int = min(20, size(A, 2)),
                          maxiter::Int = size(A, 2),
                          initially_zero::Bool = false)
     T = eltype(x)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :gmres_iterable!)
-        reltol = tol
-    end
 
     # Approximate solution
     arnoldi = ArnoldiDecomp(A, restart, T)
@@ -187,7 +180,6 @@ function gmres!(x, A, b;
                 Pr = Identity(),
                 abstol::Real = zero(real(eltype(b))),
                 reltol::Real = sqrt(eps(real(eltype(b)))),
-                tol = nothing, # TODO: Deprecations introduced in v0.8
                 restart::Int = min(20, size(A, 2)),
                 maxiter::Int = size(A, 2),
                 log::Bool = false,
@@ -197,12 +189,6 @@ function gmres!(x, A, b;
     history[:abstol] = abstol
     history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :gmres!)
-        reltol = tol
-    end
 
     iterable = gmres_iterable!(x, A, b; Pl = Pl, Pr = Pr,
                                abstol = abstol, reltol = reltol, maxiter = maxiter,

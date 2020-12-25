@@ -29,7 +29,6 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
                              max_mv_products = size(A, 2),
                              abstol::Real = zero(real(eltype(b))),
                              reltol::Real = sqrt(eps(real(eltype(b)))),
-                             tol = nothing, # TODO: Deprecations introduced in v0.8
                              initial_zero = false)
     T = eltype(x)
     n = size(A, 1)
@@ -41,12 +40,6 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
     us = zeros(T, n, l + 1)
 
     residual = view(rs, :, 1)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :bicgstabl_iterator!)
-        reltol = tol
-    end
 
     # Compute the initial residual rs[:, 1] = b - A * x
     # Avoid computing A * 0.
@@ -188,7 +181,6 @@ For BiCGStab(l) this is a less dubious term than "number of iterations";
 function bicgstabl!(x, A, b, l = 2;
                     abstol::Real = zero(real(eltype(b))),
                     reltol::Real = sqrt(eps(real(eltype(b)))),
-                    tol = nothing, # TODO: Deprecations introduced in v0.8
                     max_mv_products::Int = size(A, 2),
                     log::Bool = false,
                     verbose::Bool = false,
@@ -200,12 +192,6 @@ function bicgstabl!(x, A, b, l = 2;
 
     # This doesn't yet make sense: the number of iters is smaller.
     log && reserve!(history, :resnorm, max_mv_products)
-
-    # TODO: Deprecations introduced in v0.8
-    if tol !== nothing
-        Base.depwarn("The keyword argument `tol` is deprecated, use `reltol` instead.", :bicgstabl!)
-        reltol = tol
-    end
 
     # Actually perform iterative solve
     iterable = bicgstabl_iterator!(x, A, b, l; Pl = Pl,
