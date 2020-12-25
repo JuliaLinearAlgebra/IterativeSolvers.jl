@@ -12,7 +12,7 @@ struct ModifiedGramSchmidt <: OrthogonalizationMethod end
 function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, h::StridedVector{T}, ::Type{DGKS}) where {T}
     # Orthogonalize using BLAS-2 ops
     mul!(h, adjoint(V), w)
-    BLAS.gemv!('N', -one(T), V, h, one(T), w)
+    mul!(w, V, h, -one(T), one(T))
     nrm = norm(w)
 
     # Constant used by ARPACK.
@@ -26,7 +26,7 @@ function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, 
         correction = adjoint(V)*w
         projection_size = norm(correction)
         # w = w - V * correction
-        BLAS.gemv!('N', -one(T), V, correction, one(T), w)
+        mul!(w, V, correction, -one(T), one(T))
         h .+= correction
         nrm = norm(w)
     end
@@ -40,7 +40,7 @@ end
 function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, h::StridedVector{T}, ::Type{ClassicalGramSchmidt}) where {T}
     # Orthogonalize using BLAS-2 ops
     mul!(h, adjoint(V), w)
-    BLAS.gemv!('N', -one(T), V, h, one(T), w)
+    mul!(w, V, h, -one(T), one(T))
     nrm = norm(w)
 
     # Normalize
