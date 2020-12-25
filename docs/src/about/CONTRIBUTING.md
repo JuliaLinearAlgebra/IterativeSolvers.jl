@@ -1,7 +1,7 @@
 # Contributing
 
 Contributions are always welcome, as are feature requests and suggestions. Feel
-free to open an [issue](https://github.com/JuliaMath/IterativeSolvers.jl/issues) or [pull request](https://github.com/JuliaMath/IterativeSolvers.jl/pulls) at any time.
+free to open an [issue](https://github.com/JuliaLinearAlgebra/IterativeSolvers.jl/issues) or [pull request](https://github.com/JuliaLinearAlgebra/IterativeSolvers.jl/pulls) at any time.
 
 It is important to note that almost every method in the package has documentation,
 to know what it does simply use `?<method>` in the terminal.
