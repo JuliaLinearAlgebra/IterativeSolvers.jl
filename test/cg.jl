@@ -24,7 +24,7 @@ Random.seed!(1234321)
 @testset "Small full system" begin
     n = 10
 
-    @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
+    @testset "Matrix{$T}, Conjugated Dot Product" for T in (Float32, Float64, ComplexF32, ComplexF64)
         A = rand(T, n, n)
         A = A' * A + I
         b = rand(T, n)
@@ -49,6 +49,37 @@ Random.seed!(1234321)
         # All-zeros rhs should give all-zeros lhs
         x0 = cg(A, zeros(T, n))
         @test x0 == zeros(T, n)
+    end
+
+    @testset "Matrix{$T}, Unconjugated Dot Product" for T in (Float32, Float64, ComplexF32, ComplexF64)
+        A = rand(T, n, n)
+        A = A + transpose(A) + 15I
+        x = ones(T, n)
+        b = A * x
+
+        reltol = √eps(real(T))
+
+        # Solve without preconditioner
+        x1, his1 = cg(A, b, reltol = reltol, maxiter = 100, log = true, conjugate_dot = false)
+        @test isa(his1, ConvergenceHistory)
+        @test norm(A * x1 - b) / norm(b) ≤ reltol
+
+        # With an initial guess
+        x_guess = rand(T, n)
+        x2, his2 = cg!(x_guess, A, b, reltol = reltol, maxiter = 100, log = true, conjugate_dot = false)
+        @test isa(his2, ConvergenceHistory)
+        @test x2 == x_guess
+        @test norm(A * x2 - b) / norm(b) ≤ reltol
+
+        # The following tests fails CI on Windows and Ubuntu due to a
+        # `SingularException(4)`
+        if T == Float32 && (Sys.iswindows() || Sys.islinux())
+            continue
+        end
+        # Do an exact LU decomp of a nearby matrix
+        F = lu(A + rand(T, n, n))
+        x3, his3 = cg(A, b, Pl = F, maxiter = 100, reltol = reltol, log = true, conjugate_dot = false)
+        @test norm(A * x3 - b) / norm(b) ≤ reltol
     end
 end
 
