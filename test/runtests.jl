@@ -12,6 +12,9 @@ include("stationary.jl")
 #Conjugate gradients
 include("cg.jl")
 
+#Conjugate Orthogonal Conjugate gradient
+include("cocg.jl")
+
 #BiCGStab(l)
 include("bicgstabl.jl")
 
