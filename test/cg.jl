@@ -21,10 +21,26 @@ ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 
 Random.seed!(1234321)
 
+@testset "Vector{$T}, conjugated and unconjugated dot products" for T in (ComplexF32, ComplexF64)
+    n = 100
+    x = rand(T, n)
+    y = rand(T, n)
+
+    # Conjugated dot product
+    @test IterativeSolvers._dot(x, Val(true)) ≈ x'x
+    @test IterativeSolvers._dot(x, y, Val(true)) ≈ x'y
+    @test IterativeSolvers._dot(x, Val(true)) ≈ IterativeSolvers._dot(x, x, Val(true))
+
+    # Unonjugated dot product
+    @test IterativeSolvers._dot(x, Val(false)) ≈ transpose(x) * x
+    @test IterativeSolvers._dot(x, y, Val(false)) ≈ transpose(x) * y
+    @test IterativeSolvers._dot(x, Val(false)) ≈ IterativeSolvers._dot(x, x, Val(false))
+end
+
 @testset "Small full system" begin
     n = 10
 
-    @testset "Matrix{$T}, Conjugated Dot Product" for T in (Float32, Float64, ComplexF32, ComplexF64)
+    @testset "Matrix{$T}, conjugated dot product" for T in (Float32, Float64, ComplexF32, ComplexF64)
         A = rand(T, n, n)
         A = A' * A + I
         b = rand(T, n)
@@ -51,7 +67,7 @@ Random.seed!(1234321)
         @test x0 == zeros(T, n)
     end
 
-    @testset "Matrix{$T}, Unconjugated Dot Product" for T in (Float32, Float64, ComplexF32, ComplexF64)
+    @testset "Matrix{$T}, unconjugated dot product" for T in (Float32, Float64, ComplexF32, ComplexF64)
         A = rand(T, n, n)
         A = A + transpose(A) + 15I
         x = ones(T, n)

@@ -3,7 +3,7 @@ using Printf
 export cg, cg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
 # Conjugated dot product
-_dot(x, ::Val{true}) = sum(abs2(xₖ) for xₖ in x)
+_dot(x, ::Val{true}) = sum(abs2, x)  # for x::Complex, returns Real
 _dot(x, y, ::Val{true}) = dot(x, y)
 
 # Unconjugated dot product
