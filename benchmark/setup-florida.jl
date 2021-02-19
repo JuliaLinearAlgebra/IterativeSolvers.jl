@@ -2,17 +2,19 @@
 
 #Benchmark iterative methods against matrices from the University of Florida
 #sparse collection
+using Pkg
 
 #Root URL to the matrix collection
-UFL_URL_ROOT = "http://www.cise.ufl.edu/research/sparse/matrices"
+const UFL_URL_ROOT = "http://www.cise.ufl.edu/research/sparse/matrices"
 #Plain text file containing list of matrices
-MASTERLIST = "matrices.txt"
+const MASTERLIST = "matrices.txt"
 #Download UFL collection to this directory
-BASEDIR = "florida"
+const BASEDIR = "florida"
 
 # 1. Read in master list of matrices from BASEDIR/MASTERLIST
 #    If absent, generate this file. Requires Gumbo.jl
-Pkg.installed("Gumbo")==nothing || using Gumbo
+Pkg.installed("Gumbo") === nothing || using Gumbo
+
 isdir(BASEDIR) || mkdir(BASEDIR)
 if !isfile(joinpath(BASEDIR, MASTERLIST))
     Pkg.installed("Gumbo")===nothing && error("Parsing list from UFL website requires Gumbo.jl")
@@ -61,11 +63,9 @@ for (group, matrix) in matrices
     isdir(groupdir) || mkdir(groupdir)
 
     if !isfile(joinpath(groupdir, matrix*".mat"))
-        info("Downloading $group/$matrix.mat")
+        @info("Downloading $group/$matrix.mat")
         download(joinpath(UFL_URL_ROOT, "..", "mat", group, matrix*".mat"),
             joinpath(BASEDIR, group, matrix*".mat"))
     end
 end
-info("Downloaded $(length(matrices)) matrices")
-
-
+@info("Downloaded $(length(matrices)) matrices")
