@@ -2,14 +2,6 @@ import Base: iterate
 using Printf
 export cg, cg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
-# Conjugated dot product
-_dot(x, ::Val{true}) = sum(abs2, x)  # for x::Complex, returns Real
-_dot(x, y, ::Val{true}) = dot(x, y)
-
-# Unconjugated dot product
-_dot(x, ::Val{false}) = sum(xₖ^2 for xₖ in x)
-_dot(x, y, ::Val{false}) = sum(prod, zip(x,y))
-
 mutable struct CGIterable{matT, solT, vecT, numT <: Real, paramT <: Number, boolT <: Union{Val{true},Val{false}}}
     A::matT
     x::solT

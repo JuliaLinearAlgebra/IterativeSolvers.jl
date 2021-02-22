@@ -30,3 +30,14 @@ struct Identity end
 \(::Identity, x) = copy(x)
 ldiv!(::Identity, x) = x
 ldiv!(y, ::Identity, x) = copyto!(y, x)
+
+"""
+Conjugated and unconjugated dot products
+"""
+# Conjugated dot product
+_dot(x, ::Val{true}) = sum(abs2, x)  # for x::Complex, returns Real
+_dot(x, y, ::Val{true}) = dot(x, y)
+
+# Unconjugated dot product
+_dot(x, ::Val{false}) = sum(xₖ^2 for xₖ in x)
+_dot(x, y, ::Val{false}) = sum(prod, zip(x,y))
