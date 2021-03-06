@@ -60,13 +60,13 @@ Random.seed!(1234321)
         reltol = √eps(real(T))
 
         # Solve without preconditioner
-        x1, his1 = cg(A, b, reltol = reltol, maxiter = 100, log = true, conjugate_dot = false)
+        x1, his1 = cocg(A, b, reltol = reltol, maxiter = 100, log = true)
         @test isa(his1, ConvergenceHistory)
         @test norm(A * x1 - b) / norm(b) ≤ reltol
 
         # With an initial guess
         x_guess = rand(T, n)
-        x2, his2 = cg!(x_guess, A, b, reltol = reltol, maxiter = 100, log = true, conjugate_dot = false)
+        x2, his2 = cocg!(x_guess, A, b, reltol = reltol, maxiter = 100, log = true)
         @test isa(his2, ConvergenceHistory)
         @test x2 == x_guess
         @test norm(A * x2 - b) / norm(b) ≤ reltol
@@ -78,7 +78,7 @@ Random.seed!(1234321)
         end
         # Do an exact LU decomp of a nearby matrix
         F = lu(A + rand(T, n, n))
-        x3, his3 = cg(A, b, Pl = F, maxiter = 100, reltol = reltol, log = true, conjugate_dot = false)
+        x3, his3 = cocg(A, b, Pl = F, maxiter = 100, reltol = reltol, log = true)
         @test norm(A * x3 - b) / norm(b) ≤ reltol
     end
 end

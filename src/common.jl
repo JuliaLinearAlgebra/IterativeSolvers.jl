@@ -1,6 +1,6 @@
 import LinearAlgebra: ldiv!, \
 
-export Identity
+export Identity, ConjugatedDot, UnconjugatedDot
 
 #### Type-handling
 """
@@ -34,10 +34,12 @@ ldiv!(y, ::Identity, x) = copyto!(y, x)
 """
 Conjugated and unconjugated dot products
 """
-# Conjugated dot product
-_dot(x, ::Val{true}) = sum(abs2, x)  # for x::Complex, returns Real
-_dot(x, y, ::Val{true}) = dot(x, y)
+abstract type DotType end
+struct ConjugatedDot <: DotType end
+struct UnconjugatedDot <: DotType end
 
-# Unconjugated dot product
-_dot(x, ::Val{false}) = sum(xₖ^2 for xₖ in x)
-_dot(x, y, ::Val{false}) = sum(prod, zip(x,y))
+_norm(x, ::ConjugatedDot) = norm(x)
+_dot(x, y, ::ConjugatedDot) = dot(x, y)
+
+_norm(x, ::UnconjugatedDot) = sqrt(sum(xₖ^2 for xₖ in x))
+_dot(x, y, ::UnconjugatedDot) = sum(prod, zip(x, y))

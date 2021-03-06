@@ -1,8 +1,8 @@
 import Base: iterate
 using Printf
-export cg, cg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
+export cg, cg!, cocg, cocg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
-mutable struct CGIterable{matT, solT, vecT, numT <: Real, paramT <: Number, boolT <: Union{Val{true},Val{false}}}
+mutable struct CGIterable{matT, solT, vecT, numT <: Real, paramT <: Number, dotT <: DotType}
     A::matT
     x::solT
     r::vecT
@@ -13,10 +13,10 @@ mutable struct CGIterable{matT, solT, vecT, numT <: Real, paramT <: Number, bool
     ρ_prev::paramT
     maxiter::Int
     mv_products::Int
-    conjugate_dot::boolT
+    dot_type::dotT
 end
 
-mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Number, boolT <: Union{Val{true},Val{false}}}
+mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Number, dotT <: DotType}
     Pl::precT
     A::matT
     x::solT
@@ -28,7 +28,7 @@ mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Numb
     ρ_prev::paramT
     maxiter::Int
     mv_products::Int
-    conjugate_dot::boolT
+    dot_type::dotT
 end
 
 @inline converged(it::Union{CGIterable, PCGIterable}) = it.residual ≤ it.tol
@@ -49,13 +49,14 @@ function iterate(it::CGIterable, iteration::Int=start(it))
     end
 
     # u := r + βu (almost an axpy)
-    ρ = _dot(it.r, it.conjugate_dot)
+    ρ = isa(it.dot_type, ConjugatedDot) ?  it.residual^2 : _norm(it.r, it.dot_type)^2
     β = ρ / it.ρ_prev
+
     it.u .= it.r .+ β .* it.u
 
     # c = A * u
     mul!(it.c, it.A, it.u)
-    α = ρ / _dot(it.u, it.c, it.conjugate_dot)
+    α = ρ / _dot(it.u, it.c, it.dot_type)
 
     # Improve solution and residual
     it.ρ_prev = ρ
@@ -82,13 +83,13 @@ function iterate(it::PCGIterable, iteration::Int=start(it))
     ldiv!(it.c, it.Pl, it.r)
 
     # u := c + βu (almost an axpy)
-    ρ = _dot(it.r, it.c, it.conjugate_dot)
+    ρ = _dot(it.r, it.c, it.dot_type)
     β = ρ / it.ρ_prev
     it.u .= it.c .+ β .* it.u
 
     # c = A * u
     mul!(it.c, it.A, it.u)
-    α = ρ / _dot(it.u, it.c, it.conjugate_dot)
+    α = ρ / _dot(it.u, it.c, it.dot_type)
 
     # Improve solution and residual
     it.ρ_prev = ρ
@@ -125,7 +126,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
                       maxiter::Int = size(A, 2),
                       statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
                       initially_zero::Bool = false,
-                      conjugate_dot::Bool = true)
+                      dot_type::DotType = ConjugatedDot())
     u = statevars.u
     r = statevars.r
     c = statevars.c
@@ -145,13 +146,13 @@ function cg_iterator!(x, A, b, Pl = Identity();
 
     # Return the iterable
     if isa(Pl, Identity)
-        return CGIterable(A, x, r, c, u, tolerance, residual,
-            conjugate_dot ? one(real(eltype(r))) : one(eltype(r)),  # for conjugated dot, ρ_prev remains real
-            maxiter, mv_products, Val(conjugate_dot))
+        return CGIterable(A, x, r, c, u,
+            tolerance, residual, one(eltype(r)),
+            maxiter, mv_products, dot_type)
     else
         return PCGIterable(Pl, A, x, r, c, u,
             tolerance, residual, one(eltype(r)),
-            maxiter, mv_products, Val(conjugate_dot))
+            maxiter, mv_products, dot_type)
     end
 end
 
@@ -212,7 +213,7 @@ function cg!(x, A, b;
              statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
              verbose::Bool = false,
              Pl = Identity(),
-             conjugate_dot::Bool = true,
+             dot_type::DotType = ConjugatedDot(),
              kwargs...)
     history = ConvergenceHistory(partial = !log)
     history[:abstol] = abstol
@@ -221,7 +222,7 @@ function cg!(x, A, b;
 
     # Actually perform CG
     iterable = cg_iterator!(x, A, b, Pl; abstol = abstol, reltol = reltol, maxiter = maxiter,
-                            statevars = statevars, conjugate_dot = conjugate_dot, kwargs...)
+                            statevars = statevars, dot_type = dot_type, kwargs...)
     if log
         history.mvps = iterable.mv_products
     end
@@ -239,3 +240,18 @@ function cg!(x, A, b;
 
     log ? (iterable.x, history) : iterable.x
 end
+
+"""
+    cocg(A, b; kwargs...) -> x, [history]
+
+Same as [`cocg!`](@ref), but allocates a solution vector `x` initialized with zeros.
+"""
+cocg(A, b; kwargs...) = cocg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
+
+"""
+    cocg!(x, A, b; kwargs...) -> x, [history]
+
+Same as [`cg!`](@ref), but uses the unconjugated dot product instead of the usual,
+conjugated dot product.
+"""
+cocg!(x, A, b; kwargs...) = cg!(x, A, b; dot_type = UnconjugatedDot(), kwargs...)
