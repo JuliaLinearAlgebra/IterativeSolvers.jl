@@ -2,7 +2,7 @@ import Base: iterate
 using Printf
 export cg, cg!, cocg, cocg!, CGIterable, PCGIterable, cg_iterator!, CGStateVariables
 
-mutable struct CGIterable{matT, solT, vecT, numT <: Real, paramT <: Number, dotT <: DotType}
+mutable struct CGIterable{matT, solT, vecT, numT <: Real, paramT <: Number, dotT <: AbstractDot}
     A::matT
     x::solT
     r::vecT
@@ -16,7 +16,7 @@ mutable struct CGIterable{matT, solT, vecT, numT <: Real, paramT <: Number, dotT
     dot_type::dotT
 end
 
-mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Number, dotT <: DotType}
+mutable struct PCGIterable{precT, matT, solT, vecT, numT <: Real, paramT <: Number, dotT <: AbstractDot}
     Pl::precT
     A::matT
     x::solT
@@ -126,7 +126,7 @@ function cg_iterator!(x, A, b, Pl = Identity();
                       maxiter::Int = size(A, 2),
                       statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
                       initially_zero::Bool = false,
-                      dot_type::DotType = ConjugatedDot())
+                      dot_type::AbstractDot = ConjugatedDot())
     u = statevars.u
     r = statevars.r
     c = statevars.c
@@ -213,7 +213,7 @@ function cg!(x, A, b;
              statevars::CGStateVariables = CGStateVariables(zero(x), similar(x), similar(x)),
              verbose::Bool = false,
              Pl = Identity(),
-             dot_type::DotType = ConjugatedDot(),
+             dot_type::AbstractDot = ConjugatedDot(),
              kwargs...)
     history = ConvergenceHistory(partial = !log)
     history[:abstol] = abstol

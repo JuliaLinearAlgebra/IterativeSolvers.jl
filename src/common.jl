@@ -34,9 +34,9 @@ ldiv!(y, ::Identity, x) = copyto!(y, x)
 """
 Conjugated and unconjugated dot products
 """
-abstract type DotType end
-struct ConjugatedDot <: DotType end
-struct UnconjugatedDot <: DotType end
+abstract type AbstractDot end
+struct ConjugatedDot <: AbstractDot end
+struct UnconjugatedDot <: AbstractDot end
 
 _norm(x, ::ConjugatedDot) = norm(x)
 _dot(x, y, ::ConjugatedDot) = dot(x, y)
