@@ -71,11 +71,6 @@ Random.seed!(1234321)
         @test x2 == x_guess
         @test A*x2 ≈ b rtol=reltol
 
-        # The following tests fails CI on Windows and Ubuntu due to a
-        # `SingularException(4)`
-        if T == Float32 && (Sys.iswindows() || Sys.islinux())
-            continue
-        end
         # Do an exact LU decomp of a nearby matrix
         F = lu(A + rand(T, n, n))
         x3, his3 = cocg(A, b, Pl = F, maxiter = 100, reltol = reltol, log = true)
