@@ -32,7 +32,7 @@ Random.seed!(1234321)
 
         x,ch = cg(A, b; reltol=reltol, maxiter=2n, log=true)
         @test isa(ch, ConvergenceHistory)
-        @test norm(A*x - b) / norm(b) ≤ reltol
+        @test A*x ≈ b rtol=reltol
         @test ch.isconverged
 
         # If you start from the exact solution, you should converge immediately
@@ -62,14 +62,14 @@ Random.seed!(1234321)
         # Solve without preconditioner
         x1, his1 = cocg(A, b, reltol = reltol, maxiter = 100, log = true)
         @test isa(his1, ConvergenceHistory)
-        @test norm(A * x1 - b) / norm(b) ≤ reltol
+        @test A*x1 ≈ b rtol=reltol
 
         # With an initial guess
         x_guess = rand(T, n)
         x2, his2 = cocg!(x_guess, A, b, reltol = reltol, maxiter = 100, log = true)
         @test isa(his2, ConvergenceHistory)
         @test x2 == x_guess
-        @test norm(A * x2 - b) / norm(b) ≤ reltol
+        @test A*x2 ≈ b rtol=reltol
 
         # The following tests fails CI on Windows and Ubuntu due to a
         # `SingularException(4)`
@@ -79,7 +79,7 @@ Random.seed!(1234321)
         # Do an exact LU decomp of a nearby matrix
         F = lu(A + rand(T, n, n))
         x3, his3 = cocg(A, b, Pl = F, maxiter = 100, reltol = reltol, log = true)
-        @test norm(A * x3 - b) / norm(b) ≤ reltol
+        @test A*x3 ≈ b rtol=reltol
     end
 end
 
@@ -95,24 +95,24 @@ end
     @testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, Float32), Ti in (Int64, Int32)
         xCG = cg(A, rhs; reltol=reltol, maxiter=100)
         xJAC = cg(A, rhs; Pl=P, reltol=reltol, maxiter=100)
-        @test norm(A * xCG - rhs) ≤ reltol
-        @test norm(A * xJAC - rhs) ≤ reltol
+        @test A*xCG ≈ rhs rtol=reltol
+        @test A*xJAC ≈ rhs rtol=reltol
     end
 
     Af = LinearMap(A)
     @testset "Function" begin
         xCG = cg(Af, rhs; reltol=reltol, maxiter=100)
         xJAC = cg(Af, rhs; Pl=P, reltol=reltol, maxiter=100)
-        @test norm(A * xCG - rhs) ≤ reltol
-        @test norm(A * xJAC - rhs) ≤ reltol
+        @test A*xCG ≈ rhs rtol=reltol
+        @test A*xJAC ≈ rhs rtol=reltol
     end
 
     @testset "Function with specified starting guess" begin
         x0 = randn(size(rhs))
         xCG, hCG = cg!(copy(x0), Af, rhs; abstol=abstol, reltol=0.0, maxiter=100, log=true)
         xJAC, hJAC = cg!(copy(x0), Af, rhs; Pl=P, abstol=abstol, reltol=0.0, maxiter=100, log=true)
-        @test norm(A * xCG - rhs) ≤ reltol
-        @test norm(A * xJAC - rhs) ≤ reltol
+        @test A*xCG ≈ rhs rtol=reltol
+        @test A*xJAC ≈ rhs rtol=reltol
         @test niters(hJAC) == niters(hCG)
     end
 end
