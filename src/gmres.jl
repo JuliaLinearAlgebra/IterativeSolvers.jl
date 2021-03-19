@@ -28,7 +28,7 @@ Residual(order, T::Type) = Residual{T, real(T)}(
     one(real(T))
 )
 
-mutable struct GMRESIterable{preclT, precrT, solT, rhsT, vecT, arnoldiT <: ArnoldiDecomp, residualT <: Residual, resT <: Real}
+mutable struct GMRESIterable{preclT, precrT, solT, rhsT, vecT, arnoldiT <: ArnoldiDecomp, residualT <: Residual, resT <: Real, orthmethT}
     Pl::preclT
     Pr::precrT
     x::solT
@@ -44,6 +44,8 @@ mutable struct GMRESIterable{preclT, precrT, solT, rhsT, vecT, arnoldiT <: Arnol
     maxiter::Int
     tol::resT
     β::resT
+
+    orth_meth::orthmethT
 end
 
 converged(g::GMRESIterable) = g.residual.current ≤ g.tol
@@ -66,7 +68,8 @@ function iterate(g::GMRESIterable, iteration::Int=start(g))
     g.arnoldi.H[g.k + 1, g.k] = orthogonalize_and_normalize!(
         view(g.arnoldi.V, :, 1 : g.k),
         view(g.arnoldi.V, :, g.k + 1),
-        view(g.arnoldi.H, 1 : g.k, g.k)
+        view(g.arnoldi.H, 1 : g.k, g.k),
+        g.orth_meth
     )
 
     # Implicitly computes the residual
@@ -109,7 +112,8 @@ function gmres_iterable!(x, A, b;
                          reltol::Real = sqrt(eps(real(eltype(b)))),
                          restart::Int = min(20, size(A, 2)),
                          maxiter::Int = size(A, 2),
-                         initially_zero::Bool = false)
+                         initially_zero::Bool = false,
+                         orth_meth = ModifiedGramSchmidt)
     T = eltype(x)
 
     # Approximate solution
@@ -126,7 +130,8 @@ function gmres_iterable!(x, A, b;
 
     GMRESIterable(Pl, Pr, x, b, Ax,
         arnoldi, residual,
-        mv_products, restart, 1, maxiter, tolerance, residual.current
+        mv_products, restart, 1, maxiter, tolerance, residual.current,
+        orth_meth
     )
 end
 
@@ -184,7 +189,8 @@ function gmres!(x, A, b;
                 maxiter::Int = size(A, 2),
                 log::Bool = false,
                 initially_zero::Bool = false,
-                verbose::Bool = false)
+                verbose::Bool = false,
+                orth_meth = ModifiedGramSchmidt)
     history = ConvergenceHistory(partial = !log, restart = restart)
     history[:abstol] = abstol
     history[:reltol] = reltol
@@ -192,7 +198,8 @@ function gmres!(x, A, b;
 
     iterable = gmres_iterable!(x, A, b; Pl = Pl, Pr = Pr,
                                abstol = abstol, reltol = reltol, maxiter = maxiter,
-                               restart = restart, initially_zero = initially_zero)
+                               restart = restart, initially_zero = initially_zero,
+                               orth_meth = orth_meth)
 
     verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","resnorm")
 
