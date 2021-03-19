@@ -240,7 +240,7 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual (QMR) method.
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  `|r_k| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iteration.
 

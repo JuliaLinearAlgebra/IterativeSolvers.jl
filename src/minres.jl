@@ -178,7 +178,7 @@ Solve Ax = b for (skew-)Hermitian matrices A using MINRES.
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  `|r_k| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
   is the residual in the `k`th iteration
   !!! note
       The residual is computed only approximately.

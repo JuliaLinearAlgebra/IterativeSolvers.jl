@@ -120,7 +120,7 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  `|r_k| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
   is the residual in the `k`th iteration;
 - `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;
 - `Pl = Identity()`: left preconditioner;
