@@ -190,7 +190,7 @@ function gmres!(x, A, b;
                 log::Bool = false,
                 initially_zero::Bool = false,
                 verbose::Bool = false,
-                orth_meth = ModifiedGramSchmidt)
+                orth_meth::OrthogonalizationMethod = ModifiedGramSchmidt)
     history = ConvergenceHistory(partial = !log, restart = restart)
     history[:abstol] = abstol
     history[:reltol] = reltol
