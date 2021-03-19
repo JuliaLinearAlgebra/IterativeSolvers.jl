@@ -113,7 +113,7 @@ function gmres_iterable!(x, A, b;
                          restart::Int = min(20, size(A, 2)),
                          maxiter::Int = size(A, 2),
                          initially_zero::Bool = false,
-                         orth_meth = ModifiedGramSchmidt)
+                         orth_meth::OrthogonalizationMethod = ModifiedGramSchmidt())
     T = eltype(x)
 
     # Approximate solution
@@ -168,7 +168,7 @@ Solves the problem ``Ax = b`` with restarted GMRES.
 - `Pr`: right preconditioner;
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iterations.
-- `orth_meth = ModifiedGramSchmidt`: orthogonalization method (ModifiedGramSchmidt, ClassicalGramSchmidt, DGKS)
+- `orth_meth::OrthogonalizationMethod = ModifiedGramSchmidt()`: orthogonalization method (ModifiedGramSchmidt(), ClassicalGramSchmidt(), DGKS())
 
 # Return values
 
@@ -191,7 +191,7 @@ function gmres!(x, A, b;
                 log::Bool = false,
                 initially_zero::Bool = false,
                 verbose::Bool = false,
-                orth_meth = ModifiedGramSchmidt)
+                orth_meth::OrthogonalizationMethod = ModifiedGramSchmidt())
     history = ConvergenceHistory(partial = !log, restart = restart)
     history[:abstol] = abstol
     history[:reltol] = reltol
