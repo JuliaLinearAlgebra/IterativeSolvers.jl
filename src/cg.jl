@@ -185,7 +185,7 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
   is approximately the residual in the `k`th iteration.
   !!! note
       The true residual norm is never explicitly computed during the iterations
-      for performance reasons; it may have accumulate rounding errors.
+      for performance reasons; it may accumulate rounding errors.
 - `maxiter::Int = size(A,2)`: maximum number of iterations;
 - `verbose::Bool = false`: print method information;
 - `log::Bool = false`: keep track of the residual norm in each iteration.
