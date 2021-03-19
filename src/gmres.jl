@@ -168,6 +168,7 @@ Solves the problem ``Ax = b`` with restarted GMRES.
 - `Pr`: right preconditioner;
 - `log::Bool`: keep track of the residual norm in each iteration;
 - `verbose::Bool`: print convergence information during the iterations.
+- `orth_meth = ModifiedGramSchmidt`: orthogonalization method (ModifiedGramSchmidt, ClassicalGramSchmidt, DGKS)
 
 # Return values
 
@@ -190,7 +191,7 @@ function gmres!(x, A, b;
                 log::Bool = false,
                 initially_zero::Bool = false,
                 verbose::Bool = false,
-                orth_meth::OrthogonalizationMethod = ModifiedGramSchmidt)
+                orth_meth = ModifiedGramSchmidt)
     history = ConvergenceHistory(partial = !log, restart = restart)
     history[:abstol] = abstol
     history[:reltol] = reltol
