@@ -156,7 +156,7 @@ Solves the problem ``Ax = b`` with restarted GMRES.
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k = A * x_k - b`
 - `restart::Int = min(20, size(A, 2))`: restarts GMRES after specified number of iterations;
 - `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;
 - `Pl`: left preconditioner;

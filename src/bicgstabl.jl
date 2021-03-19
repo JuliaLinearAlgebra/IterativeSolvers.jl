@@ -159,7 +159,7 @@ For BiCGStab(l) this is a less dubious term than "number of iterations";
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| ≤ max(reltol * resnorm, abstol)`, where `r_k ≈ A * x_k - b`
+  `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k ≈ A * x_k - b`
   is the approximate residual in the `k`th iteration;
   !!! note
       1. The true residual norm is never computed during the iterations,

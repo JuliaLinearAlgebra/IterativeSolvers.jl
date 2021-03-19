@@ -181,7 +181,7 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| ≤ max(reltol * resnorm, abstol)`, where `r_k ≈ A * x_k - b`
+  `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k ≈ A * x_k - b`
   is approximately the residual in the `k`th iteration.
   !!! note
       The true residual norm is never explicitly computed during the iterations

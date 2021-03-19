@@ -27,7 +27,7 @@ shadow space.
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k = A * x_k - b`
   is the residual in the `k`th iteration;
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `log::Bool`: keep track of the residual norm in each iteration;
