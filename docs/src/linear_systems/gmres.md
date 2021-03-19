@@ -13,7 +13,7 @@ gmres!
 
 The implementation pre-allocates a matrix $V$ of size `n` by `restart` whose columns form an orthonormal basis for the Krylov subspace. This allows BLAS2 operations when updating the solution vector $x$. The Hessenberg matrix is also pre-allocated.
 
-Modified Gram-Schmidt is used to orthogonalize the columns of $V$ by default, since it is more numerical stable then classical Gram-Schmidt. However will classical Gram-Schmidt (without or with the DGKS correction step) benefit more from multithreading.
+By default, modified Gram-Schmidt is used to orthogonalize the columns of $V$, since it is numerically more stable than classical Gram-Schmidt. Modified Gram-Schmidt is however inherently sequential, and if stability is not a concern, classical Gram-Schmidt can be used, which is implemented using BLAS2 operations. As a compromise the "DGKS criterion" can be used, which conditionally applies classical Gram-Schmidt repeatedly to stabilize it, and is typically one to two times slower than classical Gram-Schmidt. 
 
 The computation of the residual norm is implemented in a non-standard way, namely keeping track of a vector $\gamma$ in the null-space of $H_k^*$, which is the adjoint of the $(k + 1) \times k$ Hessenberg matrix $H_k$ at the $k$th iteration. Only when $x$ needs to be updated is the Hessenberg matrix mutated with Givens rotations.
 
