@@ -251,7 +251,8 @@ cocg(A, b; kwargs...) = cocg!(zerox(A, b), A, b; initially_zero = true, kwargs..
 """
     cocg!(x, A, b; kwargs...) -> x, [history]
 
-Same as [`cg!`](@ref), but uses the unconjugated dot product instead of the usual,
-conjugated dot product.
+Same as [`cg!`](@ref), but uses the unconjugated dot product (`xᵀy`) instead of the usual,
+conjugated dot product (`x'y`) in the algorithm.  It is for solving linear systems with
+matrices `A` that are complex-symmetric (`Aᵀ == A`) rahter than Hermitian (`A' == A`).
 """
 cocg!(x, A, b; kwargs...) = cg!(x, A, b; dotproduct = UnconjugatedDot(), kwargs...)
