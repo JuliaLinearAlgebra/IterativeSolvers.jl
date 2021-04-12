@@ -42,4 +42,4 @@ _norm(x, ::ConjugatedDot) = norm(x)
 _dot(x, y, ::ConjugatedDot) = dot(x, y)
 
 _norm(x, ::UnconjugatedDot) = sqrt(sum(xₖ->xₖ^2, x))
-_dot(x, y, ::UnconjugatedDot) = transpose(@view(x[:])) * @view(y[:])  # allocating, but faster than sum(prod, zip(x,y))
+_dot(x, y, ::UnconjugatedDot) = transpose(@view(x[:])) * @view(y[:])
