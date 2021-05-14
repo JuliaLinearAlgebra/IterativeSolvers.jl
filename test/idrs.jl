@@ -5,7 +5,6 @@ using Test
 using Random
 using LinearAlgebra
 using SparseArrays
-using IncompleteLU
 
 @testset "IDR(s)" begin
 
@@ -52,7 +51,7 @@ end
     @test history.isconverged
     @test norm(A * x - b) / norm(b) ≤ reltol
 
-    Apre = ilu(A)
+    Apre = lu(A)
     xpre, historypre = idrs(A, b, Pl = Apre, log=true)
     @test historypre.isconverged
     @test norm(A * xpre - b) / norm(b) ≤ reltol
