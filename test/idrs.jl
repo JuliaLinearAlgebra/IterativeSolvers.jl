@@ -42,7 +42,7 @@ end
     @test norm(A * x - b) / norm(b) ≤ reltol
 end
 
-@testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
+@testset "SparseMatrixCSC{$T, $Ti} with preconditioner" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
     A = sprand(T, 1000, 1000, 0.1) + 30 * I
     b = rand(T, 1000)
     reltol = √eps(real(T))
