@@ -5,6 +5,7 @@ using Test
 using Random
 using LinearAlgebra
 using SparseArrays
+using IncompleteLU
 
 @testset "IDR(s)" begin
 
@@ -40,6 +41,25 @@ end
     x, history = idrs(A, b, log=true)
     @test history.isconverged
     @test norm(A * x - b) / norm(b) ≤ reltol
+end
+
+@testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
+    A = sprand(T, 1000, 1000, 0.1) + 30 * I
+    b = rand(T, 1000)
+    reltol = √eps(real(T))
+
+    x, history = idrs(A, b, log=true)
+    @test history.isconverged
+    @test norm(A * x - b) / norm(b) ≤ reltol
+
+    Apre = ilu(A)
+    xpre, historypre = idrs(A, b, Pl = Apre, log=true)
+    @test historypre.isconverged
+    @test norm(A * xpre - b) / norm(b) ≤ reltol
+
+    @test isapprox(x, xpre, rtol = 1e-3)
+    @test historypre.iters < history.iters
+
 end
 
 @testset "Maximum number of iterations" begin
