@@ -42,6 +42,25 @@ end
     @test norm(A * x - b) / norm(b) ≤ reltol
 end
 
+@testset "SparseMatrixCSC{$T, $Ti} with preconditioner" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
+    A = sprand(T, 1000, 1000, 0.1) + 30 * I
+    b = rand(T, 1000)
+    reltol = √eps(real(T))
+
+    x, history = idrs(A, b, log=true)
+    @test history.isconverged
+    @test norm(A * x - b) / norm(b) ≤ reltol
+
+    Apre = lu(A)
+    xpre, historypre = idrs(A, b, Pl = Apre, log=true)
+    @test historypre.isconverged
+    @test norm(A * xpre - b) / norm(b) ≤ reltol
+
+    @test isapprox(x, xpre, rtol = 1e-3)
+    @test historypre.iters < history.iters
+
+end
+
 @testset "Maximum number of iterations" begin
     x, history = idrs(rand(5, 5), rand(5), log=true, maxiter=2)
     @test history.iters == 2
