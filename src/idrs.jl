@@ -131,11 +131,11 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
                 Q .+= c[i-k+1] .* U[i]
             end
 
-            # Preconditioning
-            ldiv!(Pl, V)
-
             # Compute new U[:,k] and G[:,k], G[:,k] is in space G_j
             V .= R .- V
+
+            # Preconditioning
+            ldiv!(Pl, V)
 
             U[k] .= Q .+ om .* V
             mul!(G[k], A, U[k])
