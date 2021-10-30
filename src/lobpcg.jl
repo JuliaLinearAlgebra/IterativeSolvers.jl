@@ -787,7 +787,7 @@ Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisf
 function lobpcg(A, largest::Bool, nev::Int; kwargs...)
     lobpcg(A, nothing, largest, nev; kwargs...)
 end
-function lobpcg(A, B, largest::Bool, nev::Int; rng::AbstractRNG=MersenneTwister(0), kwargs...)
+function lobpcg(A, B, largest::Bool, nev::Int; rng::AbstractRNG=MersenneTwister(seed), kwargs...)
     lobpcg(A, B, largest, rand(rng, eltype(A), size(A, 1), nev); not_zeros=true, rng=rng, kwargs...)
 end
 
@@ -827,7 +827,7 @@ function lobpcg(A, largest::Bool, X0; kwargs...)
 end
 function lobpcg(A, B, largest, X0;
                 not_zeros=false, log=false, P=nothing, maxiter=200,
-                rng::AbstractRNG=MersenneTwister(0),
+                rng::AbstractRNG=MersenneTwister(seed),
                 C=nothing, tol::Real=default_tolerance(eltype(X0)))
     X = copy(X0)
     n = size(X, 1)
@@ -866,7 +866,7 @@ end
 
 """
 function lobpcg!(iterator::LOBPCGIterator; log=false, maxiter=200, not_zeros=false,
-                 rng::AbstractRNG=MersenneTwister(0),
+                 rng::AbstractRNG=MersenneTwister(seed),
                  tol::Real=default_tolerance(eltype(iterator.XBlocks.block)))
     X = iterator.XBlocks.block
     iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
@@ -931,7 +931,7 @@ function lobpcg(A, largest::Bool, X0, nev::Int; kwargs...)
 end
 function lobpcg(A, B, largest::Bool, X0, nev::Int;
                 not_zeros=false, log=false, P=nothing, maxiter=200,
-                rng::AbstractRNG=MersenneTwister(0),
+                rng::AbstractRNG=MersenneTwister(seed),
                 C=nothing, tol::Real=default_tolerance(eltype(X0)))
     n = size(X0, 1)
     sizeX = size(X0, 2)

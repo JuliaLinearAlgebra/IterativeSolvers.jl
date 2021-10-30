@@ -62,7 +62,7 @@ See [`powm!`](@ref). Calls `powm!(B, x0; kwargs...)` with
 `x0` initialized as a random, complex unit vector using
 `rng::AbstractRNG`.
 """
-function powm(B; rng::AbstractRNG=MersenneTwister(0), kwargs...)
+function powm(B; rng::AbstractRNG=MersenneTwister(seed), kwargs...)
     x0 = rand(rng, Complex{real(eltype(B))}, size(B, 1))
     rmul!(x0, one(eltype(B)) / norm(x0))
     powm!(B, x0; kwargs...)
@@ -169,7 +169,7 @@ Fmap = LinearMap{ComplexF64}((y, x) -> ldiv!(y, F, x), 50, ismutating = true)
 λ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """
-function invpowm(B; rng::AbstractRNG=MersenneTwister(0), kwargs...)
+function invpowm(B; rng::AbstractRNG=MersenneTwister(seed), kwargs...)
     x0 = rand(rng, Complex{real(eltype(B))}, size(B, 1))
     rmul!(x0, one(eltype(B)) / norm(x0))
     invpowm!(B, x0; kwargs...)

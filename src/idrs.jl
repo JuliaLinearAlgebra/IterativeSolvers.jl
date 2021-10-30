@@ -82,7 +82,7 @@ end
 
 function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false,
-    rng::AbstractRNG=MersenneTwister(0)) where {T, precT}
+    rng::AbstractRNG=MersenneTwister(seed)) where {T, precT}
 
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - A*X

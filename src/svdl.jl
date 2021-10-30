@@ -176,7 +176,7 @@ end
 #########################
 
 function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::Int=2l,
-    j::Int=l, rng::AbstractRNG=MersenneTwister(l), v0::AbstractVector = Vector{eltype(A)}(randn(rng, size(A, 2))) |> x->rmul!(x, inv(norm(x))),
+    j::Int=l, rng::AbstractRNG=MersenneTwister(seed), v0::AbstractVector = Vector{eltype(A)}(randn(rng, size(A, 2))) |> x->rmul!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, vecs=:none, dolock::Bool=false)
 
