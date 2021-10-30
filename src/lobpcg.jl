@@ -943,7 +943,7 @@ function lobpcg(A, B, largest::Bool, X0, nev::Int;
     iterator = LOBPCGIterator(A, B, largest, X, nev, P, C)
 
     r = EmptyLOBPCGResults(X, nev, tol, maxiter)
-    rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
+    rnext = lobpcg!(iterator, rng=rng, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
     append!(r, rnext, 0)
     converged_x = sizeX
     while converged_x < nev
@@ -952,13 +952,13 @@ function lobpcg(A, B, largest::Bool, X0, nev::Int;
             update!(iterator.constr!, iterator.XBlocks.block[:, 1:cutoff], iterator.XBlocks.B_block[:, 1:cutoff])
             X[:, 1:sizeX-cutoff] .= X[:, cutoff+1:sizeX]
             rand!(rng, X[:, cutoff+1:sizeX])
-            rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
+            rnext = lobpcg!(iterator, rng=rng, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
             append!(r, rnext, converged_x, sizeX-cutoff)
             converged_x += sizeX-cutoff
         else
             update!(iterator.constr!, iterator.XBlocks.block, iterator.XBlocks.B_block)
             rand!(rng, X)
-            rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
+            rnext = lobpcg!(iterator, rng=rng, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
             append!(r, rnext, converged_x)
             converged_x += sizeX
         end
