@@ -787,8 +787,8 @@ Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisf
 function lobpcg(A, largest::Bool, nev::Int; kwargs...)
     lobpcg(A, nothing, largest, nev; kwargs...)
 end
-function lobpcg(A, B, largest::Bool, nev::Int; kwargs...)
-    lobpcg(A, B, largest, rand(eltype(A), size(A, 1), nev); not_zeros=true, kwargs...)
+function lobpcg(A, B, largest::Bool, nev::Int; rng::AbstractRNG=MersenneTwister(0), kwargs...)
+    lobpcg(A, B, largest, rand(rng, eltype(A), size(A, 1), nev); not_zeros=true, rng=rng, kwargs...)
 end
 
 """
@@ -804,6 +804,7 @@ end
 ## Keywords
 
 - `not_zeros`: default is `false`. If `true`, `X0` will be assumed to not have any all-zeros column.
+- `rng::AbstractRNG`: generator for pseudorandom initialization
 
 - `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
     states; if `false` only `results.trace` will be empty;
@@ -826,6 +827,7 @@ function lobpcg(A, largest::Bool, X0; kwargs...)
 end
 function lobpcg(A, B, largest, X0;
                 not_zeros=false, log=false, P=nothing, maxiter=200,
+                rng::AbstractRNG=MersenneTwister(0),
                 C=nothing, tol::Real=default_tolerance(eltype(X0)))
     X = copy(X0)
     n = size(X, 1)
@@ -835,7 +837,7 @@ function lobpcg(A, B, largest, X0;
 
     iterator = LOBPCGIterator(A, B, largest, X, P, C)
 
-    return lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
+    return lobpcg!(iterator, rng=rng, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
 end
 
 """
@@ -849,6 +851,7 @@ end
 ## Keywords
 
 - `not_zeros`: default is `false`. If `true`, the initial Ritz vectors will be assumed to not have any all-zeros column.
+- `rng::AbstractRNG`: generator for pseudorandom initialization
 
 - `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
     states; if `false` only `results.trace` will be empty;
@@ -863,13 +866,14 @@ end
 
 """
 function lobpcg!(iterator::LOBPCGIterator; log=false, maxiter=200, not_zeros=false,
+                 rng::AbstractRNG=MersenneTwister(0),
                  tol::Real=default_tolerance(eltype(iterator.XBlocks.block)))
     X = iterator.XBlocks.block
     iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
     if !not_zeros
         @views for j in 1:size(X,2)
             if all(x -> x==0, X[:, j])
-                @inbounds X[:,j] .= rand.()
+                @inbounds X[:,j] .= rand.(rng)
             end
         end
         iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
@@ -877,7 +881,7 @@ function lobpcg!(iterator::LOBPCGIterator; log=false, maxiter=200, not_zeros=fal
     n = size(X, 1)
     sizeX = size(X, 2)
     iterator.iteration[] = 1
-    while iterator.iteration[] <= maxiter 
+    while iterator.iteration[] <= maxiter
         state = iterator(tol, log)
         if log
             push!(iterator.trace, state)
@@ -927,6 +931,7 @@ function lobpcg(A, largest::Bool, X0, nev::Int; kwargs...)
 end
 function lobpcg(A, B, largest::Bool, X0, nev::Int;
                 not_zeros=false, log=false, P=nothing, maxiter=200,
+                rng::AbstractRNG=MersenneTwister(0),
                 C=nothing, tol::Real=default_tolerance(eltype(X0)))
     n = size(X0, 1)
     sizeX = size(X0, 2)
@@ -946,13 +951,13 @@ function lobpcg(A, B, largest::Bool, X0, nev::Int;
             cutoff = sizeX-(nev-converged_x)
             update!(iterator.constr!, iterator.XBlocks.block[:, 1:cutoff], iterator.XBlocks.B_block[:, 1:cutoff])
             X[:, 1:sizeX-cutoff] .= X[:, cutoff+1:sizeX]
-            rand!(X[:, cutoff+1:sizeX])
+            rand!(rng, X[:, cutoff+1:sizeX])
             rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
             append!(r, rnext, converged_x, sizeX-cutoff)
             converged_x += sizeX-cutoff
         else
             update!(iterator.constr!, iterator.XBlocks.block, iterator.XBlocks.B_block)
-            rand!(X)
+            rand!(rng, X)
             rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
             append!(r, rnext, converged_x)
             converged_x += sizeX

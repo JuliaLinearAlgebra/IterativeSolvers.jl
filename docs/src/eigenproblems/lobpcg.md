@@ -13,6 +13,10 @@ lobpcg!
 
 A `LOBPCGIterator` is created to pre-allocate all the memory required by the method using the constructor `LOBPCGIterator(A, B, largest, X, P, C)` where `A` and `B` are the matrices from the generalized eigenvalue problem, `largest` indicates if the problem is a maximum or minimum eigenvalue problem, `X` is the initial eigenbasis, randomly sampled if not input, where `size(X, 2)` is the block size `bs`. `P` is the preconditioner, `nothing` by default, and `C` is the constraints matrix. The desired `k` eigenvalues are found `bs` at a time.
 
+A deterministic seed is used for generating pseudo-random initial
+data for the algorithm; this can be controlled by passing a
+different pseudorandom number generator (an [`AbstractRNG`](https://docs.julialang.org/en/v1/stdlib/Random/#Random.AbstractRNG)) via
+the `rng` keyword argument.
 
 ## References
 Implementation is based on [^Knyazev1993] and [^Scipy].

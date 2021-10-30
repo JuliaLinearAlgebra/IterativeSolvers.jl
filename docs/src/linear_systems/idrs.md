@@ -15,3 +15,8 @@ The current implementation is based on the [MATLAB version](http://ta.twi.tudelf
 
 [^Sonneveld2008]: IDR(s): a family of simple and fast algorithms for solving large nonsymmetric linear systems. P. Sonneveld and M. B. van Gijzen SIAM J. Sci. Comput. Vol. 31, No. 2, pp. 1035--1062, 2008
 [^VanGijzen2011]: Algorithm 913: An Elegant IDR(s) Variant that Efficiently Exploits Bi-orthogonality Properties. M. B. van Gijzen and P. Sonneveld ACM Trans. Math. Software,, Vol. 38, No. 1, pp. 5:1-5:19, 2011
+
+A deterministic seed is used for generating pseudo-random initial
+data for the algorithm; this can be controlled by passing a
+different pseudorandom number generator (an [`AbstractRNG`](https://docs.julialang.org/en/v1/stdlib/Random/#Random.AbstractRNG)) via
+the `rng` keyword argument.
