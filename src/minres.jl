@@ -183,8 +183,6 @@ Solve Ax = b for (skew-)Hermitian matrices A using MINRES.
   !!! note
       The residual is computed only approximately.
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
-- `Pl`: left preconditioner;
-- `Pr`: right preconditioner;
 - `log::Bool = false`: keep track of the residual norm in each iteration;
 - `verbose::Bool = false`: print convergence information during the iterations.
 
