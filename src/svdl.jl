@@ -201,7 +201,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
         extend!(log, A, L, k)
         if verbose
             elapsedtime = round((time_ns()-T0)*1e-9, digits=3)
-            info("Iteration $iter: $elapsedtime seconds")
+            @info("Iteration $iter: $elapsedtime seconds")
         end
 
         conv = isconverged(L, F, l, tol, reltol, log, verbose)

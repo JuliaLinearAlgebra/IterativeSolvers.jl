@@ -34,7 +34,7 @@ m = 3
     end
 
     # Assuming V is a matrix
-    @testset "Using $method" for method = (DGKS, ClassicalGramSchmidt, ModifiedGramSchmidt)
+    @testset "Using $method" for method = (DGKS(), ClassicalGramSchmidt(), ModifiedGramSchmidt())
 
         # Projection size
         h = zeros(T, m)
@@ -55,7 +55,7 @@ m = 3
 
         # Orthogonalize w in-place
         w = copy(w_original)
-        nrm = orthogonalize_and_normalize!(V_vec, w, h, ModifiedGramSchmidt)
+        nrm = orthogonalize_and_normalize!(V_vec, w, h, ModifiedGramSchmidt())
 
         is_orthonormalized(w, h, nrm)
     end

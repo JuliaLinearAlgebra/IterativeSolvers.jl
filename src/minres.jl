@@ -178,13 +178,11 @@ Solve Ax = b for (skew-)Hermitian matrices A using MINRES.
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k = A * x_k - b`
   is the residual in the `k`th iteration
   !!! note
       The residual is computed only approximately.
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
-- `Pl`: left preconditioner;
-- `Pr`: right preconditioner;
 - `log::Bool = false`: keep track of the residual norm in each iteration;
 - `verbose::Bool = false`: print convergence information during the iterations.
 

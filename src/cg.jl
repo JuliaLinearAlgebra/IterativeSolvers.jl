@@ -183,8 +183,11 @@ cg(A, b; kwargs...) = cg!(zerox(A, b), A, b; initially_zero = true, kwargs...)
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
-  is the residual in the `k`th iteration;
+  `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k ≈ A * x_k - b`
+  is approximately the residual in the `k`th iteration.
+  !!! note
+      The true residual norm is never explicitly computed during the iterations
+      for performance reasons; it may accumulate rounding errors.
 - `maxiter::Int = size(A,2)`: maximum number of iterations;
 - `verbose::Bool = false`: print method information;
 - `log::Bool = false`: keep track of the residual norm in each iteration.

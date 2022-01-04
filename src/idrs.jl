@@ -24,10 +24,11 @@ shadow space.
 ## Keywords
 
 - `s::Integer = 8`: dimension of the shadow space;
+- `Pl::precT`: left preconditioner,
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition
-  `|r_k| / |r_0| ≤ max(reltol * resnorm, abstol)`, where `r_k = A * x_k - b`
+  `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k = A * x_k - b`
   is the residual in the `k`th iteration;
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `log::Bool`: keep track of the residual norm in each iteration;
@@ -46,6 +47,7 @@ shadow space.
 """
 function idrs!(x, A, b;
                s = 8,
+               Pl = Identity(),
                abstol::Real = zero(real(eltype(b))),
                reltol::Real = sqrt(eps(real(eltype(b)))),
                maxiter=size(A, 2),
@@ -55,7 +57,7 @@ function idrs!(x, A, b;
     history[:abstol] = abstol
     history[:reltol] = reltol
     log && reserve!(history, :resnorm, maxiter)
-    idrs_method!(history, x, A, b, s, abstol, reltol, maxiter; kwargs...)
+    idrs_method!(history, x, A, b, s, Pl, abstol, reltol, maxiter; kwargs...)
     log && shrink!(history)
     log ? (x, history) : x
 end
@@ -78,8 +80,8 @@ end
 end
 
 function idrs_method!(log::ConvergenceHistory, X, A, C::T,
-    s::Number, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
-    ) where {T}
+    s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
+    ) where {T, precT}
 
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - A*X
@@ -132,6 +134,9 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
             # Compute new U[:,k] and G[:,k], G[:,k] is in space G_j
             V .= R .- V
 
+            # Preconditioning
+            ldiv!(Pl, V)
+
             U[k] .= Q .+ om .* V
             mul!(G[k], A, U[k])
 
@@ -181,6 +186,10 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
         # Note: r is already perpendicular to P so v = r
         copyto!(V, R)
+
+        # Preconditioning
+        ldiv!(Pl, V)
+
         mul!(Q, A, V)
         om = omega(Q, R)
         R .-= om .* Q
