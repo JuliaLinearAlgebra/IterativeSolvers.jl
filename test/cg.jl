@@ -17,7 +17,7 @@ end
 
 ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 
-@testset "Conjugate Gradients" begin
+@testset "Conjugate Gradient" begin
 
 Random.seed!(1234321)
 
