@@ -27,6 +27,9 @@ include("idrs.jl")
 # QMR
 include("qmr.jl")
 
+# Look-Ahead Lanczos
+include("lal.jl")
+
 #Chebyshev
 include("chebyshev.jl")
 
