@@ -1,3 +1,4 @@
+using Printf
 import Base: iterate
 import LinearAlgebra: UpperTriangular
 
@@ -335,7 +336,7 @@ function _update_VW_sequence!(ld)
     # Alg. 5.2.16
     _update_Flastcol!(ld)
     # Alg. 5.2.17
-    innerv = inner_ok && _is_singular(ld.D)
+    innerv = inner_ok && _is_singular(ld.D[ld.nl[ld.l]:end, ld.nl[ld.l]:end])
     # Alg. 5.2.18
     _update_L!(ld, innerv)
     # Alg. 5.2.19

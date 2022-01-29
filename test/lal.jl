@@ -6,7 +6,7 @@ using Test
 # Equation references and identities from:
 # Freund, R. W., & Nachtigal, N. M. (1994). An Implementation of the QMR Method Based on Coupled Two-Term Recurrences. SIAM Journal on Scientific Computing, 15(2), 313–337. https://doi.org/10.1137/0915022
 
-function _iterate_and_test_intermediates(ld)
+function _iterate_and_collect_lal_intermediates(ld)
     # iterates through ld and collects the intermediate matrices by appending the last
     # row and column to the matrix being built
     # returns a NamedTuple with the same names as `ld`
@@ -52,16 +52,13 @@ function _iterate_and_test_intermediates(ld)
             F̃ = [F̃ ld.F̃lastcol; (transpose(F * Γ[1:end-1, 1:end-1]) / Γ[1:end-1, 1:end-1])[end:end, :]]
             U = [U ld.U[1:end-1, end]; ld.U[end:end, :]]
             L = [L ld.L[1:end-1, end]; ld.L[end:end, :]]
-
-            results = (P=P, Q=Q, W=W, V=V, γ=γ, Γ=Γ, D=D, E=E, F=F, F̃=F̃, U=U, L=L, n=ld.n, A=ld.A, At=ld.At)
-            _test_lal_identities(results)
         end
     end
 
     return (P=P, Q=Q, W=W, V=V, γ=γ, Γ=Γ, D=D, E=E, F=F, F̃=F̃, U=U, L=L, n=ld.n, A=ld.A, At=ld.At)
 end
 
-function _test_lal_identities(ld)
+function test_lal_identities(ld)
     # Note: V, W, Γ are all at n+1, but the values at n are use for some identities
     Vn = ld.V[:, 1:end-1]
     Wn = ld.W[:, 1:end-1]
@@ -121,7 +118,7 @@ function _test_lal_identities(ld)
     @test all([norm(ld.W[:, i]) for i in axes(ld.W, 2)] .≈ 1)
 end
 
-function test_regular_identities(ld, log; early_exit=false)
+function test_regular_lal_identities(ld, log; early_exit=false)
     # If all regular vectors, expect:
     # Eq. 3.22, U is upper triangular (bi-diagonal)
     @test tril(ld.U, 1) ≈ triu(ld.U)
@@ -143,7 +140,7 @@ end
     v = rand(5)
     w = rand(5)
     ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false)
-    ld_results = _iterate_and_test_intermediates(ld)
+    ld_results = _iterate_and_collect_lal_intermediates(ld)
 
     @test ld.n == 1
     @test ld_results.V ≈ v
@@ -151,7 +148,7 @@ end
     @test isempty(ld_results.P)
     @test isempty(ld_results.Q)
 
-    test_regular_identities(ld_results, ld.log; early_exit=true)
+    test_regular_lal_identities(ld_results, ld.log; early_exit=true)
 end
 
 @testset "Dense Hermitian Matrix" begin
@@ -162,20 +159,64 @@ end
     w = fill(0.0im, 10)
     w[1:2] .= 1.0
     ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false)
-    ld_results = _iterate_and_test_intermediates(ld)
-    test_regular_identities(ld_results, ld.log)
+    ld_results = _iterate_and_collect_lal_intermediates(ld)
+
+    test_lal_identities(ld_results)
+    test_regular_lal_identities(ld_results, ld.log)
 end
     
 
 @testset "Sparse Tri-diagonal Matrix" begin
     A = Tridiagonal(-ones(9), 2*ones(10), -ones(9))
-    v = fill(0.0im, 10)
-    v[1] = 1.0
-    w = fill(0.0im, 10)
-    w[1] = 1.0
-    ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false)
-    ld_results = _iterate_and_test_intermediates(ld)
-    test_regular_identities(ld_results, ld.log)
+    v = fill(0.0, 10)
+    w = fill(0.0, 10)
+    @testset "Regular Construction" begin
+        fill!(v, 0)
+        fill!(w, 0)
+        v[1] = 1.0
+        w[1] = 1.0
+        ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false)
+        ld_results = _iterate_and_collect_lal_intermediates(ld)
+
+        test_lal_identities(ld_results)
+        test_regular_lal_identities(ld_results, ld.log)
+    end
+    @testset "Size 2 V-W Blocks" begin
+        fill!(v, 0)
+        fill!(w, 0)
+        v[1] = 1.0
+        w[2] = 1.0
+        ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false, max_block_size=2)
+        ld_results = _iterate_and_collect_lal_intermediates(ld)
+
+        test_lal_identities(ld_results)
+        @test ld.log.VW_block_count[2] == 5
+        @test ld.log.PQ_block_count[1] == 10 
+    end
+    @testset "Size 3 V-W Blocks, size 2 P-Q Blocks" begin
+        fill!(v, 0)
+        fill!(w, 0)
+        v[1] = 1.0
+        w[3] = 1.0
+        ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false, max_block_size=3)
+        ld_results = _iterate_and_collect_lal_intermediates(ld)
+
+        test_lal_identities(ld_results)
+        @test ld.log.VW_block_count[3] == 3
+        @test ld.log.PQ_block_count[2] == 3
+        @test ld.log.PQ_block_count[1] == 3
+    end
+    @testset "Regular V-W, immediate P-Q Block" begin
+        # v, w chosen s.t (w, v) ≠ 0 and (q, Ap) == (w, Av) == 0
+        fill!(v, 0)
+        fill!(w, 0)
+        v[1] = 1.0
+        w[1:2] .= [1.0; 2.0]
+        ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false)
+        ld_results = _iterate_and_collect_lal_intermediates(ld)
+
+        test_lal_identities(ld_results)
+    end 
 end
 
 @testset "Cyclic Circulant Matrix" begin
@@ -200,9 +241,10 @@ end
         Z13' B3   I3  Z34
         Z14' Z24' B4  I4
     ]
-    v = [ones(size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
-    w = [ones(size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
+    v = [rand(size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
+    w = [rand(size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
     ld = IS.LookAheadLanczosDecomp(Ac, v, w; log=true, vw_normalized=false, max_block_size=8, verbose=true)
-    ld_results = _iterate_and_test_intermediates(ld)
+    ld_results = _iterate_and_collect_lal_intermediates(ld)
+    test_lal_identities(ld_results)
 end
 
