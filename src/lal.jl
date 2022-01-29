@@ -78,7 +78,7 @@ mutable struct LookAheadLanczosDecomp{OpT, OptT, VecT, MatT, ElT, ElRT}
     F::Matrix{ElT}
     F̃lastcol::Vector{ElT}
     # Eq. 5.1
-    G::Matrix{ElT}
+    G::Vector{ElT}
     # Eq. 3.11
     H::Vector{ElT}
 
@@ -175,7 +175,7 @@ function LookAheadLanczosDecomp(
 
     D = Matrix{elT}(undef, 0, 0)
     E = Matrix{elT}(undef, 0, 0)
-    G = Matrix{elT}(undef, 0, 0)
+    G = Vector{elT}()
     H = Vector{elT}()
 
     F = Matrix{elT}(undef, 0, 0)
@@ -488,9 +488,9 @@ function _update_Gnm1!(ld)
     # G_{n-1} = U_n L_{n-1}
     # U is currently U_n and L is currently L_{n-1}
     n, mk, k = ld.n, ld.mk, ld.k
-    ld.G = fill(0.0, n-1, 1)
+    ld.G = fill(0.0, n-1)
     if !isone(n)
-        ld.G[ld.mk[ld.k]:end, end] = ld.U[mk[k]:end-1, mk[k]:end] * ld.L[mk[k]:end, end]
+        ld.G[ld.mk[ld.k]:end] .= ld.U[mk[k]:end-1, mk[k]:end] * ld.L[mk[k]:end, end]
     end
     return ld
 end
@@ -503,7 +503,7 @@ function _update_Gn!(ld)
     if !isone(ld.n)
         qtAp = fill(zero(eltype(ld.G)), length(ld.G))
         qtAp[end] = ld.qtAp
-        ld.G = (ld.E \ qtAp * ld.ρ * ld.γ[n-1] / ld.γ[n])[:, :]
+        ld.G = (ld.E \ qtAp * ld.ρ * ld.γ[n-1] / ld.γ[n])
     end
 
     return ld
@@ -514,8 +514,8 @@ function _check_G(ld)
     n = ld.n
     if n <= 2 return false end
     return !(
-        ld.nA * ld.normp[end] ≥ sum(abs(ld.G[i, end]) * ld.normp[i] for i in 1:length(ld.normp)-1) &&
-        ld.nA * ld.normq[end] ≥ sum(ld.γ[n-1]/ld.γ[i] * abs(ld.G[i, end]) * ld.normq[i] for i in 1:length(ld.normq)-1)
+        ld.nA * ld.normp[end] ≥ sum(abs(ld.G[i]) * ld.normp[i] for i in 1:length(ld.normp)-1) &&
+        ld.nA * ld.normq[end] ≥ sum(ld.γ[n-1]/ld.γ[i] * abs(ld.G[i]) * ld.normq[i] for i in 1:length(ld.normq)-1)
     )
     return false
 end
