@@ -83,7 +83,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
     ) where {T, precT}
 
-    verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
+    verbose && @printf("============== idrs ==============\n%4s\t%9s\t%9s\n", "iter", "resnorm", "relresn")
     R = C - A*X
     normR = norm(R)
     iter = 1
@@ -113,6 +113,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     c = zeros(eltype(C),s)
 
     om::eltype(C) = 1
+    resnorm0 = normR
     while normR > tol && iter ≤ maxiter
         for i in 1:s
             f[i] = dot(P[i], R)
@@ -172,7 +173,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
                 normR = norm(R_s)
             end
             push!(log, :resnorm, normR)
-            verbose && @printf("%3d\t%1.2e\n",iter,normR)
+            verbose && @printf("%3d\t%1.4e\t%1.4e\n", iter, normR, normR/resnorm0)
             if normR < tol || iter == maxiter
                 setconv(log, 0<=normR<tol)
                 return X

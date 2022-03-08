@@ -202,8 +202,9 @@ function gmres!(x, A, b;
                                restart = restart, initially_zero = initially_zero,
                                orth_meth = orth_meth)
 
-    verbose && @printf("=== gmres ===\n%4s\t%4s\t%7s\n","rest","iter","resnorm")
+    verbose && @printf("================= gmres ==================\n%4s\t%4s\t%9s\t%9s\n","rest", "iter", "resnorm", "relresn")
 
+    resnorm0 = iterable.residual.current
     for (iteration, residual) = enumerate(iterable)
         if log
             nextiter!(history)
@@ -211,7 +212,7 @@ function gmres!(x, A, b;
             push!(history, :resnorm, residual)
         end
 
-        verbose && @printf("%3d\t%3d\t%1.2e\n", 1 + div(iteration - 1, restart), 1 + mod(iteration - 1, restart), residual)
+        verbose && @printf("%4d\t%4d\t%1.4e\t%1.4e\n", 1 + div(iteration - 1, restart), 1 + mod(iteration - 1, restart), residual, residual/resnorm0)
     end
 
     verbose && println()

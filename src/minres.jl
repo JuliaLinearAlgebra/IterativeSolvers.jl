@@ -221,12 +221,14 @@ function minres!(x, A, b;
         history.mvps = iterable.mv_products
     end
 
+    verbose && @printf("============= minres =============\n%4s\t%9s\t%9s\n", "iter", "resnorm", "relresn")
+    resnorm0 = iterable.resnorm
     for (iteration, resnorm) = enumerate(iterable)
         if log
             nextiter!(history, mvps = 1)
             push!(history, :resnorm, resnorm)
         end
-        verbose && @printf("%3d\t%1.2e\n", iteration, resnorm)
+        verbose && @printf("%3d\t%1.4e\t%1.4e\n", iteration, resnorm, resnorm/resnorm0)
     end
 
     verbose && println()

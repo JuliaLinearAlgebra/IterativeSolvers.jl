@@ -151,16 +151,17 @@ function chebyshev!(x, A, b, λmin::Real, λmax::Real;
     history[:reltol] = reltol
     reserve!(history, :resnorm, maxiter)
 
-    verbose && @printf("=== chebyshev ===\n%4s\t%7s\n","iter","resnorm")
+    verbose && @printf("=========== chebyshev ============\n%4s\t%9s\t%9s\n", "iter", "resnorm", "relresn")
 
     iterable = chebyshev_iterable!(x, A, b, λmin, λmax; abstol=abstol, reltol=reltol,
                                    maxiter=maxiter, Pl=Pl, initially_zero=initially_zero)
     history.mvps = iterable.mv_products
+    resnorm0 = iterable.resnorm
     for (iteration, resnorm) = enumerate(iterable)
         nextiter!(history)
         history.mvps = iterable.mv_products
         push!(history, :resnorm, resnorm)
-        verbose && @printf("%3d\t%1.2e\n", iteration, resnorm)
+        verbose && @printf("%3d\t%1.4e\t%1.4e\n", iteration, resnorm, resnorm/resnorm0)
     end
     verbose && println()
     setconv(history, converged(iterable))

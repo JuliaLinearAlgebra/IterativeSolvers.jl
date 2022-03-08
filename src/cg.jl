@@ -226,12 +226,14 @@ function cg!(x, A, b;
     if log
         history.mvps = iterable.mv_products
     end
+    verbose && @printf("=============== cg ===============\n%4s\t%9s\t%9s\n", "iter", "resnorm", "relresn")
+    resnorm0 = iterable.residual
     for (iteration, item) = enumerate(iterable)
         if log
             nextiter!(history, mvps = 1)
             push!(history, :resnorm, iterable.residual)
         end
-        verbose && @printf("%3d\t%1.2e\n", iteration, iterable.residual)
+        verbose && @printf("%3d\t%1.4e\t%1.4e\n", iteration, iterable.residual, iterable.residual/resnorm0)
     end
 
     verbose && println()
