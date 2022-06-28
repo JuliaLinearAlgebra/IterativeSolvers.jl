@@ -11,6 +11,7 @@ Random.seed!(1234321)
 n = 20
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
+    Random.seed!(123) # Issue #316 (test sensitive to the rng)
     A = rand(T, n, n) + 15I
     x = ones(T, n)
     b = A * x
