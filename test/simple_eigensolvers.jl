@@ -13,7 +13,7 @@ n = 10
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
 
-    A = rand(T, n, n)
+    A = rand(T, n, n) + I
     A = A' * A
     λs = eigvals(A)
 

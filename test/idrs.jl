@@ -26,9 +26,9 @@ Random.seed!(1234567)
 
     # with smoothing
     @testset "With residual smoothing" begin
-        x, history = idrs(A, b; smoothing=true, log=true)
+        x, history = idrs(A, b; reltol=reltol, smoothing=true, log=true)
         @test history.isconverged
-        @test norm(A*x - b) / norm(b) ≤ reltol
+        @test norm(A*x - b) / norm(b) ≤ 2reltol # TODO: Should maybe not require the 2?
     end
 end
 
