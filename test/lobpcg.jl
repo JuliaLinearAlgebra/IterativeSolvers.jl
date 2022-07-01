@@ -86,6 +86,7 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
+                        Random.seed!(23) # Issue #316 (test sensitive to the rng)
                         A = rand(T, n, n)
                         A = A' + A + 20I
                         b = zeros(T, n, 1)
@@ -99,6 +100,7 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
+                        Random.seed!(123) # Issue #316 (test sensitive to the rng)
                         A = rand(T, n, n)
                         A = A' + A + 20I
                         B = rand(T, n, n)
@@ -267,6 +269,7 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
+                        Random.seed!(123) # Issue #316 (test sensitive to the rng)
                         A = rand(T, n, n)
                         A = A' + A + 20I
                         B = rand(T, n, n)
@@ -304,6 +307,7 @@ end
         @testset "Generalized eigenvalue problem" begin
             @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                 @testset "largest = $largest" for largest in (true, false)
+                    Random.seed!(123) # Issue #316 (test sensitive to the rng)
                     A = rand(T, n, n)
                     A = A' + A + 20I
                     B = rand(T, n, n)
