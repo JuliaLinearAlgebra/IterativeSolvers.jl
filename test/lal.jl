@@ -6,6 +6,28 @@ using Test
 # Equation references and identities from:
 # Freund, R. W., & Nachtigal, N. M. (1994). An Implementation of the QMR Method Based on Coupled Two-Term Recurrences. SIAM Journal on Scientific Computing, 15(2), 313–337. https://doi.org/10.1137/0915022
 
+function _append_leading_nonzeros(A, B)
+    # appends the leading nonzero diagonal and subdiagonal elements in `B` to `A`. This
+    # grows `A` in size by 1. For instance, if B is [1 2; 3 4], then if `A` is `[0;]`, this
+    # returns [0 2; 3 4]. If `A` is bigger than `B`, then the off-diagonal elements are
+    # padded with 0
+    @assert size(A, 1) ≥ size(B, 1)-1
+    if size(A, 1) == size(B, 1)-1
+        Aapp = [
+            A B[1:end-1, end:end]
+            B[end:end, :]
+        ]
+    else
+        zcol = zeros(eltype(A), 1 + size(A, 1) - size(B, 1), 1)
+        zrow = zeros(eltype(A), 1, 1 + size(A, 2) - size(B, 2))
+        Aapp = [
+            A [zcol; B[1:end-1, end:end]]
+            zrow B[end:end, :]
+        ]
+    end
+    return Aapp
+end
+
 function _iterate_and_collect_lal_intermediates(ld)
     # iterates through ld and collects the intermediate matrices by appending the last
     # row and column to the matrix being built
@@ -45,13 +67,14 @@ function _iterate_and_collect_lal_intermediates(ld)
             U = ld.U[:, :]
             L = ld.L[:, :]
         else
-            D = [D ld.D[1:end-1, end]; ld.D[end:end, :]]
-            E = [E ld.E[1:end-1, end]; ld.E[end:end, :]]
-            F = [F ld.F[1:end-1, end]; ld.F[end:end, :]]
+            ivw = IS._VW_block_size(ld)
+            D = _append_leading_nonzeros(D, ld.D)
+            E = _append_leading_nonzeros(E, ld.E)
+            F = _append_leading_nonzeros(F, ld.F)
             # F̃ row is not explicitly calculated, so we calculate from F using Lemma 5.1
             F̃ = [F̃ ld.F̃lastcol; (transpose(F * Γ[1:end-1, 1:end-1]) / Γ[1:end-1, 1:end-1])[end:end, :]]
-            U = [U ld.U[1:end-1, end]; ld.U[end:end, :]]
-            L = [L ld.L[1:end-1, end]; ld.L[end:end, :]]
+            U = _append_leading_nonzeros(U, ld.U)
+            L = _append_leading_nonzeros(L, ld.L)
         end
     end
 
@@ -131,6 +154,34 @@ function test_regular_lal_identities(ld, log; early_exit=false)
         @test log.VW_block_count[1] == ld.n-1
     else
         @test log.VW_block_count[1] == ld.n
+    end
+end
+
+@testset "Block Diagonal Utilities" begin
+    for T in (Matrix, UpperTriangular)
+        @testset "$T" begin
+            A = IS.BlockDiagonal([T([1 2; 3 4]), T(fill(1, 1, 1))])
+            Bcol = [-1]
+            Brow = [1]
+            Bcorner = 0
+            IS._grow_last_block!(A, Bcol, Brow, Bcorner)
+            # note that we are converting the container type, so upon conversion to UpperTriangular the sub-diagonals will go to 0 and the equality is satisfied
+            @test A ≈ T([
+                1 2 0 0
+                3 4 0 0
+                0 0 1 -1
+                0 0 1 0
+            ])
+
+            A = IS.BlockDiagonal([T([1 2; 3 4]), T(fill(1, 1, 1))])
+            IS._start_new_block!(A, 1)
+            @test A ≈ T([
+                1 2 0 0
+                3 4 0 0
+                0 0 1 0
+                0 0 0 1
+            ])
+        end
     end
 end
 
