@@ -14,6 +14,7 @@ include("history.jl")
 include("hessenberg.jl")
 
 # Krylov subspace methods
+include("limited_memory_matrices.jl")
 include("lal.jl")
 
 # Linear solvers

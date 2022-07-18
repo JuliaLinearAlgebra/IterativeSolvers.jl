@@ -41,16 +41,16 @@ mutable struct LookAheadLanczosDecomp{OpT, OptT, VecT, MatT, ElT, ElRT}
     q::VecT
     p̂::VecT
     q̂::VecT
-    P::MatT
-    Q::MatT
+    P::LimitedMemoryMatrix{ElT, MatT}
+    Q::LimitedMemoryMatrix{ElT, MatT}
 
     # V-W sequence
     v::VecT
     w::VecT
     ṽ::VecT
     w̃::VecT
-    V::MatT
-    W::MatT
+    V::LimitedMemoryMatrix{ElT, MatT}
+    W::LimitedMemoryMatrix{ElT, MatT}
 
     # matrix-vector products
     Ap::VecT
@@ -153,8 +153,8 @@ function LookAheadLanczosDecomp(
     q = similar(v)
     p̂ = similar(v)
     q̂ = similar(v)
-    P = similar(v, size(v, 1), 0)
-    Q = similar(v, size(v, 1), 0)
+    P = LimitedMemoryMatrix(similar(v, size(v, 1), 0), max_block_size)
+    Q = LimitedMemoryMatrix(similar(v, size(v, 1), 0), max_block_size)
     Ap = similar(v)
     Atq = similar(v)
     qtAp = zero(elT)
@@ -163,8 +163,8 @@ function LookAheadLanczosDecomp(
 
     ṽ = similar(v)
     w̃ = similar(v)
-    V = reshape(copy(v), size(v, 1), 1)
-    W = reshape(copy(w), size(v, 1), 1)
+    V = LimitedMemoryMatrix(copy(v), max_block_size)
+    W = LimitedMemoryMatrix(copy(w), max_block_size)
     w̃tṽ = zero(elT)
     
     wtv = transpose(w) * v
@@ -451,10 +451,6 @@ function _update_U!(ld, innerp)
     # U is upper triangular matrix in decomposition of recurrence relation for P-Q sequence
     # updates last column of U
     n, mk, k, kstar = ld.n, ld.mk, ld.k, ld.kstar
-    #idx_offset = mk[kstar]-1
-    idx_offset = 0
-    # TODO
-    # we only store the entries from mk[kstar] to n-1
     ld.U  = UpperTriangular(
         [
             ld.U fill(0.0, n-1, 1)
@@ -463,12 +459,12 @@ function _update_U!(ld, innerp)
     )
 
     for i = kstar:k-1
-        block_start = mk[i]-idx_offset
-        block_end = mk[i+1]-1-idx_offset
+        block_start = mk[i]
+        block_end = mk[i+1]-1
         ld.U[block_start:block_end, end] .= ld.E[block_start:block_end, block_start:block_end] \ ld.F̃lastcol[block_start:block_end]
     end
     if !innerp && !isone(n)
-        ld.U[mk[k]-idx_offset:end-1, end] .= ld.E[mk[k]:end, mk[k]:end] \ ld.F̃lastcol[mk[k]-idx_offset:end]
+        ld.U[mk[k]:end-1, end] .= ld.E[mk[k]:end, mk[k]:end] \ ld.F̃lastcol[mk[k]:end]
     end
     return ld
 end
@@ -478,11 +474,11 @@ function _update_p̂q̂_common!(ld)
     mk, k, kstar = ld.mk, ld.k, ld.kstar
     copyto!(ld.p̂, ld.v)
     copyto!(ld.q̂, ld.w)
-    #idx_offset = mk[kstar]-1
-    idx_offset = 0
     for i = mk[kstar]:mk[k]-1 # TODO: OPTIMIZE gemv! (or 5-arg mul!)
-        axpy!(-ld.U[i-idx_offset, end], ld.P[:, i-idx_offset], ld.p̂)
-        axpy!(-ld.U[i-idx_offset, end] * ld.γ[end] / ld.γ[i-idx_offset], ld.Q[:, i-idx_offset], ld.q̂)
+        if ld.U[i, end] != 0
+            axpy!(-ld.U[i, end], ld.P[:, i], ld.p̂)
+            axpy!(-ld.U[i, end] * ld.γ[end] / ld.γ[i], ld.Q[:, i], ld.q̂)
+        end
     end
 end
 function _update_Gnm1!(ld)
@@ -527,10 +523,11 @@ function _update_pq_regular!(ld)
     n, mk, k, kstar = ld.n, ld.mk, ld.k, ld.kstar
     copyto!(ld.p, ld.p̂)
     copyto!(ld.q, ld.q̂)
-    idx_offset = 0
     for i = mk[k]:n-1 # TODO: OPTIMIZE gemv! (or 5-arg mul!)
-        axpy!(-ld.U[i-idx_offset, end], ld.P[:, i], ld.p)
-        axpy!(-ld.U[i-idx_offset, end] * ld.γ[n] / ld.γ[i - idx_offset], ld.Q[:, i], ld.q)
+        if ld.U[i, end] != 0
+            axpy!(-ld.U[i, end], ld.P[:, i], ld.p)
+            axpy!(-ld.U[i, end] * ld.γ[n] / ld.γ[i], ld.Q[:, i], ld.q)
+        end
     end
     return ld
 end
@@ -540,11 +537,13 @@ function _update_pq_inner!(ld)
     n, mk, k, kstar = ld.n, ld.mk, ld.k, ld.kstar
     copyto!(ld.p, ld.p̂)
     copyto!(ld.q, ld.q̂)
-    idx_offset = 0
     for i = mk[k]:n-1 # TODO: OPTIMIZE gemv!
-        ld.U[i-idx_offset, end] = _u(i, n, mk[k])
-        axpy!(-_u(i, n, mk[k]), ld.P[:, i], ld.p)
-        axpy!(-_u(i, n, mk[k]) * ld.γ[n] / ld.γ[i - idx_offset], ld.Q[:, i], ld.q)
+        u = _u(i, n, mk[k])
+        ld.U[i, end] = u
+        if u != 0
+            axpy!(-u, ld.P[:, i], ld.p)
+            axpy!(-u * ld.γ[n] / ld.γ[i], ld.Q[:, i], ld.q)
+        end
     end
     return ld
 end
@@ -558,8 +557,8 @@ function _matvec_pq!(ld, retry=false)
         ld.P[:, end] .= ld.p
         ld.Q[:, end] .= ld.q
     else
-        ld.P = [ld.P ld.p]
-        ld.Q = [ld.Q ld.q]
+        hcat!(ld.P, ld.p)
+        hcat!(ld.Q, ld.q)
     end
     mul!(ld.Ap, ld.A, ld.p)
     ld.qtAp = transpose(ld.q) * ld.Ap
@@ -647,11 +646,11 @@ function _update_v̂ŵ_common!(ld)
     # 5.2.6
     l, lstar, nl, n = ld.l, ld.lstar, ld.nl, ld.n
 
-    # idx_offset = nl[lstar]-1
-    idx_offset = 0
     for i = nl[lstar]:nl[l]-1 # TODO: OPTIMIZE gemv! (or 5-arg mul!)
-        axpy!(-ld.L[i-idx_offset, n], ld.V[:, i-idx_offset], ld.Ap)
-        axpy!(-ld.L[i-idx_offset, n] * ld.γ[n] / ld.γ[i-idx_offset], ld.W[:, i-idx_offset], ld.Atq)
+        if ld.L[i, n] != 0
+            axpy!(-ld.L[i, n], ld.V[:, i], ld.Ap)
+            axpy!(-ld.L[i, n] * ld.γ[n] / ld.γ[i], ld.W[:, i], ld.Atq)
+        end
     end
     return ld
 end
@@ -691,11 +690,11 @@ function _update_vw_regular!(ld)
     n, l, lstar, nl, k, mk = ld.n, ld.l, ld.lstar, ld.nl, ld.k, ld.mk
     copyto!(ld.ṽ, ld.Ap)
     copyto!(ld.w̃, ld.Atq)
-    #idx_offset = nl[lstar]-1
-    idx_offset = 0
     for i = nl[l]:n # TODO: OPTIMIZE gemv! (or 5-arg mul!)
-        axpy!(-ld.L[i-idx_offset, end], ld.V[:, i], ld.ṽ)
-        axpy!(-ld.L[i-idx_offset, end] * ld.γ[n] / ld.γ[i - idx_offset], ld.W[:, i], ld.w̃)
+        if ld.L[i, end] != 0
+            axpy!(-ld.L[i, end], ld.V[:, i], ld.ṽ)
+            axpy!(-ld.L[i, end] * ld.γ[n] / ld.γ[i], ld.W[:, i], ld.w̃)
+        end
     end
     return ld
 end
@@ -705,12 +704,13 @@ function _update_vw_inner!(ld)
     n, l, k, lstar, nl, mk = ld.n, ld.l, ld.k, ld.lstar, ld.nl, ld.mk
     copyto!(ld.ṽ, ld.Ap)
     copyto!(ld.w̃, ld.Atq)
-    #idx_offset = nl[lstar]-1
-    idx_offset = 0
     for i = nl[l]:n # TODO: OPTIMIZE gemv!
-        ld.L[i-idx_offset, end] = _l(i, n, nl[l])
-        axpy!(-_l(i, n, nl[l]), ld.V[:, i], ld.ṽ)
-        axpy!(-_l(i, n, nl[l]) * ld.γ[n] / ld.γ[i - idx_offset], ld.W[:, i], ld.w̃)
+        ll = _l(i, n, nl[l])
+        ld.L[i, end] = ll
+        if ll != 0
+            axpy!(-_l(i, n, nl[l]), ld.V[:, i], ld.ṽ)
+            axpy!(-_l(i, n, nl[l]) * ld.γ[n] / ld.γ[i], ld.W[:, i], ld.w̃)
+        end
     end
     return ld
 end
@@ -743,8 +743,8 @@ function _update_vw!(ld)
     ld.v = ld.ṽ / ld.ρ
     ld.w = ld.w̃ / ld.ξ
     ld.wtv = ld.w̃tṽ / (ld.ρ * ld.ξ)
-    ld.V = [ld.V ld.v]
-    ld.W = [ld.W ld.w]
+    hcat!(ld.V, ld.v)
+    hcat!(ld.W, ld.w)
     return ld
 end
 

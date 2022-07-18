@@ -2,6 +2,7 @@
 #Common functions and data structures
 include("common.jl")
 include("orthogonalize.jl")
+include("limited_memory_matrices.jl")
 
 # Hessenberg problem solver
 include("hessenberg.jl")
