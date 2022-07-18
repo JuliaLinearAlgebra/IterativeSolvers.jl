@@ -1,6 +1,4 @@
 using Printf
-import BlockDiagonals: BlockDiagonal
-import BlockDiagonals
 import Base: iterate
 import LinearAlgebra: UpperTriangular, UpperHessenberg
 
@@ -73,11 +71,11 @@ mutable struct LookAheadLanczosDecomp{OpT, OptT, VecT, MatT, ElT, ElRT}
     γ::Vector{ElRT}
 
     # Eq. 2.13
-    D::BlockDiagonal{ElT, Matrix{ElT}}
+    D::Matrix{ElT}
     # Eq. 3.14
-    E::BlockDiagonal{ElT, Matrix{ElT}}
+    E::Matrix{ElT}
     # Defined after Eq. 5.1
-    F::BlockDiagonal{ElT, Matrix{ElT}}
+    F::Matrix{ElT}
     F̃lastcol::Vector{ElT}
     # Eq. 5.1
     G::Vector{ElT}
@@ -177,12 +175,12 @@ function LookAheadLanczosDecomp(
     γ = Vector{real(elT)}(undef, 1)
     γ[1] = 1.0
 
-    D = BlockDiagonal{elT, Matrix{elT}}(Vector{Matrix{elT}}())
-    E = BlockDiagonal{elT, Matrix{elT}}(Vector{Matrix{elT}}())
+    D = Matrix{elT}(undef, 0, 0)
+    E = Matrix{elT}(undef, 0, 0)
     G = Vector{elT}()
     H = Vector{elT}()
 
-    F = BlockDiagonal{elT, Matrix{elT}}(Vector{Matrix{elT}}())
+    F = Matrix{elT}(undef, 0, 0)
     F̃lastcol = Vector{elT}()
 
     U = UpperTriangular(Matrix{elT}(undef, 0, 0))
@@ -244,34 +242,6 @@ _PQ_block_size(ld) = max(1, ld.n - ld.mk[ld.k])
 _VW_block_size(ld) = ld.n+1 - ld.nl[ld.l]
 _VW_prev_block_size(ld) = ld.nl[ld.l] - ld.nl[max(1, ld.l-1)]
 _is_block_small(ld, n) = n < ld.opts.max_block_size
-
-"""
-    _grow_last_block!(A, Bcol, Brow, Bcorner)
-
-Grows the last block in-place in `A` by appending the column `Bcol`, the row `Brow`, and the corner element `Bcorner`. `Bcol` and `Brow` are automatically truncated to match the size of the grown block
-"""
-function _grow_last_block!(A::BlockDiagonal{T, TM}, Bcol, Brow, Bcorner) where {T, TM}
-    n = BlockDiagonals.nblocks(A)
-    b = BlockDiagonals.blocks(A)
-    s = size(last(b), 1)
-    b[n] = TM([
-        b[n] Bcol[end-s+1:end]
-        Brow[:, end-s+1:end] Bcorner
-    ])
-    return A
-end
-
-"""
-    _start_new_block!(A, B)
-
-Appends a new block to the end of `A` with `B`
-"""
-function _start_new_block!(A::BlockDiagonal{T, TM}, B) where {T, TM}
-    push!(BlockDiagonals.blocks(A), TM(fill(only(B), 1, 1)))
-    return A
-end
-
-Base.size(B::BlockDiagonals.BlockDiagonal) = sum(first∘size, BlockDiagonals.blocks(B), init=0), sum(last∘size, BlockDiagonals.blocks(B), init=0)
 
 start(::LookAheadLanczosDecomp) = 1
 done(ld::LookAheadLanczosDecomp, iteration::Int) = iteration ≥ ld.opts.max_iter
@@ -429,16 +399,20 @@ function _update_D!(ld)
     # Alg. 5.2.1
     # Eq. 5.2:
     # F[n-1] = Wt[n-1]V[n]L[n-1] = D[n-1]L[1:n-1, 1:n-1] + l[n, n-1]D[1:n-1, n][0 ... 0 1]
-    # => D[1:end-1, end] = (F[:, end] - (D_prev L[1:end-1, end])) / ρ
+    # => D[1:end-1, end] = (F[:, end] - (D_prev L[1:end-1, 1:end]))[:, end] / ρ
     # Eq. 3.15, (D Γ)ᵀ = (D Γ)
     # D[n, n] = wtv
 
-    if isone(ld.n) || _VW_block_size(ld) == 1
-        _start_new_block!(ld.D, ld.wtv)
+    # TODO: closed block
+    if isone(ld.n)
+        ld.D = fill(ld.wtv, 1, 1)
     else
         D_lastcol = (ld.F[:, end] - (ld.D * ld.L[1:end-1, end])) / ld.ρ
         D_lastrow = transpose(D_lastcol * ld.γ[end] ./ ld.γ[1:end-1])
-        _grow_last_block!(ld.D, D_lastcol, D_lastrow, ld.wtv)
+        ld.D = [
+            ld.D D_lastcol
+            D_lastrow ld.wtv
+        ]
     end
     return ld
 end
@@ -461,17 +435,14 @@ function _update_Flastrow!(ld)
     # Eq. 5.2 (w/ indices advanced): 
     # F_{n} = D_{n}L[1:n, 1:n] + l[n+1, n]D_{n}[1:n, n+1][0 ... 0 1]
     # TODO: block
-    if isone(ld.n)
-        _start_new_block!(ld.F, 0.0)
-    else
+    if !isone(ld.n) # We only need to do this if we are constructing a block
         Flastrow = reshape(ld.D[end:end, :] * ld.L, :)
         ld.F̃lastcol = Flastrow .* ld.γ[1:end-1] ./ ld.γ[end]
         # we are not able to fill in the last column yet, so we fill with zero
-        if _VW_block_size(ld) == 1
-            _grow_last_block!(ld.F, fill(0.0, size(ld.F, 1)), transpose(Flastrow), 0.0)
-        else
-            _grow_last_block!(ld.F, fill(0.0, size(ld.F, 1)), transpose(Flastrow), 0.0)
-        end
+        ld.F = [
+            ld.F fill(0.0, size(ld.F, 1))
+            transpose(Flastrow) 0.0
+        ]
     end
 end
 
@@ -484,7 +455,6 @@ function _update_U!(ld, innerp)
     idx_offset = 0
     # TODO
     # we only store the entries from mk[kstar] to n-1
-    
     ld.U  = UpperTriangular(
         [
             ld.U fill(0.0, n-1, 1)
@@ -612,13 +582,16 @@ function _update_E!(ld)
     # 5.2.14
     n = ld.n
 
-    if isone(ld.n) || _PQ_block_size(ld) == 1
-        _start_new_block!(ld.E, ld.qtAp)
+    if isone(ld.n)
+        ld.E = fill(ld.qtAp, 1, 1)
     else
         ΓUtinvΓ = ld.γ .* transpose(ld.U) ./ transpose(ld.γ)
         Elastrow = (ΓUtinvΓ[end, end] \ ld.F[n:n, 1:n-1] - ΓUtinvΓ[end:end, 1:end-1]*ld.E)
-        Elastcol = (Elastrow .* ld.γ[1:n-1] ./ ld.γ[n])
-        _grow_last_block!(ld.E, Elastcol, Elastrow, ld.qtAp)
+        Elastcol = (transpose(Elastrow) .* ld.γ[1:n-1] ./ ld.γ[n])
+        ld.E = [
+            ld.E Elastcol
+            Elastrow ld.qtAp
+        ]
     end
     return ld
 end
@@ -637,7 +610,7 @@ function _update_Flastcol!(ld)
     ΓUtinvΓ = ld.γ .* transpose(ld.U) ./ transpose(ld.γ)
     # length n, ld.F_lastrow of length n-1
     if isone(n)
-        ld.F[1, 1] = ΓUtinvΓ[end, end] * ld.E[end, end]
+        ld.F = fill(ΓUtinvΓ[end, end] * ld.E[end, end], 1, 1)
     else
         ld.F[:, end] .= ΓUtinvΓ * ld.E[:, end]
     end
@@ -654,7 +627,6 @@ function _update_L!(ld, innerv)
         Llastcol[block_start:block_end] .= ld.D[block_start:block_end, block_start:block_end] \ ld.F[block_start:block_end, end]
     end
     if !innerv
-        @show ld.D
         Llastcol[nl[l]:end] .= ld.D[nl[l]:end, nl[l]:end] \ ld.F[nl[l]:end, end]
     end
     if isone(n)
