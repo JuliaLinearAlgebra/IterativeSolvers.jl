@@ -40,8 +40,8 @@ function _iterate_and_collect_lal_intermediates(ld)
     # calculations will sparsify and only small vectors will be kept
     # Because we don't explicitly construct H and G, we do not attempt collecting them
 
-    P = Matrix(ld.P) # size (N, n)
-    Q = Matrix(ld.Q) # size (N, n)
+    P = Matrix{eltype(ld.p)}(undef, length(ld.p), 0) # size (N, n)
+    Q = Matrix{eltype(ld.q)}(undef, length(ld.q), 0) # size (N, n)
     W = Matrix(ld.W) # size (N, n+1)
     V = Matrix(ld.V) # size (N, n+1)
     γ = copy(ld.γ) # size n+1
@@ -169,8 +169,6 @@ end
     @test ld.n == 1
     @test ld_results.V ≈ v
     @test ld_results.W ≈ w
-    @show size(ld_results.P)
-    @show size(ld_results.Q)
 
     test_regular_lal_identities(ld_results, ld.log; early_exit=true)
 end
@@ -222,13 +220,13 @@ end
         fill!(w, 0)
         v[1] = 1.0
         w[3] = 1.0
-        ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false, max_block_size=4)
+        ld = IS.LookAheadLanczosDecomp(A, v, w; log=true, vw_normalized=false, max_block_size=3, max_memory=4)
         ld_results = _iterate_and_collect_lal_intermediates(ld)
 
         test_lal_identities(ld_results)
         @test ld.log.VW_block_count[3] == 3
         @test ld.log.PQ_block_count[2] == 3
-        @test ld.log.PQ_block_count[1] == 3
+        @test ld.log.PQ_block_count[1] == 4
     end
     @testset "Regular V-W, immediate P-Q Block" begin
         # v, w chosen s.t (w, v) ≠ 0 and (q, Ap) == (w, Av) == 0
@@ -268,7 +266,7 @@ end
     ]
     v = [rand(rng, size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
     w = [rand(rng, size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
-    ld = IS.LookAheadLanczosDecomp(Ac, v, w; log=true, vw_normalized=false, max_block_size=10, verbose=true)
+    ld = IS.LookAheadLanczosDecomp(Ac, v, w; log=true, vw_normalized=false, max_block_size=10, max_memory=10, verbose=true)
     ld_results = _iterate_and_collect_lal_intermediates(ld)
     test_lal_identities(ld_results)
 end

@@ -123,7 +123,8 @@ Provides an iterable which constructs basis vectors for a Krylov subspace genera
 # Keywords
 - `vw_normalized=false`: Flag if `v` and `w` passed to function are already normalized. If `false`, normalized `v` and `w` in-place.
 - `max_iter=size(A, 2)`: Maximum number of iterations 
-- `max_block_size=2`: Maximum look-ahead block size to construct. Following [^Freund1994], it is rare for blocks to go beyond size 3. This pre-allocates the block storage for the computation to size `(max_block_size, length(v))`. If a block would be built that exceeds this size, the estimate of `norm(A)` is adjusted to allow the block to close.
+- `max_block_size=4`: Maximum look-ahead block size to construct. Following [^Freund1994], it is rare for blocks to go beyond size 3. This pre-allocates the block storage for the computation to size `(max_block_size, length(v))`. If a block would be built that exceeds this size, the estimate of `norm(A)` is adjusted to allow the block to close.
+- `max_memory=4`: Maximum memory to store the sequence vectors. This may be greater than the block size.
 - `log=false`: Flag determining whether to log history in a [`LookAheadLanczosDecompLog`](@ref)
 - `verbose=false`: Flag determining verbosity of output during iteration
 
@@ -137,7 +138,8 @@ function LookAheadLanczosDecomp(
     A, v, w;
     vw_normalized=false,
     max_iter=size(A, 2),
-    max_block_size=8,
+    max_block_size=4,
+    max_memory=4,
     log=false,
     verbose=false
 )
@@ -153,8 +155,8 @@ function LookAheadLanczosDecomp(
     q = similar(v)
     p̂ = similar(v)
     q̂ = similar(v)
-    P = LimitedMemoryMatrix(similar(v, size(v, 1), 0), max_block_size)
-    Q = LimitedMemoryMatrix(similar(v, size(v, 1), 0), max_block_size)
+    P = LimitedMemoryMatrix(similar(v, size(v, 1), 0), max_memory)
+    Q = LimitedMemoryMatrix(similar(v, size(v, 1), 0), max_memory)
     Ap = similar(v)
     Atq = similar(v)
     qtAp = zero(elT)
@@ -163,8 +165,8 @@ function LookAheadLanczosDecomp(
 
     ṽ = similar(v)
     w̃ = similar(v)
-    V = LimitedMemoryMatrix(copy(v), max_block_size)
-    W = LimitedMemoryMatrix(copy(w), max_block_size)
+    V = LimitedMemoryMatrix(copy(v), max_memory)
+    W = LimitedMemoryMatrix(copy(w), max_memory)
     w̃tṽ = zero(elT)
     
     wtv = transpose(w) * v
@@ -276,26 +278,26 @@ function _update_PQ_sequence!(ld)
     # Alg. 5.2.3
     _update_Flastrow!(ld)
     # Alg. 5.2.4
-    innerp = inner_ok && _is_singular(ld.E)
+    ld.innerp = inner_ok && _is_singular(ld.E)
     # Alg. 5.2.5
-    _update_U!(ld, innerp)
+    _update_U!(ld, ld.innerp)
     # Alg. 5.2.6
     _update_p̂q̂_common!(ld)
     # Condition from Alg. 5.2.6
-    if !innerp
+    if !ld.innerp
         # Alg. 5.2.7
         _update_Gnm1!(ld)
-        innerp = inner_ok && _check_G(ld)
+        ld.innerp = inner_ok && _check_G(ld)
         # Condition from Alg. 5.2.7 - we are confident we can perform a regular step
-        if !innerp
+        if !ld.innerp
             # Alg. 5.2.8
             _update_pq_regular!(ld)
             _matvec_pq!(ld)
             # Alg. 5.2.9
             _update_Gn!(ld)
-            innerp = inner_ok && _check_G(ld)
+            ld.innerp = inner_ok && _check_G(ld)
             # Condition from Alg. 5.2.9 - One last chance to bail and create an inner step
-            if !innerp
+            if !ld.innerp
                 if islogging(ld)
                     ld.log.PQ_block_count[_PQ_block_size(ld)] += 1
                 end
@@ -306,9 +308,10 @@ function _update_PQ_sequence!(ld)
                 end
             else
                 # Alg. 5.2.11
+                # re-calculate matrix-vector product and append new result to P, Q seq
                 isverbose(ld) && @info "Inner P-Q construction, second G check"
                 _update_pq_inner!(ld)
-                _matvec_pq!(ld, true)
+                _matvec_pq!(ld)
             end
         else
             # Alg. 5.2.11
@@ -322,7 +325,7 @@ function _update_PQ_sequence!(ld)
         _update_pq_inner!(ld)
         _matvec_pq!(ld)
     end
-    ld.innerp = innerp
+    _append_PQ!(ld)
     return ld
 end
 
@@ -338,17 +341,17 @@ function _update_VW_sequence!(ld)
     # Alg. 5.2.16
     _update_Flastcol!(ld)
     # Alg. 5.2.17
-    innerv = inner_ok && _is_singular(ld.D[ld.nl[ld.l]:end, ld.nl[ld.l]:end])
+    ld.innerv = inner_ok && _is_singular(ld.D[ld.nl[ld.l]:end, ld.nl[ld.l]:end])
     # Alg. 5.2.18
-    _update_L!(ld, innerv)
+    _update_L!(ld, ld.innerv)
     # Alg. 5.2.19
     _update_v̂ŵ_common!(ld)
     # Condition from # Alg. 5.2.19
-    if !innerv
+    if !ld.innerv
         # Alg. 5.2.20
         _update_Hn!(ld)
-        innerv = inner_ok && _check_H(ld)
-        if !innerv
+        ld.innerv = inner_ok && _check_H(ld)
+        if !ld.innerv
             # Alg. 5.2.21
             _update_vw_regular!(ld)
             # also updates γ, ω̃tṽ
@@ -356,10 +359,9 @@ function _update_VW_sequence!(ld)
             if terminate_early return ld, true end
             # Alg. 5.2.22
             _update_Hnp1!(ld)
-            innerv = inner_ok && _check_H(ld)
+            ld.innerv = inner_ok && _check_H(ld)
             # Condition from Alg. 5.2.22
-            if !innerv
-                ld.innerv = false
+            if !ld.innerv
                 if islogging(ld)
                     ld.log.VW_block_count[_VW_block_size(ld)] += 1
                 end
@@ -378,7 +380,6 @@ function _update_VW_sequence!(ld)
             # Alg. 5.2.24
             isverbose(ld) && @info "Inner V-W construction, first H check"
             _update_vw_inner!(ld)
-            ld.innerv = true
             ld, terminate_early = _update_ρξ!(ld)
             if terminate_early return ld, true end
         end
@@ -386,7 +387,6 @@ function _update_VW_sequence!(ld)
         # Alg. 5.2.24
         isverbose(ld) && @info "Inner V-W construction, singular D check"
         _update_vw_inner!(ld)
-        ld.innerv = true
         ld, terminate_early = _update_ρξ!(ld)
         if terminate_early return ld, true end
     end
@@ -404,6 +404,7 @@ function _update_D!(ld)
     # D[n, n] = wtv
 
     # TODO: closed block
+    block_start = ld.nl[ld.lstar]
     if isone(ld.n)
         ld.D = fill(ld.wtv, 1, 1)
     else
@@ -548,28 +549,19 @@ function _update_pq_inner!(ld)
     return ld
 end
 
-function _matvec_pq!(ld, retry=false)
+function _matvec_pq!(ld)
     # Common part of Alg. 5.2.8, Alg. 5.2.11
-    # if retry, then this means we have already added data to the vectors, but our
-    # inner block check failed, so we overwrite what he have. This is the case if
-    # the check at Alg. 5.2.9 fails
-    if retry
-        ld.P[:, end] .= ld.p
-        ld.Q[:, end] .= ld.q
-    else
-        hcat!(ld.P, ld.p)
-        hcat!(ld.Q, ld.q)
-    end
     mul!(ld.Ap, ld.A, ld.p)
     ld.qtAp = transpose(ld.q) * ld.Ap
-    if retry
-        ld.normp[end] = norm(ld.p)
-        ld.normq[end] = norm(ld.q)
-    else
-        push!(ld.normp, norm(ld.p))
-        push!(ld.normq, norm(ld.q))
-    end
     return ld
+end
+
+function _append_PQ!(ld)
+    # adds p, q vector sequence to P, Q
+    hcat!(ld.P, ld.p)
+    hcat!(ld.Q, ld.q)
+    push!(ld.normp, norm(ld.p))
+    push!(ld.normq, norm(ld.q))
 end
 
 # 5.2.4, 5.2.17
@@ -580,6 +572,7 @@ function _update_E!(ld)
     # F = ΓUtinv(Γ)E
     # 5.2.14
     n = ld.n
+    block_start = ld.mk[ld.kstar]
 
     if isone(ld.n)
         ld.E = fill(ld.qtAp, 1, 1)
