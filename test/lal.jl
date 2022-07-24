@@ -47,8 +47,8 @@ function _iterate_and_collect_lal_intermediates(ld)
     γ = copy(ld.γ) # size n+1
     D = copy(ld.D) # size (n, n)
     E = copy(ld.E) # size (n, n)
-    F = copy(ld.F) # size (n, n)
-    F̃ = copy(ld.F) # size (n, n)
+    F = Matrix{eltype(ld.Flastcol)}(undef, 0, 0) # size (n, n)
+    F̃ = copy(F) # size (n, n)
     U = copy(ld.U) # size (n, n)
     L = copy(ld.L) # size (n+1, n)
     Γ = Diagonal(γ) # size (n+1, n+1)
@@ -63,15 +63,14 @@ function _iterate_and_collect_lal_intermediates(ld)
         if (i==1)
             D = ld.D[:, :]
             E = ld.E[:, :]
-            F = ld.F[:, :]
+            F = ld.Flastcol[:, :]
             F̃ = (transpose(F * Γ[1:end-1, 1:end-1]) / Γ[1:end-1, 1:end-1])
             U = ld.U[:, :]
             L = ld.L[:, :]
         else
-            ivw = IS._VW_block_size(ld)
             D = _append_leading_nonzeros(D, ld.D)
             E = _append_leading_nonzeros(E, ld.E)
-            F = _append_leading_nonzeros(F, ld.F)
+            F = [[F; transpose(ld.Flastrow)] ld.Flastcol]
             # F̃ row is not explicitly calculated, so we calculate from F using Lemma 5.1
             F̃ = [F̃ ld.F̃lastcol; (transpose(F * Γ[1:end-1, 1:end-1]) / Γ[1:end-1, 1:end-1])[end:end, :]]
             U = _append_leading_nonzeros(U, ld.U)
