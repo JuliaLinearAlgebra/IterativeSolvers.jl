@@ -498,8 +498,8 @@ function _update_p̂q̂_common!(ld)
     copyto!(ld.q̂, ld.w)
     for i = mk[kstar]:mk[k]-1 # TODO: OPTIMIZE gemv! (or 5-arg mul!)
         if ld.U[i, end] != 0
-            axpy!(-ld.U[i, end], ld.P[:, i], ld.p̂)
-            axpy!(-ld.U[i, end] * ld.γ[end] / ld.γ[i], ld.Q[:, i], ld.q̂)
+            axpy!(-ld.U[i, end], view(ld.P, :, i), ld.p̂)
+            axpy!(-ld.U[i, end] * ld.γ[end] / ld.γ[i], view(ld.Q, :, i), ld.q̂)
         end
     end
 end
@@ -547,8 +547,8 @@ function _update_pq_regular!(ld)
     copyto!(ld.q, ld.q̂)
     for i = mk[k]:n-1 # TODO: OPTIMIZE gemv! (or 5-arg mul!)
         if ld.U[i, end] != 0
-            axpy!(-ld.U[i, end], ld.P[:, i], ld.p)
-            axpy!(-ld.U[i, end] * ld.γ[n] / ld.γ[i], ld.Q[:, i], ld.q)
+            axpy!(-ld.U[i, end], view(ld.P, :, i), ld.p)
+            axpy!(-ld.U[i, end] * ld.γ[n] / ld.γ[i], view(ld.Q, :, i), ld.q)
         end
     end
     return ld
@@ -563,8 +563,8 @@ function _update_pq_inner!(ld)
         u = _u(i, n, mk[k])
         ld.U[i, end] = u
         if u != 0
-            axpy!(-u, ld.P[:, i], ld.p)
-            axpy!(-u * ld.γ[n] / ld.γ[i], ld.Q[:, i], ld.q)
+            axpy!(-u, view(ld.P, :, i), ld.p)
+            axpy!(-u * ld.γ[n] / ld.γ[i], view(ld.Q, :, i), ld.q)
         end
     end
     return ld
@@ -659,8 +659,8 @@ function _update_v̂ŵ_common!(ld)
 
     for i = nl[lstar]:nl[l]-1 # TODO: OPTIMIZE gemv! (or 5-arg mul!)
         if ld.L[i, n] != 0
-            axpy!(-ld.L[i, n], ld.V[:, i], ld.Ap)
-            axpy!(-ld.L[i, n] * ld.γ[n] / ld.γ[i], ld.W[:, i], ld.Atq)
+            axpy!(-ld.L[i, n], view(ld.V, :, i), ld.Ap)
+            axpy!(-ld.L[i, n] * ld.γ[n] / ld.γ[i], view(ld.W, :, i), ld.Atq)
         end
     end
     return ld
@@ -703,8 +703,8 @@ function _update_vw_regular!(ld)
     copyto!(ld.w̃, ld.Atq)
     for i = nl[l]:n # TODO: OPTIMIZE gemv! (or 5-arg mul!)
         if ld.L[i, end] != 0
-            axpy!(-ld.L[i, end], ld.V[:, i], ld.ṽ)
-            axpy!(-ld.L[i, end] * ld.γ[n] / ld.γ[i], ld.W[:, i], ld.w̃)
+            axpy!(-ld.L[i, end], view(ld.V, :, i), ld.ṽ)
+            axpy!(-ld.L[i, end] * ld.γ[n] / ld.γ[i], view(ld.W, :, i), ld.w̃)
         end
     end
     return ld
@@ -719,8 +719,8 @@ function _update_vw_inner!(ld)
         ll = _l(i, n, nl[l])
         ld.L[i, end] = ll
         if ll != 0
-            axpy!(-_l(i, n, nl[l]), ld.V[:, i], ld.ṽ)
-            axpy!(-_l(i, n, nl[l]) * ld.γ[n] / ld.γ[i], ld.W[:, i], ld.w̃)
+            axpy!(-_l(i, n, nl[l]), view(ld.V, :, i), ld.ṽ)
+            axpy!(-_l(i, n, nl[l]) * ld.γ[n] / ld.γ[i], view(ld.W, :, i), ld.w̃)
         end
     end
     return ld
