@@ -239,34 +239,3 @@ end
         test_lal_identities(ld_results)
     end 
 end
-
-@testset "Cyclic Circulant Matrix" begin
-    rng = Random.Xoshiro(1234)
-    # 4-cyclic circulant matrix, creates blocks
-    I1 = Diagonal(fill(1.0, 3))
-    I2 = Diagonal(fill(1.0, 7))
-    I3 = Diagonal(fill(1.0, 3))
-    I4 = Diagonal(fill(1.0, 5))
-    B1 = rand(rng, size(I1, 1), size(I4, 2))
-    B2 = rand(rng, size(I2, 1), size(I1, 2))
-    B3 = rand(rng, size(I3, 1), size(I2, 2))
-    B4 = rand(rng, size(I4, 1), size(I3, 2))
-    Z12 = fill(0.0, size(I1, 1), size(I2, 2))
-    Z13 = fill(0.0, size(I1, 1), size(I3, 2))
-    Z14 = fill(0.0, size(I1, 1), size(I4, 2))
-    Z23 = fill(0.0, size(I2, 1), size(I3, 2))
-    Z24 = fill(0.0, size(I2, 1), size(I4, 2))
-    Z34 = fill(0.0, size(I3, 1), size(I4, 2))
-    Ac = [
-        I1   Z12  Z13 B1
-        B2   I2   Z23 Z24
-        Z13' B3   I3  Z34
-        Z14' Z24' B4  I4
-    ]
-    v = [rand(rng, size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
-    w = [rand(rng, size(I1, 1)); fill(0.0, size(Ac, 1) - size(I1, 1))]
-    ld = IS.LookAheadLanczosDecomp(Ac, v, w; log=true, vw_normalized=false, max_block_size=10, max_memory=10, verbose=true)
-    ld_results = _iterate_and_collect_lal_intermediates(ld)
-    test_lal_identities(ld_results)
-end
-

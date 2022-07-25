@@ -106,7 +106,6 @@ mutable struct LookAheadLanczosDecomp{OpT, OptT, VecT, MatT, ElT, ElRT}
 
     # Estimate of norm(A), see [^Freund1993]
     nA::ElRT
-    nA_recompute::ElRT
 
     # Logs and options
     log::LookAheadLanczosDecompLog
@@ -227,7 +226,7 @@ function LookAheadLanczosDecomp(
         D, E, Flastcol, Flastrow, F̃lastcol, G, H,
         U, L,
         n, k, l, kstar, lstar, mk, nl,
-        false, false, nA, nA,
+        false, false, nA,
         ld_log,
         LookAheadLanczosDecompOptions(
             max_iter,
@@ -311,7 +310,7 @@ function _update_PQ_sequence!(ld)
     # Alg. 5.2.3
     _update_Flastrow!(ld)
     # Alg. 5.2.4
-    ld.innerp = inner_ok && _is_singular(ld.E)
+    ld.innerp = inner_ok && !isempty(ld.E) && _is_singular(last(blocks(ld.E)))
     # Alg. 5.2.5
     _update_U!(ld, ld.innerp)
     # Alg. 5.2.6
@@ -374,7 +373,7 @@ function _update_VW_sequence!(ld)
     # Alg. 5.2.16
     _update_Flastcol!(ld)
     # Alg. 5.2.17
-    ld.innerv = inner_ok && _is_singular(ld.D[ld.nl[ld.l]:end, ld.nl[ld.l]:end])
+    ld.innerv = inner_ok && _is_singular(last(blocks(ld.D)))
     # Alg. 5.2.18
     _update_L!(ld, ld.innerv)
     # Alg. 5.2.19
@@ -436,7 +435,6 @@ function _update_D!(ld)
     # Eq. 3.15, (D Γ)ᵀ = (D Γ)
     # D[n, n] = wtv
 
-    # TODO: closed block
     if isone(ld.n) || _VW_block_size(ld) == 1
         _start_new_block!(ld.D, ld.wtv)
     else
@@ -464,7 +462,6 @@ function _update_Flastrow!(ld)
     # Note: D is at D_n, L is at L_{n-1}
     # Eq. 5.2 (w/ indices advanced): 
     # F_{n} = D_{n}L[1:n, 1:n] + l[n+1, n]D_{n}[1:n, n+1][0 ... 0 1]
-    # TODO: block
     if !isone(ld.n) # We only need to do this if we are constructing a block
         ld.Flastrow = reshape(ld.D[end:end, :] * ld.L, :)
         ld.F̃lastcol = ld.Flastrow .* ld.γ[1:end-1] ./ ld.γ[end]
@@ -589,7 +586,9 @@ function _append_PQ!(ld)
 end
 
 # 5.2.4, 5.2.17
-_is_singular(A) = !isempty(A) && minimum(svdvals(A)) < eps(real(eltype(A)))
+# Freund, R. W., Gutknecht, M. H., & Nachtigal, N. M. (1993). An Implementation of the Look-Ahead Lanczos Algorithm for Non-Hermitian Matrices Part I. SIAM Journal on Scientific Computing, 14(1), 137–158. https://doi.org/10.1137/0914009
+# suggests eps()^(1/3)
+_is_singular(A) = !isempty(A) && minimum(svdvals(A)) < eps(real(eltype(A)))^(1/3)
 
 function _update_E!(ld)
     # E = QtAP

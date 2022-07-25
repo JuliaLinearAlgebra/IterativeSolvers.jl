@@ -64,6 +64,11 @@ function Base.show(io::IO, ::MIME"text/plain", A::LimitedMemoryMatrix) where {T}
     Base.showarg(io, A.value, true)
 end
 
+function Base.show(io::IO, A::LimitedMemoryMatrix) where {T}
+    print(io, Base.dims2string(size(A)), " ")
+    Base.showarg(io, A.value, true)
+end
+
 """
     hcat!(A::LimitedMemoryMatrix, B::AbstractVector)
 
