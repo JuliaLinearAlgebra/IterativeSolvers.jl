@@ -266,7 +266,6 @@ function qmr!(x, A, b;
               abstol::Real = zero(real(eltype(b))),
               reltol::Real = sqrt(eps(real(eltype(b)))),
               maxiter::Int = size(A, 2),
-              lookahead::Bool = false,
               log::Bool = false,
               initially_zero::Bool = false,
               verbose::Bool = false)

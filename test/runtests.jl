@@ -30,6 +30,7 @@ include("qmr.jl")
 
 # Look-Ahead Lanczos
 include("lal.jl")
+include("lalqmr.jl")
 
 #Chebyshev
 include("chebyshev.jl")
