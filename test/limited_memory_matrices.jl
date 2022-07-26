@@ -26,3 +26,47 @@ using Test
     @test A[3, 4] == 4
     @test A[3, 5] == 5
 end
+
+@testset "LimitedMemoryUpperTriangular" begin
+    A = IS.LimitedMemoryUpperTriangular{Float64, Matrix{Float64}}(3)
+    IS._grow_hcat!(A, fill(1.0, 1))
+    IS._grow_hcat!(A, fill(2.0, 2))
+    @test A ≈ [
+        1.0 2.0
+        0.0 2.0
+    ]
+    IS._grow_hcat!(A, fill(3.0, 3))
+    v = fill(4.0, 4)
+    v[1] = 0
+    IS._grow_hcat!(A, v)
+    @test A ≈ [
+        0.0 2.0 3.0 0.0
+        0.0 2.0 3.0 4.0
+        0.0 0.0 3.0 4.0
+        0.0 0.0 0.0 4.0
+    ]
+end
+
+@testset "LimitedMemoryUpperHessenberg" begin
+    A = IS.LimitedMemoryUpperHessenberg{Float64, Matrix{Float64}}(3)
+    IS._grow_hcat!(A, fill(1.0, 2))
+    IS._grow_hcat!(A, fill(2.0, 3))
+    @test A ≈ [
+        1.0 2.0    
+        1.0 2.0
+        0.0 2.0
+    ]
+    v = fill(3.0, 4)
+    v[1] = 0
+    IS._grow_hcat!(A, v)
+    v = fill(4.0, 5)
+    v[1:2] .= 0
+    IS._grow_hcat!(A, v)
+    @test A ≈ [
+        0.0 2.0 0.0 0.0
+        0.0 2.0 3.0 0.0
+        0.0 2.0 3.0 4.0
+        0.0 0.0 3.0 4.0
+        0.0 0.0 0.0 4.0
+    ]
+end

@@ -87,9 +87,9 @@ mutable struct LookAheadLanczosDecomp{OpT, OptT, VecT, MatT, ElT, ElRT}
 
     # Eq. 3.9
     # need to keep previous columns of U for G checks
-    U::UpperTriangular{ElT, Matrix{ElT}}
+    U::LimitedMemoryUpperTriangular{ElT, Matrix{ElT}}
     # need to keep previous columns of L for H checks
-    L::UpperHessenberg{ElT, Matrix{ElT}}
+    L::LimitedMemoryUpperHessenberg{ElT, Matrix{ElT}}
     
     # Indices tracking location in block and sequence
     n::Int
@@ -188,8 +188,8 @@ function LookAheadLanczosDecomp(
     Flastrow = Vector{elT}()
     F̃lastcol = Vector{elT}()
 
-    U = UpperTriangular(Matrix{elT}(undef, 0, 0))
-    L = UpperHessenberg(Matrix{elT}(undef, 0, 0))
+    U = LimitedMemoryUpperTriangular{elT, Matrix{elT}}(max_memory)
+    L = LimitedMemoryUpperHessenberg{elT, Matrix{elT}}(max_memory)
 
     # Alg 5.2.0
     n     = 1
@@ -473,12 +473,9 @@ function _update_U!(ld, innerp)
     # U is upper triangular matrix in decomposition of recurrence relation for P-Q sequence
     # updates last column of U
     n, mk, k, kstar = ld.n, ld.mk, ld.k, ld.kstar
-    ld.U  = UpperTriangular(
-        [
-            ld.U fill(0.0, n-1, 1)
-            fill(0.0, 1, n-1) 1.0
-        ]
-    )
+    uvec = fill(0, n)
+    uvec[end] = 1
+    _grow_hcat!(ld.U, uvec)
 
     for i = kstar:k-1
         block_start = mk[i]
@@ -639,17 +636,8 @@ function _update_L!(ld, innerv)
     if !innerv
         Llastcol[nl[l]:end] .= blocks(ld.D)[end] \ ld.Flastcol[nl[l]:end]
     end
-    if isone(n)
-        ld.L = UpperHessenberg(
-            reshape([Llastcol[1]
-                0.0], 2, 1)
-        )
-    else
-        ld.L = UpperHessenberg(
-            [ld.L Llastcol
-            fill(0.0, 1, n)]
-        )
-    end
+    lvec = [Llastcol; 0]
+    _grow_hcat!(ld.L, lvec)
     return ld
 end
 
