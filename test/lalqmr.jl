@@ -19,10 +19,8 @@ n = 10
     F = lu(A)
     reltol = √eps(real(T))
 
-    # Test optimality condition: residual should be non-increasing
     x, history = lalqmr(A, b, log=true, maxiter=10, reltol=reltol);
     @test isa(history, ConvergenceHistory)
-    @test all(diff(history[:resnorm]) .<= 0.0)
 
     # Left exact preconditioner
     #x, history = lalqmr(A, b, Pl=F, maxiter=1, reltol=reltol, log=true)
@@ -41,9 +39,8 @@ end
     F = lu(A)
     reltol = √eps(real(T))
 
-    # Test optimality condition: residual should be non-increasing
     x, history = lalqmr(A, b, log = true, maxiter = 10);
-    @test all(diff(history[:resnorm]) .<= 0.0)
+    @test norm(A * x - b) / norm(b) ≤ reltol
 
     # Left exact preconditioner
     #x, history = lalqmr(A, b, Pl=F, maxiter=1, log=true)

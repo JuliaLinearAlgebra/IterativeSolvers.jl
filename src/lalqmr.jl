@@ -2,7 +2,7 @@ import Base: iterate
 
 export lalqmr, lalqmr!
 
-mutable struct LALQMRIterable{T, xT, rT, lanczosT}
+mutable struct LALQMRIterable{T, xT, MT, rT, lanczosT}
     x::xT
 
     lanczos::lanczosT
@@ -11,11 +11,11 @@ mutable struct LALQMRIterable{T, xT, rT, lanczosT}
     maxiter::Int
 
     t::Vector{T}
-    R::UpperTriangular{T, Matrix{T}}
+    R::LimitedMemoryUpperTriangular{T, Matrix{T}}
 
     G::Vector{Givens{T}}
 
-    d::Matrix{T}
+    d::LimitedMemoryMatrix{T, MT}
 end
 
 function lalqmr_iterable!(
@@ -24,6 +24,7 @@ function lalqmr_iterable!(
     reltol::Real = sqrt(eps(real(eltype(b)))),
     maxiter::Int = size(A, 2),
     initially_zero::Bool = false,
+    max_memory::Int=4,
     kwargs...
 )
     T = eltype(x)
@@ -37,16 +38,17 @@ function lalqmr_iterable!(
 
     lanczos = LookAheadLanczosDecomp(
         A, v, w;
-        vw_normalized = true,
+        vw_normalized=true,
+        max_memory=max_memory,
         kwargs...
     )
 
-    R = UpperTriangular(Matrix{T}(undef, 0, 0))
+    R = LimitedMemoryUpperTriangular{T, Matrix{T}}(max_memory)
     # Givens rotations
     G = Vector{Givens{T}}()
 
     # Projection operators
-    D = similar(x, size(x, 1), 0)
+    d = LimitedMemoryMatrix(similar(x, size(v, 1), 0), max_memory)
 
     t = Vector{T}(undef, 1)
     t[1] = resnorm
@@ -58,7 +60,7 @@ function lalqmr_iterable!(
         lanczos, resnorm, tolerance,
         maxiter,
         t, R,
-        G, D
+        G, d
     )
 end
 
@@ -82,9 +84,7 @@ function iterate(q::LALQMRIterable, n::Int=start(q))
     gend, r = givens(Llastcol, n, n+1)
     push!(q.G, gend)
     Llastcol[end-1] = r
-    Llastcol[end] = 0
-    q.R = UpperTriangular([[q.R; fill(0, 1, n-1)] Llastcol[1:end-1]])
-    @assert q.R[:, end] ≈ Llastcol[1:end-1]
+    _grow_hcat!(q.R, Llastcol[1:end-1])
 
 
     # Eq. 6.2, update t
@@ -97,10 +97,12 @@ function iterate(q::LALQMRIterable, n::Int=start(q))
     RU = q.R*q.lanczos.U
     d = q.lanczos.V[:, end-1]
     for i in 1:size(RU, 1)-1
-        axpy!(-RU[i, end], q.d[:, i], d)
+        if RU[i, end] != 0
+            axpy!(-RU[i, end], q.d[:, i], d)
+        end
     end
     d = d / RU[end, end]
-    q.d = [q.d d]
+    hcat!(q.d, d)
 
     # iterate x_n = x_n-1 + d_n τ_n
     axpy!(q.t[end-1], d, q.x)
