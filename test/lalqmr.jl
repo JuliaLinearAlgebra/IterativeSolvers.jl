@@ -53,6 +53,24 @@ end
     #@test norm(A * x - b) / norm(b) ≤ reltol
 end
 
+@testset "Block Creation {$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
+    # Guaranteed to create blocks during Lanczos process
+    # This satisfies the condition that in the V-W sequence, the first
+    # iterates are orthogonal: <Av - v<A, v>, Atv - v<At, v>> under transpose inner product
+    dl = fill(one(T), n-1)
+    du = fill(one(T), n-1)
+    d = fill(one(T), n)
+    dl[1] = -1
+    A = Tridiagonal(dl, d, du)
+    b = fill(zero(T), n)
+    b[2] = 1.0
+
+    reltol = √eps(real(T))
+    
+    x, history = lalqmr(A, b, log = true)
+    @test norm(A * x - b) / norm(b) ≤ reltol
+end
+
 @testset "Linear operator defined as a function" begin
     A = LinearMap(cumsum!, 100; ismutating=true)
     b = rand(100)
