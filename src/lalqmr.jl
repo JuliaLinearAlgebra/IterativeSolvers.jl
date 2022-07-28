@@ -16,6 +16,7 @@ mutable struct LALQMRIterable{T, xT, MT, rT, lanczosT}
     G::Vector{Givens{T}}
 
     d::LimitedMemoryMatrix{T, MT}
+    dlast::xT
 end
 
 function lalqmr_iterable!(
@@ -54,13 +55,14 @@ function lalqmr_iterable!(
     t[1] = resnorm
 
     tolerance = max(reltol * resnorm, abstol)
+    dlast = similar(x)
 
     return LALQMRIterable(
         x,
         lanczos, resnorm, tolerance,
         maxiter,
         t, R,
-        G, d
+        G, d, dlast
     )
 end
 
@@ -83,29 +85,28 @@ function iterate(q::LALQMRIterable, n::Int=start(q))
     end
     gend, r = givens(Llastcol, n, n+1)
     push!(q.G, gend)
-    Llastcol[end-1] = r
+    Llastcol[end-1] = r # Llastcol[end] = 0, but we don't need it
     _grow_hcat!(q.R, Llastcol[1:end-1])
-
 
     # Eq. 6.2, update t
     push!(q.t, 0)
-    q.t = gend * q.t
+    q.t .= gend * q.t
   
     # Eq. 6.3, calculate projection
     # Dn = [Vn Un^-1 Rn^-1]
     # => Dn Rn Un = Vn
     RU = q.R*q.lanczos.U
-    d = q.lanczos.V[:, end-1]
+    copyto!(q.dlast, view(q.lanczos.V, :, n))
     for i in 1:size(RU, 1)-1
         if RU[i, end] != 0
-            axpy!(-RU[i, end], q.d[:, i], d)
+            axpy!(-RU[i, end], view(q.d, :, i), q.dlast)
         end
     end
-    d = d / RU[end, end]
-    hcat!(q.d, d)
+    q.dlast ./= RU[end, end]
+    hcat!(q.d, q.dlast)
 
     # iterate x_n = x_n-1 + d_n τ_n
-    axpy!(q.t[end-1], d, q.x)
+    axpy!(q.t[end-1], q.dlast, q.x)
 
     # Eq. 4.12, Freund 1990
     q.resnorm = q.resnorm * abs(gend.s) * sqrt(n+1)/sqrt(n)
@@ -183,7 +184,8 @@ function lalqmr!(
         maxiter=maxiter,
         initially_zero=initially_zero,
         log=log,
-        verbose=verbose
+        verbose=verbose,
+        kwargs...
     )
 
     verbose && @printf("=== qmr ===\n%4s\t%7s\n","iter","resnorm")
