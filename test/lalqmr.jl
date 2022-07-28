@@ -10,7 +10,7 @@ using SparseArrays
 #LALQMR
 @testset "LALQMR" begin
 
-rng = Random.Xoshiro(123)
+rng = Random.MersenneTwister(123)
 n = 10
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
