@@ -19,7 +19,7 @@ ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 
 @testset "Conjugate Gradients" begin
 
-rng = Random.Xoshiro(1234)
+rng = Random.MersenneTwister(1234)
 
 @testset "Small full system" begin
     n = 10

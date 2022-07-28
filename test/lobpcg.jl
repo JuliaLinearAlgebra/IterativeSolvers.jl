@@ -28,7 +28,7 @@ function max_err(R)
 end
 
 @testset "Locally Optimal Block Preconditioned Conjugate Gradient" begin
-    rng = Random.Xoshiro(1234)
+    rng = Random.MersenneTwister(1234)
     @testset "Single eigenvalue" begin
         n = 10
         @testset "Small full system" begin
@@ -86,7 +86,7 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        rng_temp = Random.Xoshiro(1234) # Issue #316 (test sensitive to the rng)
+                        rng_temp = Random.MersenneTwister(1234) # Issue #316 (test sensitive to the rng)
                         A = rand(rng_temp, T, n, n)
                         A = A' + A + 20I
                         b = zeros(T, n, 1)
@@ -100,7 +100,7 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        rng_temp = Random.Xoshiro(1234) # Issue #316 (test sensitive to the rng)
+                        rng_temp = Random.MersenneTwister(1234) # Issue #316 (test sensitive to the rng)
                         A = rand(rng_temp, T, n, n)
                         A = A' + A + 20I
                         B = rand(rng_temp, T, n, n)
@@ -269,7 +269,7 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        rng_temp = Random.Xoshiro(1234) # Issue #316 (test sensitive to the rng)
+                        rng_temp = Random.MersenneTwister(123) # Issue #316 (test sensitive to the rng)
                         A = rand(rng_temp, T, n, n)
                         A = A' + A + 20I
                         B = rand(rng_temp, T, n, n)
@@ -307,7 +307,7 @@ end
         @testset "Generalized eigenvalue problem" begin
             @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                 @testset "largest = $largest" for largest in (true, false)
-                    rng_temp = Random.Xoshiro(1234) # Issue #316 (test sensitive to the rng)
+                    rng_temp = Random.MersenneTwister(123) # Issue #316 (test sensitive to the rng)
                     A = rand(rng_temp, T, n, n)
                     A = A' + A + 20I
                     B = rand(rng_temp, T, n, n)

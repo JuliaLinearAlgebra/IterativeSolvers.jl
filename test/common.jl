@@ -6,7 +6,7 @@ using IterativeSolvers
 using Test
 using Random
 
-rng = Random.Xoshiro(1234)
+rng = Random.MersenneTwister(1234)
 
 @testset "Basic operations" begin
 

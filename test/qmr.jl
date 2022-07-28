@@ -12,7 +12,7 @@ using SparseArrays
 
 n = 10
 m = 6
-rng = Random.Xoshiro(123)
+rng = Random.MersenneTwister(123)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = rand(rng, T, n, n) + n * I
@@ -32,7 +32,7 @@ end
 
     x, history = qmr(A, b, log=true, reltol=reltol)
     @test history.isconverged
-    @test norm(A * x - b) / norm(b) ≤ 2reltol # TODO: Should maybe not require the 2?
+    @test norm(A * x - b) / norm(b) ≤ 3reltol # TODO: Should maybe not require the 3?
 end
 
 @testset "Maximum number of iterations" begin

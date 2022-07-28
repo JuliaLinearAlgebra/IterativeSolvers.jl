@@ -7,7 +7,7 @@ using Random
 
 @testset "Orthogonalization" begin
 
-rng = Random.Xoshiro(1234)
+rng = Random.MersenneTwister(1234)
 n = 10
 m = 3
 

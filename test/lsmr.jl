@@ -62,7 +62,7 @@ function sol_matrix(m, n)
 end
 
 @testset "LSMR" begin
-    rng = Random.Xoshiro(1234)
+    rng = Random.MersenneTwister(1234)
 
     @testset "Small dense matrix" for T = (Float32, Float64)
         A = rand(rng, T, 10, 5)

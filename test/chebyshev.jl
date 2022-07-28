@@ -21,7 +21,7 @@ end
 @testset "Chebyshev" begin
 
 n = 10
-rng = Random.Xoshiro(1234)
+rng = Random.MersenneTwister(1234)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A = randSPD(rng, T, n)

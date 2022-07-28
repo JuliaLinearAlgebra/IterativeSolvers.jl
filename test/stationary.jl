@@ -16,7 +16,7 @@ using SparseArrays
 n = 10
 m = 6
 ω = 1.2
-rng = Random.Xoshiro(1234)
+rng = Random.MersenneTwister(1234)
 
 @testset "SparseMatrix{$T, $Ti}" for T in (Float32, Float64, ComplexF32, ComplexF64), Ti in (Int64, Int32)
     @testset "Sparse? $sparse" for sparse = (true, false)

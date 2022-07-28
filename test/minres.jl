@@ -25,7 +25,7 @@ function skew_hermitian_problem(T, n)
     A, x, b
 end
 
-rng = Random.Xoshiro(1234)
+rng = Random.MersenneTwister(1234)
 n = 15
 
 

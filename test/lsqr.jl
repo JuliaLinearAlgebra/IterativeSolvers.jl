@@ -7,7 +7,7 @@ using LinearAlgebra
 using Random
 using SparseArrays
 
-rng = Random.Xoshiro(1234)
+rng = Random.MersenneTwister(1234)
 
 @testset "LSQR" begin
 

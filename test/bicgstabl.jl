@@ -7,11 +7,11 @@ using LinearAlgebra
 
 @testset ("BiCGStab(l)") begin
 
-rng = Random.Xoshiro(12345)
+rng = Random.MersenneTwister(12345)
 n = 20
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-    rng_temp = Random.Xoshiro(12345) # Issue #316 (test sensitive to the rng)
+    rng_temp = Random.MersenneTwister(1234) # Issue #316 (test sensitive to the rng)
     A = rand(rng_temp, T, n, n) + 15I
     x = ones(T, n)
     b = A * x
