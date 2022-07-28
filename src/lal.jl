@@ -274,9 +274,6 @@ function _start_new_block!(A::BlockDiagonal{T, TM}, B) where {T, TM}
     return A
 end
 
-Base.size(B::BlockDiagonals.BlockDiagonal) = sum(first∘size, BlockDiagonals.blocks(B), init=0), sum(last∘size, BlockDiagonals.blocks(B), init=0)
-
-
 start(::LookAheadLanczosDecomp) = 1
 done(ld::LookAheadLanczosDecomp, iteration::Int) = iteration ≥ ld.opts.max_iter
 function iterate(ld::LookAheadLanczosDecomp, n::Int=start(ld))
@@ -310,7 +307,7 @@ function _update_PQ_sequence!(ld)
     # Alg. 5.2.3
     _update_Flastrow!(ld)
     # Alg. 5.2.4
-    ld.innerp = inner_ok && !isempty(ld.E) && _is_singular(last(blocks(ld.E)))
+    ld.innerp = inner_ok && !isempty(blocks(ld.E)) && _is_singular(last(blocks(ld.E)))
     # Alg. 5.2.5
     _update_U!(ld, ld.innerp)
     # Alg. 5.2.6
