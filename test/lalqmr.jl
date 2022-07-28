@@ -57,6 +57,7 @@ end
     # Guaranteed to create blocks during Lanczos process
     # This satisfies the condition that in the V-W sequence, the first
     # iterates are orthogonal: <Av - v<A, v>, Atv - v<At, v>> under transpose inner product
+    # These do _not_ work for regular qmr
     dl = fill(one(T), n-1)
     du = fill(one(T), n-1)
     d = fill(one(T), n)
@@ -72,9 +73,9 @@ end
 end
 
 @testset "Linear operator defined as a function" begin
-    A = LinearMap(cumsum!, 100; ismutating=true)
+    A = LinearMap(identity, identity, 100; ismutating=false)
     b = rand(100)
-    reltol = 1e-5
+    reltol = 1e-6
 
     x = lalqmr(A, b; reltol=reltol, maxiter=2000)
     @test norm(A * x - b) / norm(b) ≤ reltol
