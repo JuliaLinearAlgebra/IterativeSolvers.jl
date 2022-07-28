@@ -1,6 +1,6 @@
 # [QMR](@id QMR)
 
-QMR is a short-recurrence version of GMRES for solving $Ax = b$ approximately for $x$ where $A$ is a linear operator and $b$ the right-hand side vector. $A$ may be non-symmetric.
+QMR is a short-recurrence version of GMRES for solving $Ax = b$ approximately for $x$ where $A$ is a linear operator and $b$ the right-hand side vector. $A$ may be non-symmetric. This is a simplified version of [LALQMR](@ref)
 
 ## Usage
 
