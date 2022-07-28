@@ -10,12 +10,12 @@ using SparseArrays
 #LALQMR
 @testset "LALQMR" begin
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(123)
 n = 10
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-    A = rand(T, n, n)
-    b = rand(T, n)
+    A = rand(rng, T, n, n)
+    b = rand(rng, T, n)
     F = lu(A)
     reltol = √eps(real(T))
 
@@ -34,8 +34,8 @@ n = 10
 end
 
 @testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
-    A = sprand(T, n, n, 0.5) + I
-    b = rand(T, n)
+    A = sprand(rng, T, n, n, 0.5) + n * I
+    b = rand(rng, T, n)
     F = lu(A)
     reltol = √eps(real(T))
 
