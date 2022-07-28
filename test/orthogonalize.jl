@@ -7,18 +7,18 @@ using Random
 
 @testset "Orthogonalization" begin
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(1234)
 n = 10
 m = 3
 
 @testset "Eltype $T" for T = (ComplexF32, Float64)
 
     # Create an orthonormal matrix V
-    F = qr(rand(T, n, m))
+    F = qr(rand(rng, T, n, m))
     V = Matrix(F.Q)
 
     # And a random vector to be orth. to V.
-    w_original = rand(T, n)
+    w_original = rand(rng, T, n)
 
     # Test whether w is w_original orthonormalized w.r.t. V,
     # given the projection h = V' * h and the norm of V * V' * h

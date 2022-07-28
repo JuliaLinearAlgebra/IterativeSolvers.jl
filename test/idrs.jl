@@ -10,11 +10,11 @@ using SparseArrays
 
 n = 10
 m = 6
-Random.seed!(1234567)
+rng = Random.Xoshiro(12345)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-    A = rand(T, n, n) + n * I
-    b = rand(T, n)
+    A = rand(rng, T, n, n) + n * I
+    b = rand(rng, T, n)
     reltol = √eps(real(T))
 
     @testset "Without residual smoothing" begin
@@ -33,8 +33,8 @@ Random.seed!(1234567)
 end
 
 @testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
-    A = sprand(T, n, n, 0.5) + n * I
-    b = rand(T, n)
+    A = sprand(rng, T, n, n, 0.5) + n * I
+    b = rand(rng, T, n)
     reltol = √eps(real(T))
 
     x, history = idrs(A, b, log=true)
@@ -43,8 +43,8 @@ end
 end
 
 @testset "SparseMatrixCSC{$T, $Ti} with preconditioner" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
-    A = sprand(T, 1000, 1000, 0.1) + 30 * I
-    b = rand(T, 1000)
+    A = sprand(rng, T, 1000, 1000, 0.1) + 30 * I
+    b = rand(rng, T, 1000)
     reltol = √eps(real(T))
 
     x, history = idrs(A, b, log=true)

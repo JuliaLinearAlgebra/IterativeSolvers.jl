@@ -7,13 +7,13 @@ using LinearAlgebra
 using Random
 using SparseArrays
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(1234)
 
 @testset "LSQR" begin
 
 @testset "Small dense matrix" for T = (Float32, Float64)
-    A = rand(T, 10, 5)
-    b = rand(T, 10)
+    A = rand(rng, T, 10, 5)
+    b = rand(rng, T, 10)
     x, history = lsqr(A, b, log = true)
     @test isa(history, ConvergenceHistory)
     @test norm(x - A\b) ≤ 4 * √eps(T) # TODO: factor 4 should not be necessary? (test sensitive to the rng)

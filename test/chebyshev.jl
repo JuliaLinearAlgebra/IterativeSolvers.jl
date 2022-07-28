@@ -5,8 +5,8 @@ using Test
 using Random
 using LinearAlgebra
 
-function randSPD(T, n)
-    A = rand(T, n, n) + n * I
+function randSPD(rng, T, n)
+    A = rand(rng, T, n, n) + n * I
     A' * A
 end
 
@@ -21,11 +21,11 @@ end
 @testset "Chebyshev" begin
 
 n = 10
-Random.seed!(1234321)
+rng = Random.Xoshiro(1234)
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-    A = randSPD(T, n)
-    b = rand(T, n)
+    A = randSPD(rng, T, n)
+    b = rand(rng, T, n)
     reltol = √(eps(real(T)))
     abstol = reltol
 
@@ -40,7 +40,7 @@ Random.seed!(1234321)
 
     @testset "With an initial guess" begin
         λ_min, λ_max = approx_eigenvalue_bounds(A)
-        x0 = rand(T, n)
+        x0 = rand(rng, T, n)
         initial_residual = norm(A * x0 - b)
         x, history = chebyshev!(x0, A, b, λ_min, λ_max, reltol=reltol, maxiter=10n, log=true)
         @test isa(history, ConvergenceHistory)
@@ -48,7 +48,7 @@ Random.seed!(1234321)
         @test x == x0
         @test norm(A * x - b) ≤ reltol * initial_residual
 
-        x0 = rand(T, n)
+        x0 = rand(rng, T, n)
         x, history = chebyshev!(x0, A, b, λ_min, λ_max, abstol=abstol, reltol=zero(real(T)), maxiter=10n, log=true)
         @test isa(history, ConvergenceHistory)
         @test history.isconverged
@@ -57,7 +57,7 @@ Random.seed!(1234321)
     end
 
     @testset "With a preconditioner" begin
-        B = randSPD(T, n)
+        B = randSPD(rng, T, n)
         B_fact = cholesky!(B, Val(false))
         λ_min, λ_max = approx_eigenvalue_bounds(B_fact \ A)
         x, history = chebyshev(A, b, λ_min, λ_max, Pl = B_fact, reltol=reltol, maxiter=10n, log=true)

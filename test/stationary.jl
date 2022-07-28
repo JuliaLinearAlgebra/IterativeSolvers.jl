@@ -16,19 +16,19 @@ using SparseArrays
 n = 10
 m = 6
 ω = 1.2
-Random.seed!(1234322)
+rng = Random.Xoshiro(1234)
 
 @testset "SparseMatrix{$T, $Ti}" for T in (Float32, Float64, ComplexF32, ComplexF64), Ti in (Int64, Int32)
     @testset "Sparse? $sparse" for sparse = (true, false)
         # Diagonally dominant
         if sparse
-            A = sprand(T, n, n, 4 / n) + 2n * I
+            A = sprand(rng, T, n, n, 4 / n) + 2n * I
         else
-            A = rand(T, n, n) + 2n * I
+            A = rand(rng, T, n, n) + 2n * I
         end
 
-        b = rand(T, n)
-        x0 = rand(T, n)
+        b = rand(rng, T, n)
+        x0 = rand(rng, T, n)
         tol = √eps(real(T))
 
         for solver in (jacobi, gauss_seidel)

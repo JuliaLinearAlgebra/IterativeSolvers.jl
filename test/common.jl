@@ -6,7 +6,7 @@ using IterativeSolvers
 using Test
 using Random
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(1234)
 
 @testset "Basic operations" begin
 

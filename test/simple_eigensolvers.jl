@@ -8,12 +8,12 @@ using Random
 
 @testset "Simple Eigensolvers" begin
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(1234)
 n = 10
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
 
-    A = rand(T, n, n) + I
+    A = rand(rng, T, n, n) + I
     A = A' * A
     λs = eigvals(A)
 

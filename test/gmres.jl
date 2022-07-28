@@ -10,12 +10,12 @@ using SparseArrays
 #GMRES
 @testset "GMRES" begin
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(1234)
 n = 10
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-    A = rand(T, n, n) + I
-    b = rand(T, n)
+    A = rand(rng, T, n, n) + I
+    b = rand(rng, T, n)
     F = lu(A)
     reltol = √eps(real(T))
 
@@ -36,8 +36,8 @@ n = 10
 end
 
 @testset "SparseMatrixCSC{$T, $Ti}" for T in (Float64, ComplexF64), Ti in (Int64, Int32)
-    A = sprand(T, n, n, 0.5) + I
-    b = rand(T, n)
+    A = sprand(rng, T, n, n, 0.5) + I
+    b = rand(rng, T, n)
     F = lu(A)
     reltol = √eps(real(T))
 
@@ -58,7 +58,7 @@ end
 
 @testset "Linear operator defined as a function" begin
     A = LinearMap(cumsum!, 100; ismutating=true)
-    b = rand(100)
+    b = rand(rng, 100)
     reltol = 1e-5
 
     x = gmres(A, b; reltol=reltol, maxiter=2000)

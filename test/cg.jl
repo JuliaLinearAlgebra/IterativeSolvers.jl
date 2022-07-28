@@ -19,15 +19,15 @@ ldiv!(y, P::JacobiPrec, x) = y .= x ./ P.diagonal
 
 @testset "Conjugate Gradients" begin
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(1234)
 
 @testset "Small full system" begin
     n = 10
 
     @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-        A = rand(T, n, n)
+        A = rand(rng, T, n, n)
         A = A' * A + I
-        b = rand(T, n)
+        b = rand(rng, T, n)
         reltol = √eps(real(T))
 
         x,ch = cg(A, b; reltol=reltol, maxiter=2n, log=true)

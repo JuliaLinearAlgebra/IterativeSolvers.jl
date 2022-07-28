@@ -3,6 +3,8 @@ using LinearAlgebra
 using SparseArrays
 using Test
 
+@testset "Limited Memory Matrices" begin
+
 @testset "LimitedMemoryMatrix" begin
     A = IS.LimitedMemoryMatrix{Float64, Matrix{Float64}}(fill(1.0, 4, 4), 4, 4)
     @test A[1, 1] == 1
@@ -67,4 +69,6 @@ end
         0.0 0.0 3.0 4.0
         0.0 0.0 0.0 4.0
     ]
+end
+
 end

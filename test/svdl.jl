@@ -7,7 +7,7 @@ using LinearAlgebra
 
 @testset "SVD Lanczos" begin
 
-Random.seed!(1234567)
+rng = Random.Xoshiro(123)
 
 #Thick restart methods
 @testset "Thick restart with method=$method" for method in (:ritz, :harmonic)
@@ -53,14 +53,14 @@ Random.seed!(1234567)
         end
 
         @testset "Rectangular Matrix{$T}" begin
-            Random.seed!(1)
+            rng = Random.Xoshiro(1)
             m = 300
             n = 200
             k = 5
             l = 10
 
-            A = randn(T, m, n)
-            q = randn(T, n) |> x -> x / norm(x)
+            A = randn(rng, T, m, n)
+            q = randn(rng, T, n) |> x -> x / norm(x)
             σ, L = svdl(A, nsv=k, k=l, v0=q, tol=1e-5, maxiter=30, method=method)
             @test norm(σ - svdvals(A)[1 : k]) < k^2 * 1e-5
         end

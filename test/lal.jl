@@ -4,6 +4,10 @@ using SparseArrays
 using Test
 import Random
 
+@testset "LAL" begin
+
+rng = Random.Xoshiro(1234)
+
 # Equation references and identities from:
 # Freund, R. W., & Nachtigal, N. M. (1994). An Implementation of the QMR Method Based on Coupled Two-Term Recurrences. SIAM Journal on Scientific Computing, 15(2), 313–337. https://doi.org/10.1137/0915022
 
@@ -238,4 +242,5 @@ end
 
         test_lal_identities(ld_results)
     end 
+end
 end

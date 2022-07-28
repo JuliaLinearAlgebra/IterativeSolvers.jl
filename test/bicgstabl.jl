@@ -7,12 +7,12 @@ using LinearAlgebra
 
 @testset ("BiCGStab(l)") begin
 
-Random.seed!(1234321)
+rng = Random.Xoshiro(12345)
 n = 20
 
 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
-    Random.seed!(123) # Issue #316 (test sensitive to the rng)
-    A = rand(T, n, n) + 15I
+    rng_temp = Random.Xoshiro(12345) # Issue #316 (test sensitive to the rng)
+    A = rand(rng_temp, T, n, n) + 15I
     x = ones(T, n)
     b = A * x
 
@@ -25,7 +25,7 @@ n = 20
         @test norm(A * x1 - b) / norm(b) ≤ reltol
 
         # With an initial guess
-        x_guess = rand(T, n)
+        x_guess = rand(rng, T, n)
         x2, his2 = bicgstabl!(x_guess, A, b, l, max_mv_products = 100, log = true, reltol = reltol)
         @test isa(his2, ConvergenceHistory)
         @test x2 == x_guess
@@ -37,7 +37,7 @@ n = 20
             continue
         end
         # Do an exact LU decomp of a nearby matrix
-        F = lu(A + rand(T, n, n))
+        F = lu(A + rand(rng, T, n, n))
         x3, his3 = bicgstabl(A, b, Pl = F, l, max_mv_products = 100, log = true, reltol = reltol)
         @test norm(A * x3 - b) / norm(b) ≤ reltol
     end
