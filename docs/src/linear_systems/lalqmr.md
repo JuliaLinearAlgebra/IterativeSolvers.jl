@@ -1,6 +1,6 @@
 # [LALQMR](@id LALQMR)
 
-Look-ahead Lanczos Quasi-minimal Residual (LALQMR) is the look-ahead variant of [QMR](@ref) for solving $Ax = b$ approximately for $x$ where $A$ is a linear operator and $b$ the right-hand side vector. $A$ may be non-symmetric. The Krylov subspace is generated via the [Look-ahead Lanczos process](@LAL)
+Look-ahead Lanczos Quasi-minimal Residual (LALQMR) is the look-ahead variant of [QMR](@ref) for solving $Ax = b$ approximately for $x$ where $A$ is a linear operator and $b$ the right-hand side vector. $A$ may be non-symmetric [^Freund1990]. The Krylov subspace is generated via the [Look-ahead Lanczos process](@ref LAL)
 
 ## Usage
 
@@ -22,7 +22,9 @@ For a solution vector of size `n`, the memory allocated will be `(12 + max_memor
 ## References
 [^Freund1993]:
 Freund, R. W., Gutknecht, M. H., & Nachtigal, N. M. (1993). An Implementation of the Look-Ahead Lanczos Algorithm for Non-Hermitian Matrices. SIAM Journal on Scientific Computing, 14(1), 137–158. https://doi.org/10.1137/0914009
+
 [^Freund1994]:
 Freund, R. W., & Nachtigal, N. M. (1994). An Implementation of the QMR Method Based on Coupled Two-Term Recurrences. SIAM Journal on Scientific Computing, 15(2), 313–337. https://doi.org/10.1137/0915022
 [^Freund1990]:
+
 Freund, W. R., & Nachtigal, N. M. (1990). QMR : for a Quasi-Minimal Residual Linear Method Systems. (December).
