@@ -108,7 +108,7 @@ function test_lal_identities(ld)
     @test ld.A * Vn ≈ ld.V * ld.L * ld.U
     # 3.13
     if !D_singular
-        @test ld.L[1:end-1, end] ≈ (ld.D \ Γn) * transpose(ld.U) * (Γn \ transpose(ld.Q)) * ld.A * ld.P[:, end]
+        @test ld.L[1:end-1, end] ≈ (ld.D \ Matrix(Γn)) * transpose(ld.U) * (Γn \ Matrix(transpose(ld.Q))) * ld.A * ld.P[:, end]
     end
     # 3.14, 3.26
     @test ld.E ≈ transpose(ld.Q) * ld.A * ld.P
