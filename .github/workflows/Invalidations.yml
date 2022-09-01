@@ -1,4 +1,6 @@
 name: Invalidations
+# Uses SnoopCompile to evaluate number of invalidations caused by `using` the package
+# using https://github.com/julia-actions/julia-invalidations
 # Based on https://github.com/julia-actions/julia-invalidations
 
 on:
