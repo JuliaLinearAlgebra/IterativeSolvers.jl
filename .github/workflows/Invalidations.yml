@@ -1,4 +1,5 @@
 name: Invalidations
+# Based on https://github.com/julia-actions/julia-invalidations
 
 on:
   pull_request:
