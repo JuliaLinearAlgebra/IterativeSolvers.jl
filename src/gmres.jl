@@ -1,16 +1,26 @@
 import Base: iterate
 using Printf
+
+using DistributedArrays
+using DistributedArrays:DVector, procs
+
 export gmres, gmres!
 
 struct ArnoldiDecomp{T, matT}
     A::matT
-    V::Matrix{T} # Orthonormal basis vectors
+    V::AbstractMatrix{T} # Orthonormal basis vectors
     H::Matrix{T} # Hessenberg matrix
 end
 
 ArnoldiDecomp(A::matT, order::Int, T::Type) where {matT} = ArnoldiDecomp{T, matT}(
     A,
     zeros(T, size(A, 1), order + 1),
+    zeros(T, order + 1, order)
+)
+
+ArnoldiDecomp(A::matT, order::Int, T::Type, V::AbstractMatrix) where {matT} = ArnoldiDecomp{T, matT}(
+    A,
+    V,
     zeros(T, order + 1, order)
 )
 
@@ -117,7 +127,12 @@ function gmres_iterable!(x, A, b;
     T = eltype(x)
 
     # Approximate solution
-    arnoldi = ArnoldiDecomp(A, restart, T)
+    arnoldi = if typeof(b) <: DVector
+        ArnoldiDecomp(A, restart, T, dzeros(T, (size(A, 1), restart + 1), procs(b), (length(procs(b)), 1)))
+    else
+        ArnoldiDecomp(A, restart, T)
+    end
+
     residual = Residual(restart, T)
     mv_products = initially_zero ? 1 : 0
 
@@ -244,14 +259,21 @@ function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool = f
     # Potentially save one MV product
     if !initially_zero
         mul!(Ax, arnoldi.A, x)
-        first_col .-= Ax
+        if isa(Ax, Vector)
+            first_col .-= Ax
+        elseif isa(Ax, DVector)
+            axpy!(-1, Ax, first_col)
+        end
+            
     end
 
     ldiv!(Pl, first_col)
 
     # Normalize
     β = norm(first_col)
-    first_col .*= inv(β)
+    # first_col .*= inv(β)
+    rmul!(first_col, inv(β))
+    
     β
 end
 
@@ -280,7 +302,12 @@ function update_solution!(x, y, arnoldi::ArnoldiDecomp{T}, Pr, k::Int, Ax) where
     # Computing x ← x + Pr \ (V * y) and use Ax as a work space
     mul!(Ax, view(arnoldi.V, :, 1 : k - 1), y)
     ldiv!(Pr, Ax)
-    x .+= Ax
+    if isa(Ax, Vector)
+        x .+= Ax
+    elseif isa(Ax, DVector)
+        axpy!(1, Ax, x)
+    end
+
 end
 
 function expand!(arnoldi::ArnoldiDecomp, Pl::Identity, Pr::Identity, k::Int, Ax)
