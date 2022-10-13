@@ -18,9 +18,9 @@ ArnoldiDecomp(A::matT, order::Int, T::Type) where {matT} = ArnoldiDecomp{T, matT
     zeros(T, order + 1, order)
 )
 
-ArnoldiDecomp(A::matT, order::Int, T::Type, V::AbstractMatrix) where {matT} = ArnoldiDecomp{T, matT}(
+ArnoldiDecomp(A::matT, order::Int, T::Type) where {matT<:DArray} = ArnoldiDecomp{T, matT}(
     A,
-    V,
+    dzeros(T, (size(A, 1), order + 1), procs(A)[:, 1], (size(procs(A), 1), 1)),
     zeros(T, order + 1, order)
 )
 
@@ -124,14 +124,10 @@ function gmres_iterable!(x, A, b;
                          maxiter::Int = size(A, 2),
                          initially_zero::Bool = false,
                          orth_meth::OrthogonalizationMethod = ModifiedGramSchmidt())
-    T = eltype(x)
+    T = Adivtype(A, b)
 
     # Approximate solution
-    arnoldi = if typeof(b) <: DVector
-        ArnoldiDecomp(A, restart, T, dzeros(T, (size(A, 1), restart + 1), procs(b), (length(procs(b)), 1)))
-    else
-        ArnoldiDecomp(A, restart, T)
-    end
+    arnoldi = ArnoldiDecomp(A, restart, T)
 
     residual = Residual(restart, T)
     mv_products = initially_zero ? 1 : 0
