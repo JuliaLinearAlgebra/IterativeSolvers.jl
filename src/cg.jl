@@ -126,7 +126,8 @@ function cg_iterator!(x, A, b, Pl = Identity();
     u = statevars.u
     r = statevars.r
     c = statevars.c
-    u .= zero(eltype(x))
+    # u .= zero(eltype(x))
+    fill!(u, zero(eltype(x)))
     copyto!(r, b)
 
     # Compute r with an MV-product or not.
