@@ -77,3 +77,18 @@ function orthogonalize_and_normalize!(V::StridedMatrix{T}, w::StridedVector{T}, 
 
     nrm
 end
+
+function orthogonalize_and_normalize!(V, w, h::StridedVector{T}, ::ModifiedGramSchmidt) where {T}
+    # Orthogonalize using BLAS-1 ops and column views.
+    for i = 1 : size(V, 2)
+        column = view(V, :, i)
+        h[i] = dot(column, w)
+        axpy!(-h[i], column, w)
+    end
+
+    nrm = norm(w)
+    rmul!(w, inv(nrm))
+
+    nrm
+end
+

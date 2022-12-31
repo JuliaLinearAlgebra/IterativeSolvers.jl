@@ -4,13 +4,19 @@ export gmres, gmres!
 
 struct ArnoldiDecomp{T, matT}
     A::matT
-    V::Matrix{T} # Orthonormal basis vectors
+    V::AbstractMatrix{T} # Orthonormal basis vectors
     H::Matrix{T} # Hessenberg matrix
 end
 
 ArnoldiDecomp(A::matT, order::Int, T::Type) where {matT} = ArnoldiDecomp{T, matT}(
     A,
     zeros(T, size(A, 1), order + 1),
+    zeros(T, order + 1, order)
+)
+
+ArnoldiDecomp(A::matT, order::Int, T::Type, V::AbstractMatrix) where {matT} = ArnoldiDecomp{T, matT}(
+    A,
+    V,
     zeros(T, order + 1, order)
 )
 
@@ -114,7 +120,7 @@ function gmres_iterable!(x, A, b;
                          maxiter::Int = size(A, 2),
                          initially_zero::Bool = false,
                          orth_meth::OrthogonalizationMethod = ModifiedGramSchmidt())
-    T = eltype(x)
+    T = Adivtype(A, b)
 
     # Approximate solution
     arnoldi = ArnoldiDecomp(A, restart, T)
@@ -251,7 +257,9 @@ function init!(arnoldi::ArnoldiDecomp{T}, x, b, Pl, Ax; initially_zero::Bool = f
 
     # Normalize
     β = norm(first_col)
-    first_col .*= inv(β)
+    # first_col .*= inv(β)
+    rmul!(first_col, inv(β))
+    
     β
 end
 
