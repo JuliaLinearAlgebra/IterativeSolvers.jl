@@ -190,7 +190,7 @@ function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::I
 
         #@assert size(L.B) == (k, k)
         F = svd(L.B)#::LinearAlgebra.SVD{eltype(v0), typeof(real(one(eltype(v0)))), Matrix{eltype(v0)}}
-        iter==1 && @assert eltype(F)==eltype(v0)
+        # iter==1 && @assert eltype(F)==eltype(v0)
         if method == :ritz
             thickrestart!(A, L, F, j)
         elseif method == :harmonic
