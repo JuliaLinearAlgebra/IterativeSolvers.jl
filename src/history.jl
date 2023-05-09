@@ -172,8 +172,8 @@ function reserve!(typ::Type, ch::ConvergenceHistory, key::Symbol, kwargs...)
     _reserve!(typ, ch, key, kwargs...)
 end
 
-#If partialhistory, theres no need to store a vector or matrix, instead
-#store nothing or store a vector respectively.
+# If PartialHistory, there's no need to store a vector or matrix, instead
+# store nothing or store a vector respectively.
 _reserve!(typ::Type, ch::PartialHistory, key::Symbol, ::Int) = nothing
 function _reserve!(typ::Type, ch::PartialHistory, key::Symbol, ::Int, size::Int)
     ch.data[key] = Vector{typ}(undef, size)
