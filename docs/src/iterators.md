@@ -19,7 +19,7 @@ end
 Rather than calling `my_solver!(x, A, b)`, you could also initialize the iterable yourself and perform the `for` loop.
 
 ## Example: avoiding unnecessary initialization
-The Jacobi method for `SparseMatrixCSC` has some overhead in intialization; not only do we need to allocate a temporary vector, we also have to search for indices of the diagonal (and check their values are nonzero). The current implementation initializes the iterable as:
+The Jacobi method for `SparseMatrixCSC` has some overhead in initialization; not only do we need to allocate a temporary vector, we also have to search for indices of the diagonal (and check their values are nonzero). The current implementation initializes the iterable as:
 
 ```julia
 jacobi_iterable(x, A::SparseMatrixCSC, b; maxiter::Int = 10) =

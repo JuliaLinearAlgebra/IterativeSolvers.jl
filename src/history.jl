@@ -144,7 +144,7 @@ push_custom_data!(ch::CompleteHistory, key::Symbol, data) = ch.data[key][ch.iter
     reserve!(ch, key, maxiter, size)
     reserve!(typ, ch, key, maxiter, size)
 
-Reserve space for per iteration data in `ch`. If size is provided, intead of a
+Reserve space for per iteration data in `ch`. If size is provided, instead of a
 vector it will reserve matrix of dimensions `(maxiter, size)`.
 
 # Arguments

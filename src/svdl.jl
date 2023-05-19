@@ -516,7 +516,7 @@ full reorthogonalization. As explained in the numerical analysis literature by
 Kahan, Golub, Rutishauser, and others in the 1970s, double classical
 Gram-Schmidt reorthogonalization always suffices to keep vectors orthogonal to
 within machine precision. As described in [^Bjorck2015], `α` is a threshold
-for determinining when the second orthogonalization is necessary. -log10(α) is
+for determining when the second orthogonalization is necessary. -log10(α) is
 the number of (decimal) digits lost due to cancellation. Common choices are
 `α=0.1` [Rutishauser] and `α=1/√2` [Daniel1976] (our default).
 
