@@ -80,35 +80,36 @@ end
     omega
 end
 
-mutable struct IDRSIterable
-    X
-    A
-    s
-    Pl
-    abstol
-    reltol
-    maxiter
-    smoothing
-    verbose
-    R
-    X_s
-    R_s
-    T_s
-    normR
-    tol
-    Z
-    P
-    U
-    G
-    Q
-    V
-    M
-    f
-    c
-    omega
-    log
+mutable struct IDRSIterable{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,T12,T13,T14,
+                            T15,T16,T17,T18,T19,T20,T21,T22,T23,T24,T25,T26}
+    X::T1
+    A::T2
+    s::T3
+    Pl::T4
+    abstol::T5
+    reltol::T6
+    maxiter::T7
+    smoothing::T8
+    verbose::T9
+    R::T10
+    X_s::T11
+    R_s::T12
+    T_s::T13
+    normR::T14
+    tol::T15
+    Z::T16
+    P::T17
+    U::T18
+    G::T19
+    Q::T20
+    V::T21
+    M::T22
+    f::T23
+    c::T24
+    omega::T25
+    log::T26
 end
-function idrs_iterable!(log::ConvergenceHistory, X, A, C::T,
+function idrs_iterable!(log, X, A, C::T,
     s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
     ) where {T, precT}
     R = C - A*X
@@ -163,7 +164,7 @@ function iterate(it::IDRSIterable, (iter, step) = (1, 1))
     it.X, it.A, it.s, it.Pl, it.R, it.X_s, it.R_s, it.T_s, it.Z, it.P, it.U, it.G, it.Q, it.V, it.M, it.f, it.c
     
     if it.normR < it.tol || iter > it.maxiter
-        setconv(it.log, 0 <= it.normR < it.tol)
+        it.log !== nothing && setconv(it.log, 0 <= it.normR < it.tol)
 
         if it.smoothing
             copyto!(X, X_s)
@@ -178,7 +179,6 @@ function iterate(it::IDRSIterable, (iter, step) = (1, 1))
             end
         end
         k = step 
-        nextiter!(it.log, mvps=1)
 
         # Solve small system and make v orthogonal to P
 
@@ -231,12 +231,10 @@ function iterate(it::IDRSIterable, (iter, step) = (1, 1))
 
             it.normR = norm(R_s)
         end
-        push!(it.log, :resnorm, it.normR)
-        it.verbose && @printf("%3d\t%3d\t%1.2e\n", iter, step, it.normR)
         if k < s
             f[k+1:s] .-= beta*M[k+1:s,k]
         end
-        return it.normR, (iter + 1, step + 1)
+        nextstep = step + 1
     elseif step == s + 1
 
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
@@ -262,10 +260,13 @@ function iterate(it::IDRSIterable, (iter, step) = (1, 1))
 
             it.normR = norm(R_s)
         end
+        nextstep = 1
+    end
+    if it.log !== nothing
         nextiter!(it.log, mvps=1)
         push!(it.log, :resnorm, it.normR)
-        it.verbose && @printf("%3d\t%3d\t%1.2e\n", iter, step, it.normR)
-        return it.normR, (iter + 1, 1)
     end
+    it.verbose && @printf("%3d\t%3d\t%1.2e\n", iter, step, it.normR)
+    return it.normR, (iter + 1, nextstep)
 end
 
