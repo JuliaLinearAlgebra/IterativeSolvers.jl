@@ -1,5 +1,6 @@
 export idrs, idrs!
-
+import Base: iterate
+using Printf
 using Random
 
 """
@@ -50,8 +51,8 @@ function idrs!(x, A, b;
                Pl = Identity(),
                abstol::Real = zero(real(eltype(b))),
                reltol::Real = sqrt(eps(real(eltype(b)))),
-               maxiter=size(A, 2),
-               log::Bool=false,
+               maxiter = size(A, 2),
+               log::Bool = false,
                kwargs...)
     history = ConvergenceHistory(partial=!log)
     history[:abstol] = abstol
@@ -72,33 +73,58 @@ end
     nt = norm(t)
     ts = dot(t,s)
     rho = abs(ts/(nt*ns))
-    om = ts/(nt*nt)
+    omega = ts/(nt*nt)
     if rho < angle
-        om = om*convert(typeof(om),angle)/rho
+        omega = omega*convert(typeof(omega),angle)/rho
     end
-    om
+    omega
 end
 
-function idrs_method!(log::ConvergenceHistory, X, A, C::T,
+mutable struct IDRSIterable
+    X
+    A
+    s
+    Pl
+    abstol
+    reltol
+    maxiter
+    smoothing
+    verbose
+    R
+    X_s
+    R_s
+    T_s
+    normR
+    tol
+    Z
+    P
+    U
+    G
+    Q
+    V
+    M
+    f
+    c
+    omega
+    log
+end
+function idrs_iterable!(log::ConvergenceHistory, X, A, C::T,
     s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
     ) where {T, precT}
-
-    verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - A*X
     normR = norm(R)
-    iter = 1
     tol = max(reltol * normR, abstol)
 
     if smoothing
         X_s = copy(X)
         R_s = copy(R)
         T_s = zero(R)
+    else 
+        X_s = nothing
+        R_s = nothing
+        T_s = nothing
     end
 
-    if normR <= tol # Initial guess is a good enough solution
-        setconv(log, 0<=normR<tol)
-        return X
-    end
 
     Z = zero(C)
 
@@ -112,76 +138,106 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
     f = zeros(eltype(C),s)
     c = zeros(eltype(C),s)
 
-    om::eltype(C) = 1
-    while normR > tol && iter ≤ maxiter
-        for i in 1:s
-            f[i] = dot(P[i], R)
+    omega::eltype(C) = 1
+    IDRSIterable(X, A, s, Pl, abstol, reltol, maxiter, smoothing, verbose,
+    R, X_s, R_s, T_s, normR, tol, Z, P, U, G, Q, V, M, f, c, omega, log)
+end
+
+
+function idrs_method!(log::ConvergenceHistory, X, A, C::T,
+    s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
+    ) where {T, precT}
+
+    verbose && @printf("=== idrs ===\n%4s\t%4s\t%7s\n", "iter", "step", "resnorm")
+
+    iterable = idrs_iterable!(log, X, A, C, s, Pl, abstol, reltol, maxiter; smoothing, verbose)
+    
+    normR = reduce((_,r) -> r, iterable; init=iterable.normR)
+
+    verbose && @printf("\n")
+    iterable.X
+end
+
+function iterate(it::IDRSIterable, (iter, step) = (1, 1))
+    X, A, s, Pl, R, X_s, R_s, T_s, Z, P, U, G, Q, V, M, f, c = 
+    it.X, it.A, it.s, it.Pl, it.R, it.X_s, it.R_s, it.T_s, it.Z, it.P, it.U, it.G, it.Q, it.V, it.M, it.f, it.c
+    
+    if it.normR < it.tol || iter > it.maxiter
+        setconv(it.log, 0 <= it.normR < it.tol)
+
+        if it.smoothing
+            copyto!(X, X_s)
         end
-        for k in 1:s
-            nextiter!(log,mvps=1)
+        return nothing
+    end
 
-            # Solve small system and make v orthogonal to P
-
-            c = LowerTriangular(M[k:s,k:s])\f[k:s]
-            V .= c[1] .* G[k]
-            Q .= c[1] .* U[k]
-
-            for i = k+1:s
-                V .+= c[i-k+1] .* G[i]
-                Q .+= c[i-k+1] .* U[i]
+    if step in 1:s
+        if step == 1     
+            for i in 1:s
+                f[i] = dot(P[i], R)
             end
-
-            # Compute new U[:,k] and G[:,k], G[:,k] is in space G_j
-            V .= R .- V
-
-            # Preconditioning
-            ldiv!(Pl, V)
-
-            U[k] .= Q .+ om .* V
-            mul!(G[k], A, U[k])
-
-            # Bi-orthogonalise the new basis vectors
-
-            for i in 1:k-1
-                alpha = dot(P[i],G[k])/M[i,i]
-                G[k] .-= alpha .* G[i]
-                U[k] .-= alpha .* U[i]
-            end
-
-            # New column of M = P'*G  (first k-1 entries are zero)
-
-            for i in k:s
-                M[i,k] = dot(P[i],G[k])
-            end
-
-            #  Make r orthogonal to q_i, i = 1..k
-
-            beta = f[k]/M[k,k]
-            R .-= beta .* G[k]
-            X .+= beta .* U[k]
-
-            normR = norm(R)
-            if smoothing
-                T_s .= R_s .- R
-
-                gamma = dot(R_s, T_s)/dot(T_s, T_s)
-
-                R_s .-= gamma .* T_s
-                X_s .-= gamma .* (X_s .- X)
-
-                normR = norm(R_s)
-            end
-            push!(log, :resnorm, normR)
-            verbose && @printf("%3d\t%1.2e\n",iter,normR)
-            if normR < tol || iter == maxiter
-                setconv(log, 0<=normR<tol)
-                return X
-            end
-            if k < s
-                f[k+1:s] .-=  beta*M[k+1:s,k]
-            end
-            iter += 1
         end
+        k = step 
+        nextiter!(it.log, mvps=1)
+
+        # Solve small system and make v orthogonal to P
+
+        c = LowerTriangular(M[k:s,k:s])\f[k:s]
+        V .= c[1] .* G[k]
+        Q .= c[1] .* U[k]
+
+        for i = k+1:s
+            V .+= c[i-k+1] .* G[i]
+            Q .+= c[i-k+1] .* U[i]
+        end
+
+        # Compute new U[:,k] and G[:,k], G[:,k] is in space G_j
+        V .= R .- V
+
+        # Preconditioning
+        ldiv!(Pl, V)
+
+        U[k] .= Q .+ it.omega .* V
+        mul!(G[k], A, U[k])
+
+        # Bi-orthogonalise the new basis vectors
+
+        for i in 1:k-1
+            alpha = dot(P[i], G[k])/M[i,i]
+            G[k] .-= alpha .* G[i]
+            U[k] .-= alpha .* U[i]
+        end
+
+        # New column of M = P'*G  (first k-1 entries are zero)
+
+        for i in k:s
+            M[i,k] = dot(P[i], G[k])
+        end
+
+        #  Make r orthogonal to q_i, i = 1..k
+
+        beta = f[k]/M[k,k]
+        R .-= beta .* G[k]
+        X .+= beta .* U[k]
+
+        it.normR = norm(R)
+        if it.smoothing
+            T_s .= R_s .- R
+
+            gamma = dot(R_s, T_s)/dot(T_s, T_s)
+
+            R_s .-= gamma .* T_s
+            X_s .-= gamma .* (X_s .- X)
+
+            it.normR = norm(R_s)
+        end
+        push!(it.log, :resnorm, it.normR)
+        it.verbose && @printf("%3d\t%3d\t%1.2e\n", iter, step, it.normR)
+        if k < s
+            f[k+1:s] .-= beta*M[k+1:s,k]
+        end
+        return it.normR, (iter + 1, step + 1)
+    elseif step == s + 1
 
         # Now we have sufficient vectors in G_j to compute residual in G_j+1
         # Note: r is already perpendicular to P so v = r
@@ -191,12 +247,12 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
         ldiv!(Pl, V)
 
         mul!(Q, A, V)
-        om = omega(Q, R)
-        R .-= om .* Q
-        X .+= om .* V
+        it.omega = omega(Q, R)
+        R .-= it.omega .* Q
+        X .+= it.omega .* V
 
-        normR = norm(R)
-        if smoothing
+        it.normR = norm(R)
+        if it.smoothing
             T_s .= R_s .- R
 
             gamma = dot(R_s, T_s)/dot(T_s, T_s)
@@ -204,16 +260,12 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
             R_s .-= gamma .* T_s
             X_s .-= gamma .* (X_s .- X)
 
-            normR = norm(R_s)
+            it.normR = norm(R_s)
         end
-        iter += 1
-        nextiter!(log, mvps=1)
-        push!(log, :resnorm, normR)
+        nextiter!(it.log, mvps=1)
+        push!(it.log, :resnorm, it.normR)
+        it.verbose && @printf("%3d\t%3d\t%1.2e\n", iter, step, it.normR)
+        return it.normR, (iter + 1, 1)
     end
-    if smoothing
-        copyto!(X, X_s)
-    end
-    verbose && @printf("\n")
-    setconv(log, 0<=normR<tol)
-    X
 end
+
