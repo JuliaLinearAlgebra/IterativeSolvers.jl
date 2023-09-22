@@ -56,13 +56,14 @@ function powm_iterable!(A, x; tol = eps(real(eltype(A))) * size(A, 2) ^ 3, maxit
 end
 
 """
-    powm(B; kwargs...) -> λ, x, [history]
+    powm(B; rng, kwargs...) -> λ, x, [history]
 
 See [`powm!`](@ref). Calls `powm!(B, x0; kwargs...)` with
-`x0` initialized as a random, complex unit vector.
+`x0` initialized as a random, complex unit vector using
+`rng::AbstractRNG`.
 """
-function powm(B; kwargs...)
-    x0 = rand(Complex{real(eltype(B))}, size(B, 1))
+function powm(B; rng::AbstractRNG=MersenneTwister(seed), kwargs...)
+    x0 = rand(rng, Complex{real(eltype(B))}, size(B, 1))
     rmul!(x0, one(eltype(B)) / norm(x0))
     powm!(B, x0; kwargs...)
 end
@@ -149,13 +150,13 @@ function powm!(B, x;
 end
 
 """
-    invpowm(B; shift = σ, kwargs...) -> λ, x, [history]
+    invpowm(B; shift = σ, rng, kwargs...) -> λ, x, [history]
 
 Find the approximate eigenpair `(λ, x)` of ``A`` near `shift`, where `B`
 is a linear map that has the effect `B * v = inv(A - σI) * v`.
 
 The method calls `powm!(B, x0; inverse = true, shift = σ)` with
-`x0` a random, complex unit vector. See [`powm!`](@ref)
+`x0` a random, complex unit vector using `rng::AbstractRNG`. See [`powm!`](@ref)
 
 # Examples
 
@@ -168,8 +169,8 @@ Fmap = LinearMap{ComplexF64}((y, x) -> ldiv!(y, F, x), 50, ismutating = true)
 λ, x = invpowm(Fmap, shift = σ, tol = 1e-4, maxiter = 200)
 ```
 """
-function invpowm(B; kwargs...)
-    x0 = rand(Complex{real(eltype(B))}, size(B, 1))
+function invpowm(B; rng::AbstractRNG=MersenneTwister(seed), kwargs...)
+    x0 = rand(rng, Complex{real(eltype(B))}, size(B, 1))
     rmul!(x0, one(eltype(B)) / norm(x0))
     invpowm!(B, x0; kwargs...)
 end

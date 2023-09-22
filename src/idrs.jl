@@ -32,6 +32,7 @@ shadow space.
   is the residual in the `k`th iteration;
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `log::Bool`: keep track of the residual norm in each iteration;
+- `rng::AbstractRNG`: generator for pseudorandom initialization
 - `verbose::Bool`: print convergence information during the iterations.
 
 # Return values
@@ -80,8 +81,8 @@ end
 end
 
 function idrs_method!(log::ConvergenceHistory, X, A, C::T,
-    s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false
-    ) where {T, precT}
+    s::Number, Pl::precT, abstol::Real, reltol::Real, maxiter::Number; smoothing::Bool=false, verbose::Bool=false,
+    rng::AbstractRNG=MersenneTwister(seed)) where {T, precT}
 
     verbose && @printf("=== idrs ===\n%4s\t%7s\n","iter","resnorm")
     R = C - A*X
@@ -102,7 +103,7 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
 
     Z = zero(C)
 
-    P = T[rand!(copy(C)) for k in 1:s]
+    P = T[rand!(rng, copy(C)) for k in 1:s]
     U = T[copy(Z) for k in 1:s]
     G = T[copy(Z) for k in 1:s]
     Q = copy(Z)

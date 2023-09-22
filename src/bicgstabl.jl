@@ -1,5 +1,5 @@
 export bicgstabl, bicgstabl!, bicgstabl_iterator, bicgstabl_iterator!, BiCGStabIterable
-using Printf
+using Printf, Random
 import Base: iterate
 
 mutable struct BiCGStabIterable{precT, matT, solT, vecT <: AbstractVector, smallMatT <: AbstractMatrix, realT <: Real, scalarT <: Number}
@@ -29,13 +29,14 @@ function bicgstabl_iterator!(x, A, b, l::Int = 2;
                              max_mv_products = size(A, 2),
                              abstol::Real = zero(real(eltype(b))),
                              reltol::Real = sqrt(eps(real(eltype(b)))),
+                             rng::AbstractRNG=MersenneTwister(seed),
                              initial_zero = false)
     T = eltype(x)
     n = size(A, 1)
     mv_products = 0
 
     # Large vectors.
-    r_shadow = rand(T, n)
+    r_shadow = rand(rng, T, n)
     rs = Matrix{T}(undef, n, l + 1)
     us = zeros(T, n, l + 1)
 
@@ -156,6 +157,7 @@ bicgstabl(A, b, l = 2; kwargs...) = bicgstabl!(zerox(A, b), A, b, l; initial_zer
 - `max_mv_products::Int = size(A, 2)`: maximum number of matrix vector products.
 For BiCGStab(l) this is a less dubious term than "number of iterations";
 - `Pl = Identity()`: left preconditioner of the method;
+- `rng::AbstractRNG`: generator for pseudorandom initialization
 - `abstol::Real = zero(real(eltype(b)))`,
   `reltol::Real = sqrt(eps(real(eltype(b))))`: absolute and relative
   tolerance for the stopping condition

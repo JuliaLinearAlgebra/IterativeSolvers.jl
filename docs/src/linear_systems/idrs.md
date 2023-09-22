@@ -19,3 +19,7 @@ and the IDR chapter in [^Meurant2020].
 [^VanGijzen2011]: Algorithm 913: An Elegant IDR(s) Variant that Efficiently Exploits Bi-orthogonality Properties. M. B. van Gijzen and P. Sonneveld ACM Trans. Math. Software, Vol. 38, No. 1, pp. 5:1-5:19, 2011
 [^Meurant2020]: The IDR family. G. Meurant and J. Duintjer Tebbens. In: Krylov Methods for Nonsymmetric Linear Systems. Springer Series in Computational Mathematics, vol 57. Springer, 2020. [doi:10.1007/978-3-030-55251-0_10](https://doi.org/10.1007/978-3-030-55251-0_10)
 
+A deterministic seed is used for generating pseudo-random initial
+data for the algorithm; this can be controlled by passing a
+different pseudorandom number generator (an [`AbstractRNG`](https://docs.julialang.org/en/v1/stdlib/Random/#Random.AbstractRNG)) via
+the `rng` keyword argument.

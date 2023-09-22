@@ -101,6 +101,7 @@ If `log` is set to `true` is given, method will output a tuple `X, L, ch`. Where
 
 - `nsv::Int = 6`: number of singular values requested;
 - `v0 = random unit vector`: starting guess vector in the domain of `A`.
+- `rng::AbstractRNG`: generator for pseudorandom initialization of `v0`
   The length of `q` should be the number of columns in `A`;
 - `k::Int = 2nsv`: maximum number of Lanczos vectors to compute before restarting;
 - `j::Int = nsv`: number of vectors to keep at the end of the restart.
@@ -175,7 +176,7 @@ end
 #########################
 
 function svdl_method!(log::ConvergenceHistory, A, l::Int=min(6, size(A,1)); k::Int=2l,
-    j::Int=l, v0::AbstractVector = Vector{eltype(A)}(randn(size(A, 2))) |> x->rmul!(x, inv(norm(x))),
+    j::Int=l, rng::AbstractRNG=MersenneTwister(seed), v0::AbstractVector = Vector{eltype(A)}(randn(rng, size(A, 2))) |> x->rmul!(x, inv(norm(x))),
     maxiter::Int=minimum(size(A)), tol::Real=√eps(), reltol::Real=√eps(),
     verbose::Bool=false, method::Symbol=:ritz, vecs=:none, dolock::Bool=false)
 

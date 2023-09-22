@@ -6,6 +6,10 @@ eigensystems, and singular value problems.
 """
 module IterativeSolvers
 
+# deterministic seed for pseudo-random numbers
+# (taken from the IterativeSolvers.jl UUID)
+const seed = [0x42fd0dbc, 0xa9815370, 0x80f2aaf5, 0x04508153]
+
 include("common.jl")
 include("orthogonalize.jl")
 include("history.jl")
