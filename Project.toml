@@ -1,6 +1,6 @@
 name = "IterativeSolvers"
 uuid = "42fd0dbc-a981-5370-80f2-aaf504508153"
-version = "0.9.3"
+version = "0.9.4"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
