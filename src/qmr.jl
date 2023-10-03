@@ -233,7 +233,7 @@ Solves the problem ``Ax = b`` with the Quasi-Minimal Residual (QMR) method.
 
 ## Keywords
 
-- `initally_zero::Bool`: If `true` assumes that `iszero(x)` so that one
+- `initially_zero::Bool`: If `true` assumes that `iszero(x)` so that one
   matrix-vector product can be saved when computing the initial residual
   vector;
 - `maxiter::Int = size(A, 2)`: maximum number of iterations;

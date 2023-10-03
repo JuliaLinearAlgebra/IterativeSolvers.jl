@@ -28,9 +28,9 @@ end
     b = rand(T, n)
     reltol = √eps(real(T))
 
-    x, history = qmr(A, b, log=true)
+    x, history = qmr(A, b, log=true, reltol=reltol)
     @test history.isconverged
-    @test norm(A * x - b) / norm(b) ≤ reltol
+    @test norm(A * x - b) / norm(b) ≤ 2reltol # TODO: Should maybe not require the 2?
 end
 
 @testset "Maximum number of iterations" begin

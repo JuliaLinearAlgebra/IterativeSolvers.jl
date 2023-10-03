@@ -144,7 +144,7 @@ push_custom_data!(ch::CompleteHistory, key::Symbol, data) = ch.data[key][ch.iter
     reserve!(ch, key, maxiter, size)
     reserve!(typ, ch, key, maxiter, size)
 
-Reserve space for per iteration data in `ch`. If size is provided, intead of a
+Reserve space for per iteration data in `ch`. If size is provided, instead of a
 vector it will reserve matrix of dimensions `(maxiter, size)`.
 
 # Arguments
@@ -172,8 +172,8 @@ function reserve!(typ::Type, ch::ConvergenceHistory, key::Symbol, kwargs...)
     _reserve!(typ, ch, key, kwargs...)
 end
 
-#If partialhistory, theres no need to store a vector or matrix, instead
-#store nothing or store a vector respectively.
+# If PartialHistory, there's no need to store a vector or matrix, instead
+# store nothing or store a vector respectively.
 _reserve!(typ::Type, ch::PartialHistory, key::Symbol, ::Int) = nothing
 function _reserve!(typ::Type, ch::PartialHistory, key::Symbol, ::Int, size::Int)
     ch.data[key] = Vector{typ}(undef, size)

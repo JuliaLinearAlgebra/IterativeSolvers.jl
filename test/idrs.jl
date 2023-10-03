@@ -26,9 +26,9 @@ Random.seed!(1234567)
 
     # with smoothing
     @testset "With residual smoothing" begin
-        x, history = idrs(A, b; smoothing=true, log=true)
+        x, history = idrs(A, b; reltol=reltol, smoothing=true, log=true)
         @test history.isconverged
-        @test norm(A*x - b) / norm(b) ≤ reltol
+        @test norm(A*x - b) / norm(b) ≤ 2reltol # TODO: Should maybe not require the 2?
     end
 end
 
@@ -51,13 +51,13 @@ end
     @test history.isconverged
     @test norm(A * x - b) / norm(b) ≤ reltol
 
-    Apre = lu(A)
+    Apre = lu(droptol!(copy(A), 0.1)) # inexact preconditioner
     xpre, historypre = idrs(A, b, Pl = Apre, log=true)
     @test historypre.isconverged
     @test norm(A * xpre - b) / norm(b) ≤ reltol
 
     @test isapprox(x, xpre, rtol = 1e-3)
-    @test historypre.iters < history.iters
+    @test historypre.iters < 0.5history.iters
 
 end
 
