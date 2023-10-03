@@ -210,8 +210,8 @@ end
 ## Jacobi
 ##
 
-mutable struct JacobiIterable{T <: Number, solT, vecT, rhsT}
-    O::OffDiagonal
+mutable struct JacobiIterable{Tv, Ti, solT, vecT, rhsT}
+    O::OffDiagonal{Tv, Ti}
 
     x::solT
     next::vecT
@@ -222,18 +222,19 @@ end
 
 start(::JacobiIterable) = 1
 done(j::JacobiIterable, iteration::Int) = iteration > j.maxiter
-function iterate(j::JacobiIterable{T}, iteration::Int=start(j)) where {T}
+function iterate(j::JacobiIterable, iteration::Int=start(j))
     if done(j, iteration) return nothing end
     # tmp = D \ (b - (A - D) * x)
     copyto!(j.next, j.b)
+    T = eltype(j.x)
     mul!(-one(T), j.O, j.x, one(T), j.next)
     ldiv!(j.x, j.O.diag, j.next)
 
     nothing, iteration + 1
 end
 
-jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector; maxiter::Int = 10) =
-    JacobiIterable{eltype(x), typeof(x), typeof(x), typeof(b)}(
+jacobi_iterable(x::AbstractVector, A::SparseMatrixCSC{Tv,Ti}, b::AbstractVector; maxiter::Int = 10) where {Tv, Ti} =
+    JacobiIterable{Tv, Ti, typeof(x), typeof(x), typeof(b)}(
         OffDiagonal(A, DiagonalIndices(A)), x, similar(x), b, maxiter)
 
 
@@ -257,9 +258,9 @@ end
 ## Gauss-Seidel
 ##
 
-mutable struct GaussSeidelIterable{solT, rhsT}
-    U::StrictlyUpperTriangular
-    L::FastLowerTriangular
+mutable struct GaussSeidelIterable{Tv, Ti, solT, rhsT}
+    U::StrictlyUpperTriangular{Tv, Ti}
+    L::FastLowerTriangular{Tv, Ti}
 
     x::solT
     b::rhsT
@@ -304,9 +305,9 @@ end
 ## SOR
 ##
 
-mutable struct SORIterable{T, solT, vecT, rhsT, numT <: Real}
-    U::StrictlyUpperTriangular
-    L::FastLowerTriangular
+mutable struct SORIterable{Tv, Ti, solT, vecT, rhsT, numT <: Real}
+    U::StrictlyUpperTriangular{Tv, Ti}
+    L::FastLowerTriangular{Tv, Ti}
     ω::numT
 
     x::solT
@@ -318,9 +319,10 @@ end
 
 start(::SORIterable) = 1
 done(s::SORIterable, iteration::Int) = iteration > s.maxiter
-function iterate(s::SORIterable{T}, iteration::Int=start(s)) where {T}
+function iterate(s::SORIterable, iteration::Int=start(s))
     if done(s, iteration) return nothing end
 
+    T = eltype(s.x)
     # next = b - U * x
     gauss_seidel_multiply!(-one(T), s.U, s.x, one(T), s.b, s.next)
 
@@ -333,10 +335,9 @@ function iterate(s::SORIterable{T}, iteration::Int=start(s)) where {T}
     nothing, iteration + 1
 end
 
-function sor_iterable(x::AbstractVector, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10)
+function sor_iterable(x::AbstractVector, A::SparseMatrixCSC{Tv, Ti}, b::AbstractVector, ω::Real; maxiter::Int = 10) where {Tv, Ti}
     D = DiagonalIndices(A)
-    T = eltype(x)
-    SORIterable{T,typeof(x),typeof(x),typeof(b),eltype(ω)}(
+    SORIterable{Tv,Ti,typeof(x),typeof(x),typeof(b),eltype(ω)}(
         StrictlyUpperTriangular(A, D), FastLowerTriangular(A, D), ω,
         x, similar(x), b, maxiter
     )
@@ -362,7 +363,7 @@ end
 ## SSOR
 ##
 
-mutable struct SSORIterable{T, solT, vecT, rhsT, numT <: Real}
+mutable struct SSORIterable{Tv, Ti, solT, vecT, rhsT, numT <: Real}
     sL::StrictlyLowerTriangular
     sU::StrictlyUpperTriangular
     L::FastLowerTriangular
@@ -374,9 +375,9 @@ mutable struct SSORIterable{T, solT, vecT, rhsT, numT <: Real}
     maxiter::Int
 end
 
-function ssor_iterable(x::AbstractVector{T}, A::SparseMatrixCSC, b::AbstractVector, ω::Real; maxiter::Int = 10) where {T}
+function ssor_iterable(x::AbstractVector, A::SparseMatrixCSC{Tv, Ti}, b::AbstractVector, ω::Real; maxiter::Int = 10) where {Tv, Ti}
     D = DiagonalIndices(A)
-    SSORIterable{T,typeof(x),typeof(x),typeof(b),typeof(ω)}(
+    SSORIterable{Tv, Ti, typeof(x),typeof(x),typeof(b),typeof(ω)}(
         StrictlyLowerTriangular(A, D),
         StrictlyUpperTriangular(A, D),
         FastLowerTriangular(A, D),
@@ -388,9 +389,10 @@ end
 start(s::SSORIterable) = 1
 done(s::SSORIterable, iteration::Int) = iteration > s.maxiter
 
-function iterate(s::SSORIterable{T}, iteration::Int=start(s)) where {T}
+function iterate(s::SSORIterable, iteration::Int=start(s))
     if done(s, iteration) return nothing end
 
+    T = eltype(s.x)
     # tmp = b - U * x
     gauss_seidel_multiply!(-one(T), s.sU, s.x, one(T), s.b, s.tmp)
 
