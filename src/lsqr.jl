@@ -1,7 +1,7 @@
 export lsqr, lsqr!
 
 """
-    lsqr(A, b; kwrags...) -> x, [history]
+    lsqr(A, b; kwargs...) -> x, [history]
 
 Same as [`lsqr!`](@ref), but allocates a solution vector `x` initialized with zeros.
 """

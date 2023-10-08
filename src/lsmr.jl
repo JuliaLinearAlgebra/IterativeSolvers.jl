@@ -3,7 +3,7 @@ export lsmr, lsmr!
 using LinearAlgebra
 
 """
-    lsmr(A, b; kwrags...) -> x, [history]
+    lsmr(A, b; kwargs...) -> x, [history]
 
 Same as [`lsmr!`](@ref), but allocates a solution vector `x` initialized with zeros.
 """
