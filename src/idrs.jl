@@ -120,7 +120,7 @@ function idrs_iterable!(log, X, A, C::T,
         X_s = copy(X)
         R_s = copy(R)
         T_s = zero(R)
-    else 
+    else
         X_s = nothing
         R_s = nothing
         T_s = nothing
@@ -151,8 +151,9 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
 
     verbose && @printf("=== idrs ===\n%4s\t%4s\t%7s\n", "iter", "step", "resnorm")
 
-    iterable = idrs_iterable!(log, X, A, C, s, Pl, abstol, reltol, maxiter; smoothing, verbose)
-    
+    iterable = idrs_iterable!(log, X, A, C, s, Pl, abstol, reltol, maxiter;
+                              smoothing=smoothing, verbose=verbose)
+
     normR = reduce((_,r) -> r, iterable; init=iterable.normR)
 
     verbose && @printf("\n")
@@ -160,9 +161,9 @@ function idrs_method!(log::ConvergenceHistory, X, A, C::T,
 end
 
 function iterate(it::IDRSIterable, (iter, step) = (1, 1))
-    X, A, s, Pl, R, X_s, R_s, T_s, Z, P, U, G, Q, V, M, f, c = 
+    X, A, s, Pl, R, X_s, R_s, T_s, Z, P, U, G, Q, V, M, f, c =
     it.X, it.A, it.s, it.Pl, it.R, it.X_s, it.R_s, it.T_s, it.Z, it.P, it.U, it.G, it.Q, it.V, it.M, it.f, it.c
-    
+
     if it.normR < it.tol || iter > it.maxiter
         it.log !== nothing && setconv(it.log, 0 <= it.normR < it.tol)
 
@@ -173,12 +174,12 @@ function iterate(it::IDRSIterable, (iter, step) = (1, 1))
     end
 
     if step in 1:s
-        if step == 1     
+        if step == 1
             for i in 1:s
                 f[i] = dot(P[i], R)
             end
         end
-        k = step 
+        k = step
 
         # Solve small system and make v orthogonal to P
 
@@ -269,4 +270,3 @@ function iterate(it::IDRSIterable, (iter, step) = (1, 1))
     it.verbose && @printf("%3d\t%3d\t%1.2e\n", iter, step, it.normR)
     return it.normR, (iter + 1, nextstep)
 end
-
