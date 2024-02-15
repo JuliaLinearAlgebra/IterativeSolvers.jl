@@ -12,13 +12,13 @@ When solving linear systems $Ax = b$ for a square matrix $A$ there are quite som
 
 | Method              | When to use it                                                           |
 |---------------------|--------------------------------------------------------------------------|
-| [Conjugate Gradients](@ref CG) | Best choice for **symmetric**, **positive-definite** matrices |
+| [Conjugate Gradient](@ref CG) | Best choice for **symmetric**, **positive-definite** matrices |
 | [MINRES](@ref MINRES) | For **symmetric**, **indefinite** matrices |
 | [GMRES](@ref GMRES) | For **nonsymmetric** matrices when a good [preconditioner](@ref Preconditioning) is available |
 | [IDR(s)](@ref IDRs) | For **nonsymmetric**, **strongly indefinite** problems without a good preconditioner |
 | [BiCGStab(l)](@ref BiCGStabl) | Otherwise for **nonsymmetric** problems |
 
-We also offer [Chebyshev iteration](@ref Chebyshev) as an alternative to Conjugate Gradients when bounds on the spectrum are known.
+We also offer [Chebyshev iteration](@ref Chebyshev) as an alternative to Conjugate Gradient when bounds on the spectrum are known.
 
 Stationary methods like [Jacobi](@ref), [Gauss-Seidel](@ref), [SOR](@ref) and [SSOR](@ref) can be used as smoothers to reduce high-frequency components in the error in just a few iterations.
 
