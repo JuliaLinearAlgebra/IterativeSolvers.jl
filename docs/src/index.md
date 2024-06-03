@@ -8,6 +8,8 @@ For more information on future methods have a look at the package [roadmap](http
 
 ## What method should I use for linear systems?
 
+### Square linear systems
+
 When solving linear systems $Ax = b$ for a square matrix $A$ there are quite some options. The typical choices are listed below:
 
 | Method              | When to use it                                                           |
@@ -22,7 +24,10 @@ We also offer [Chebyshev iteration](@ref Chebyshev) as an alternative to Conjuga
 
 Stationary methods like [Jacobi](@ref), [Gauss-Seidel](@ref), [SOR](@ref) and [SSOR](@ref) can be used as smoothers to reduce high-frequency components in the error in just a few iterations.
 
-When solving **least-squares** problems we currently offer just [LSMR](@ref LSMR) and [LSQR](@ref LSQR).
+### Non-square systems: least squares
+
+When solving **least-squares** problems we currently offer [LSMR](@ref LSMR) and [LSQR](@ref LSQR).
+LSMR generally converges more quickly than LSQR.
 
 ## Eigenproblems and SVD
 
