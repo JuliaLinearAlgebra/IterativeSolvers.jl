@@ -1,5 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
 
 [compat]
-Documenter = "~0.26, 0.27, 1.0, 1.1"
+Documenter = "1"

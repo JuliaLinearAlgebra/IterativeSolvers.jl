@@ -10,6 +10,7 @@ makedocs(
   ),
 	doctest = false,
 	clean = true,
+	checkdocs = :none,   # consider changing to :exports, but, e.g., `?IterativeSolvers` itself seems silly to include in the docs
 	sitename = "IterativeSolvers.jl",
 	pages = [
 		"Home" => "index.md",
