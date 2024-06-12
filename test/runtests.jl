@@ -9,7 +9,7 @@ include("hessenberg.jl")
 #Stationary solvers
 include("stationary.jl")
 
-#Conjugate gradients
+#Conjugate gradient
 include("cg.jl")
 
 #BiCGStab(l)

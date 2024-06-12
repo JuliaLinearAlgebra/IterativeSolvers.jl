@@ -17,7 +17,7 @@ makedocs(
 		"Getting started" => "getting_started.md",
 		"Preconditioning" => "preconditioning.md",
 		"Linear systems" => [
-			"Conjugate Gradients" => "linear_systems/cg.md",
+			"Conjugate Gradient" => "linear_systems/cg.md",
 			"Chebyshev iteration" => "linear_systems/chebyshev.md",
 			"MINRES" => "linear_systems/minres.md",
 			"BiCGStab(l)" => "linear_systems/bicgstabl.md",
