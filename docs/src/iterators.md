@@ -68,7 +68,66 @@ Iteration for rhs 2
 julia> norm(b2 - A * x) / norm(b2)
 1.610815496107484
 ```
+## Example: avoiding unnecessary initialization in GMRES
+GMRES allocates several arrays during its initialization process. If one wishes to solve a system `A*x = b` for multiple instances of the right-hand-side `b`,
+creating a GMRES iterable and simply mutating `gmres_iterable.b` for each instance of `b` will result in incorrect solutions for each instance of `b` after the first one.
 
+The following code demonstrates how to update the value of `b` and the initial guess `x` in a way such that the subsequent linear solve produces the correct solution (assuming `initially_zero == false`).
+```
+julia> using IterativeSolvers
+
+julia> function update_gmres_iterable!(iterable, x, b)
+           iterable.b .= b
+           iterable.x .= x
+           iterable.mv_products = 0
+           iterable.arnoldi.H .= 0
+           iterable.arnoldi.V .= 0
+           iterable.residual.accumulator = 1
+           iterable.residual.current = 1
+           iterable.residual.nullvec .= 1
+           iterable.residual.β = 1
+           iterable.residual.current = IterativeSolvers.init!(
+               iterable.arnoldi, iterable.x, iterable.b, iterable.Pl, iterable.Ax,
+               initially_zero=false
+           )
+           iterable.residual.nullvec .= 1
+           IterativeSolvers.init_residual!(iterable.residual, iterable.residual.current)
+           iterable.β = iterable.residual.current
+           return nothing
+       end
+update_gmres_iterable! (generic function with 1 method)
+
+julia> A = [1.0 2.0; 3.0 4.0]; x = [5.0, 6.0]; b = [7.0, 8.0];
+
+julia> gmres_iter = IterativeSolvers.gmres_iterable!(x, A, b);
+
+julia> for (i, iter) in enumerate(gmres_iter)
+         println("iteration $i done")
+       end
+iteration 1 done
+iteration 2 done
+
+julia> A*x
+2-element Vector{Float64}:
+ 7.000000000000005
+ 8.00000000000001
+
+julia> x2 = [9.0, 10.0]; b2 = [11.0, 12.0];
+
+julia> update_gmres_iterable!(gmres_iter, x2, b2)
+
+julia> for (i, iter) in enumerate(gmres_iter)
+         println("iteration $i done")
+       end
+iteration 1 done
+iteration 2 done
+
+julia> A*x
+2-element Vector{Float64}:
+ 11.000000000000004
+ 12.0
+```
+Probably not every assignment in `update_gmres_iterable!` is necessary (for example, the line `iterable.residual.β = 1` is unnecessary because that value will be overwritten by the call to `IterativeSolvers.init_residual!`), but this function recreates the initial state of `iterable.arnoldi` and `iterable.residual` when they are first allocated, and then initializes them, so that the process is exactly the same as what occurs when calling `gmres!`.
 
 ## Other use cases
 Other use cases include:
