@@ -42,7 +42,7 @@ function iterate(cheb::ChebyshevIterable, iteration::Int=start(cheb))
     else
         β = (cheb.λ_diff * cheb.α / 2) ^ 2
         cheb.α = inv(cheb.λ_avg - β)
-        cheb.u .= cheb.c .+ β .* cheb.c
+        cheb.u .= cheb.c .+ β .* cheb.u
     end
 
     mul!(cheb.c, cheb.A, cheb.u)
