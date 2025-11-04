@@ -1,962 +1,557 @@
-#=
-The code below was derived from the scipy implementation of the LOBPCG algorithm in https://github.com/scipy/scipy/blob/v1.1.0/scipy/sparse/linalg/eigen/lobpcg/lobpcg.py#L109-L568.
+# Implementation of the LOBPCG algorithm, seeking optimal performance
+# and stability (it should be very, very hard to break, even at tight
+# tolerance criteria). The code is not 100% optimized yet, but the
+# most time-consuming parts (BLAS3 and matvecs) should be OK. The
+# implementation follows the scheme of Hetmaniuk & Lehoucq (see also
+# the refinements in Duersch et. al.), with the following
+# modifications:
 
-Since the link above mentions the license is BSD license, the notice for the BSD license 2.0 is hereby given below giving credit to the authors of the Python implementation.
+# - Cholesky factorizations are used instead of the eigenvalue
+# decomposition of Stathopolous & Wu for the orthogonalization.
+# Cholesky orthogonalization is fast but has an unwarranted bad
+# reputation: when applied twice to a matrix X with κ(X) <~
+# sqrt(1/ε), where ε is the machine epsilon, it will produce a set
+# of very orthogonal vectors, just as the eigendecomposition-based
+# method. It can fail when κ >~ sqrt(1/ε), but that can be fixed by
+# shifting the overlap matrix. This is very reliable while being
+# much faster than eigendecompositions.
 
-Copyright (c) 2018, Robert Cimrman, Andrew Knyazev
-All rights reserved.
+# - Termination criteria for the orthogonalization are based on cheap
+# estimates instead of costly explicit checks.
 
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
-    * The names of the contributors may not be used to endorse or promote products
-      derived from this software without specific prior written permission.
+# - The default tolerances are very tight, yielding a very stable
+# algorithm. This can be tweaked (see keyword ortho_tol) to
+# compromise on stability for less Cholesky factorizations.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
-DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-=#
+# - Implicit product updates (reuse of matvecs) are performed whenever
+# it is safe to do so, ie only with orthogonal transformations. An
+# exception is the B matrix reuse, which seems to be OK even with very
+# badly conditioned B matrices. The code is easy to modify if this is
+# not the case.
 
-export lobpcg, lobpcg!, LOBPCGIterator
+# - The locking is performed carefully to ensure minimal impact on the
+# other eigenvectors (which is not the case in many - all ? - other
+# implementations)
+
+
+## TODO micro-optimization of buffer reuse
+## TODO write a version that doesn't assume that B is well-conditionned, and doesn't reuse B applications at all
+## TODO it seems there is a lack of orthogonalization immediately after locking, maybe investigate this to save on some choleskys
+## TODO debug orthogonalizations when A=I
+export lobpcg
 
 using LinearAlgebra
-using Random
+import Base: *
+import Base.size, Base.adjoint, Base.Array
 
-struct LOBPCGState{TR,TL}
-    iteration::Int
-    residual_norms::TR
-    ritz_values::TL
-end
-function Base.show(io::IO, t::LOBPCGState)
-    @printf io "%8d    %14e\n" t.iteration maximum(t.residual_norms)
-    return
-end
+# vprintln(args...) = println(args...)  # Uncomment for output
+vprintln(args...) = nothing
 
-const LOBPCGTrace{TR,TL} = Vector{LOBPCGState{TR,TL}}
-function Base.show(io::IO, tr::LOBPCGTrace)
-    @printf io "Iteration    Maximum residual norm \n"
-    @printf io "---------    ---------------------\n"
-    for state in tr
-        show(io, state)
-    end
-    return
-end
-
-struct LOBPCGResults{TL, TX, T, TR, TI, TM, TB, TTrace <: Union{LOBPCGTrace, AbstractVector{<:LOBPCGTrace}}}
+struct LOBPCGResults{TL<: AbstractArray, TX <: AbstractArray}
     λ::TL
     X::TX
-    tolerance::T
-    residual_norms::TR
-    iterations::TI
-    maxiter::TM
-    converged::TB
-    trace::TTrace
-end
-function EmptyLOBPCGResults(X::TX, k::Integer, tolerance, maxiter) where {T, TX<:AbstractMatrix{T}}
-    blocksize = size(X,2)
-    λ = Vector{T}(undef, k)
-    X = TX(undef, size(X, 1), k)
-
-    iterations = zeros(Int, ceil(Int, k/blocksize))
-    residual_norms = copy(λ)
-    converged = falses(k)
-    trace = fill(LOBPCGTrace{Vector{real(T)},Vector{T}}(), k÷blocksize+1)
-
-    return LOBPCGResults(λ, X, tolerance, residual_norms, iterations, maxiter, converged, trace)
-end
-
-function Base.append!(r1::LOBPCGResults, r2::LOBPCGResults, n1, n2=length(r2.λ))
-    n = n1 + n2
-    r1.λ[n1+1:n] .= @view r2.λ[end-n2+1:end]
-    r1.residual_norms[n1+1:n] .= @view r2.residual_norms[end-n2+1:end]
-    r1.X[:, n1+1:n] .= @view r2.X[:, end-n2+1:end]
-
-    ind = n1 ÷ length(r2.λ) + 1
-    r1.iterations[ind] = r2.iterations
-    r1.converged[n1+1:n] .= r2.converged
-    r1.trace[ind] = r2.trace
-
-    return r1
-end
-function Base.show(io::IO, r::LOBPCGResults)
-    first_two(fr) = [x for (i, x) in enumerate(fr)][1:2]
-
-    @printf io "Results of LOBPCG Algorithm\n"
-    @printf io " * Algorithm: LOBPCG - CholQR\n"
-
-    if length(join(r.λ, ",")) < 40 || length(r.λ) <= 2
-        @printf io " * λ: [%s]\n" join(r.λ, ",")
-    else
-        @printf io " * λ: [%s, ...]\n" join(first_two(r.λ), ",")
-    end
-
-    if length(join(r.residual_norms, ",")) < 40 || length(r.residual_norms) <= 2
-        @printf io " * Residual norm(s): [%s]\n" join(r.residual_norms, ",")
-    else
-        @printf io " * Residual norm(s): [%s, ...]\n" join(first_two(r.residual_norms), ",")
-    end
-    @printf io " * Convergence\n"
-    @printf io "   * Iterations: %s\n" r.iterations
-    @printf io "   * Converged: %s\n" all(r.converged)
-    @printf io "   * Iterations limit: %s\n" r.maxiter
-
-    return
-end
-
-struct Blocks{Generalized, T, TA<:AbstractArray{T}}
-    block::TA # X, R or P
-    A_block::TA # AX, AR or AP
-    B_block::TA # BX, BR or BP
-end
-Blocks(X, AX) = Blocks{false, eltype(X), typeof(X)}(X, AX, X)
-Blocks(X, AX, BX) = Blocks{true, eltype(X), typeof(X)}(X, AX, BX)
-function A_mul_X!(b::Blocks, A)
-    mul!(b.A_block, A, b.block)
-    return
-end
-function A_mul_X!(b::Blocks, A, n)
-    @views mul!(b.A_block[:, 1:n], A, b.block[:, 1:n])
-    return
-end
-function B_mul_X!(b::Blocks{true}, B)
-    mul!(b.B_block, B, b.block)
-    return
-end
-function B_mul_X!(b::Blocks{true}, B, n)
-    @views mul!(b.B_block[:, 1:n], B, b.block[:, 1:n])
-    return
-end
-function B_mul_X!(b::Blocks{false}, B, n = 0)
-    return
-end
-
-mutable struct Constraint{T, TVorM<:Union{AbstractVector{T}, AbstractMatrix{T}}, TM<:AbstractMatrix{T}, TC}
-    Y::TVorM
-    BY::TVorM
-    gram_chol::TC
-    gramYBV::TM # to be used in view
-    tmp::TM # to be used in view
-end
-struct BWrapper end
-struct NotBWrapper end
-
-Constraint(::Nothing, B, X) = Constraint(nothing, B, X, BWrapper())
-Constraint(::Nothing, B, X, ::NotBWrapper) = Constraint(nothing, B, X, BWrapper())
-function Constraint(::Nothing, B, X, ::BWrapper)
-    return Constraint{Nothing, Matrix{Nothing}, Matrix{Nothing}, Nothing}(Matrix{Nothing}(undef,0,0), Matrix{Nothing}(undef,0,0), nothing, Matrix{Nothing}(undef,0,0), Matrix{Nothing}(undef,0,0))
-end
-
-Constraint(Y, B, X) = Constraint(Y, B, X, BWrapper())
-function Constraint(Y, B, X, ::BWrapper)
-    T = eltype(X)
-    if B isa Nothing
-        BY = Y
-    else
-        BY = similar(Y)
-        mul!(BY, B, Y)
-    end
-    return Constraint(Y, BY, X, NotBWrapper())
-end
-function Constraint(Y, BY, X, ::NotBWrapper)
-    T = eltype(X)
-    if Y isa SubArray
-        gramYBY = @view Matrix{T}(I, size(Y.parent, 2), size(Y.parent, 2))[1:size(Y, 2), 1:size(Y, 2)]
-        mul!(gramYBY, adjoint(Y), BY)
-        gramYBV = @view zeros(T, size(Y.parent, 2), size(X, 2))[1:size(Y, 2), :]
-    else
-        gramYBY = adjoint(Y)*BY
-        gramYBV = zeros(T, size(Y, 2), size(X, 2))
-    end
-    realdiag!(gramYBY)
-    gramYBY_chol = cholesky!(Hermitian(gramYBY))
-    tmp = deepcopy(gramYBV)
-
-    return Constraint{eltype(Y), typeof(Y), typeof(gramYBV), typeof(gramYBY_chol)}(Y, BY, gramYBY_chol, gramYBV, tmp)
-end
-
-function update!(c::Constraint, X, BX)
-    sizeY = size(c.Y, 2)
-    sizeX = size(X, 2)
-    c.Y.parent[:, sizeY+1:sizeY+sizeX] .= X
-    if X !== BX
-        c.BY.parent[:, sizeY+1:sizeY+sizeX] .= BX
-    end
-    sizeY += sizeX
-    Y = @view c.Y.parent[:, 1:sizeY]
-    BY = @view c.BY.parent[:, 1:sizeY]
-    c.Y = Y
-    c.BY = BY
-    gram_chol = c.gram_chol
-    new_factors = @view gram_chol.factors.parent[1:sizeY, 1:sizeY]
-    c.gram_chol = typeof(gram_chol)(new_factors, gram_chol.uplo, convert(LinearAlgebra.BlasInt, 0))
-    c.gramYBV = @view c.gramYBV.parent[1:sizeY, :]
-    c.tmp = @view c.tmp.parent[1:sizeY, :]
-    return c
-end
-
-function (constr!::Constraint{Nothing})(X, X_temp)
-    nothing
-end
-
-function (constr!::Constraint)(X, X_temp)
-    @views if size(constr!.Y, 2) > 0
-        sizeX = size(X, 2)
-        sizeY = size(constr!.Y, 2)
-        gramYBV_view = constr!.gramYBV[1:sizeY, 1:sizeX]
-        mul!(gramYBV_view, adjoint(constr!.BY), X)
-        tmp_view = constr!.tmp[1:sizeY, 1:sizeX]
-        ldiv!(tmp_view, constr!.gram_chol, gramYBV_view)
-        mul!(X_temp, constr!.Y, tmp_view)
-        @inbounds X .= X .- X_temp
-    end
-    nothing
-end
-
-struct RPreconditioner{TM, T, TA<:AbstractArray{T}}
-    M::TM
-    buffer::TA
-    RPreconditioner{TM, T, TA}(M, X) where {TM, T, TA<:AbstractArray{T}} = new(M, similar(X))
-end
-RPreconditioner(M, X) = RPreconditioner{typeof(M), eltype(X), typeof(X)}(M, X)
-
-function (precond!::RPreconditioner{Nothing})(X)
-    nothing
-end
-function (precond!::RPreconditioner)(X)
-    bs = size(X, 2)
-    @views ldiv!(precond!.buffer[:, 1:bs], precond!.M, X)
-    # Just returning buffer would be cheaper but struct at call site must be mutable
-    @inbounds @views X .= precond!.buffer[:, 1:bs]
-    nothing
-end
-
-struct BlockGram{Generalized, TA}
-    XAX::TA
-    XAR::TA
-    XAP::TA
-    RAR::TA
-    RAP::TA
-    PAP::TA
-end
-function BlockGram(XBlocks::Blocks{Generalized, T}) where {Generalized, T}
-    sizeX = size(XBlocks.block, 2)
-    XAX = zeros(T, sizeX, sizeX)
-    XAP = zeros(T, sizeX, sizeX)
-    XAR = zeros(T, sizeX, sizeX)
-    RAR = zeros(T, sizeX, sizeX)
-    RAP = zeros(T, sizeX, sizeX)
-    PAP = zeros(T, sizeX, sizeX)
-    return BlockGram{Generalized, Matrix{T}}(XAX, XAR, XAP, RAR, RAP, PAP)
-end
-XAX!(BlockGram, XBlocks) = mul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.A_block)
-XAP!(BlockGram, XBlocks, PBlocks, n) = @views mul!(BlockGram.XAP[:, 1:n], adjoint(XBlocks.block), PBlocks.A_block[:, 1:n])
-XAR!(BlockGram, XBlocks, RBlocks, n) = @views mul!(BlockGram.XAR[:, 1:n], adjoint(XBlocks.block), RBlocks.A_block[:, 1:n])
-RAR!(BlockGram, RBlocks, n) = @views mul!(BlockGram.RAR[1:n, 1:n], adjoint(RBlocks.block[:, 1:n]), RBlocks.A_block[:, 1:n])
-RAP!(BlockGram, RBlocks, PBlocks, n) = @views mul!(BlockGram.RAP[1:n, 1:n], adjoint(RBlocks.A_block[:, 1:n]), PBlocks.block[:, 1:n])
-PAP!(BlockGram, PBlocks, n) = @views mul!(BlockGram.PAP[1:n, 1:n], adjoint(PBlocks.block[:, 1:n]), PBlocks.A_block[:, 1:n])
-XBP!(BlockGram, XBlocks, PBlocks, n) = @views mul!(BlockGram.XAP[:, 1:n], adjoint(XBlocks.block), PBlocks.B_block[:, 1:n])
-XBR!(BlockGram, XBlocks, RBlocks, n) = @views mul!(BlockGram.XAR[:, 1:n], adjoint(XBlocks.block), RBlocks.B_block[:, 1:n])
-RBP!(BlockGram, RBlocks, PBlocks, n) = @views mul!(BlockGram.RAP[1:n, 1:n], adjoint(RBlocks.B_block[:, 1:n]), PBlocks.block[:, 1:n])
-#XBX!(BlockGram, XBlocks) = mul!(BlockGram.XAX, adjoint(XBlocks.block), XBlocks.B_block)
-#RBR!(BlockGram, RBlocks, n) = @views mul!(BlockGram.RAR[1:n, 1:n], adjoint(RBlocks.block[:, 1:n]), RBlocks.B_block[:, 1:n])
-#PBP!(BlockGram, PBlocks, n) = @views mul!(BlockGram.PAP[1:n, 1:n], adjoint(PBlocks.block[:, 1:n]), PBlocks.B_block[:, 1:n])
-
-function I!(G, xr)
-    @inbounds for j in xr, i in xr
-        G[i, j] = ifelse(i==j, 1, 0)
-    end
-    return
-end
-
-function (g::BlockGram)(gram, lambda, n1::Int, n2::Int, n3::Int)
-    xr = 1:n1
-    rr = n1+1:n1+n2
-    pr = n1+n2+1:n1+n2+n3
-    @inbounds @views begin
-        if n1 > 0
-            #gram[xr, xr] .= g.XAX[1:n1, 1:n1]
-            gram[xr, xr] .= Diagonal(lambda[1:n1])
-        end
-        if n2 > 0
-            gram[rr, rr] .= g.RAR[1:n2, 1:n2]
-            gram[xr, rr] .= g.XAR[1:n1, 1:n2]
-            conj!(transpose!(gram[rr, xr], g.XAR[1:n1, 1:n2]))
-        end
-        if n3 > 0
-            gram[pr, pr] .= g.PAP[1:n3, 1:n3]
-            gram[rr, pr] .= g.RAP[1:n2, 1:n3]
-            gram[xr, pr] .= g.XAP[1:n1, 1:n3]
-            conj!(transpose!(gram[pr, rr], g.RAP[1:n2, 1:n3]))
-            conj!(transpose!(gram[pr, xr], g.XAP[1:n1, 1:n3]))
-        end
-    end
-    return
-end
-function (g::BlockGram)(gram, n1::Int, n2::Int, n3::Int, normalized::Bool=true)
-    xr = 1:n1
-    rr = n1+1:n1+n2
-    pr = n1+n2+1:n1+n2+n3
-    @views if n1 > 0
-        if normalized
-            I!(gram, xr)
-        #else
-        #    @inbounds gram[xr, xr] .= g.XAX[1:n1, 1:n1]
-        end
-    end
-    @views if n2 > 0
-        if normalized
-            I!(gram, rr)
-        #else
-        #    @inbounds gram[rr, rr] .= g.RAR[1:n2, 1:n2]
-        end
-        @inbounds gram[xr, rr] .= g.XAR[1:n1, 1:n2]
-        @inbounds conj!(transpose!(gram[rr, xr], g.XAR[1:n1, 1:n2]))
-    end
-    @views if n3 > 0
-        if normalized
-            I!(gram, pr)
-        #else
-        #    @inbounds gram[pr, pr] .= g.PAP[1:n3, 1:n3]
-        end
-        @inbounds gram[rr, pr] .= g.RAP[1:n2, 1:n3]
-        @inbounds gram[xr, pr] .= g.XAP[1:n1, 1:n3]
-        @inbounds conj!(transpose!(gram[pr, rr], g.RAP[1:n2, 1:n3]))
-        @inbounds conj!(transpose!(gram[pr, xr], g.XAP[1:n1, 1:n3]))
-    end
-    return
-end
-
-abstract type AbstractOrtho end
-struct CholQR{TA} <: AbstractOrtho
-    gramVBV::TA # to be used in view
-end
-
-function rdiv!(A, B::UpperTriangular)
-    s = size(A, 2)
-    @inbounds @views A[:,1] .= A[:, 1] ./ B[1,1]
-    @inbounds @views for i in 2:s
-        for j in 1:i-1
-            A[:,i] .= A[:,i] .- A[:,j] .* B[j,i]
-        end
-        A[:,i] .= A[:,i] ./ B[i,i]
-    end
-    return A
-end
-
-realdiag!(M) = M
-function realdiag!(M::AbstractMatrix{TC}) where TC <: Complex
-    @inbounds for i in 1:minimum(size(M))
-        M[i,i] = real(M[i,i])
-    end
-    return M
-end
-
-function (ortho!::CholQR)(XBlocks::Blocks{Generalized}, sizeX = -1; update_AX=false, update_BX=false) where Generalized
-    useview = sizeX != -1
-    if sizeX == -1
-        sizeX = size(XBlocks.block, 2)
-    end
-    X = XBlocks.block
-    BX = XBlocks.B_block # Assumes it is premultiplied
-    AX = XBlocks.A_block
-    @views gram_view = ortho!.gramVBV[1:sizeX, 1:sizeX]
-    @views if useview
-        mul!(gram_view, adjoint(X[:, 1:sizeX]), BX[:, 1:sizeX])
-    else
-        mul!(gram_view, adjoint(X), BX)
-    end
-    realdiag!(gram_view)
-    cholf = cholesky!(Hermitian(gram_view))
-    R = cholf.factors
-    @views if useview
-        rdiv!(X[:, 1:sizeX], UpperTriangular(R))
-        update_AX && rdiv!(AX[:, 1:sizeX], UpperTriangular(R))
-        Generalized && update_BX && rdiv!(BX[:, 1:sizeX], UpperTriangular(R))
-    else
-        rdiv!(X, UpperTriangular(R))
-        update_AX && rdiv!(AX, UpperTriangular(R))
-        Generalized && update_BX && rdiv!(BX, UpperTriangular(R))
-    end
-
-    return
-end
-
-struct LOBPCGIterator{Generalized, T, TA, TB, TL<:AbstractVector{T}, TR<:AbstractVector, TPerm<:AbstractVector{Int}, TV<:AbstractArray{T}, TBlocks<:Blocks{Generalized, T}, TO<:AbstractOrtho, TP, TC, TG, TM, TTrace}
-    A::TA
-    B::TB
-    ritz_values::TL
-    λperm::TPerm
-    λ::TL
-    V::TV
-    residuals::TR
+    tolerance::Real
+    residual_norms::Vector
+    residual_history::Matrix
+    iterations::Integer
+    maxiter::Integer
+    converged::Bool
     largest::Bool
-    XBlocks::TBlocks
-    tempXBlocks::TBlocks
-    PBlocks::TBlocks
-    activePBlocks::TBlocks # to be used in view
-    RBlocks::TBlocks
-    activeRBlocks::TBlocks # to be used in view
-    iteration::Base.RefValue{Int}
-    currentBlockSize::Base.RefValue{Int}
-    ortho!::TO
-    precond!::TP
-    constr!::TC
-    gramABlock::TG
-    gramBBlock::TG
-    gramA::TV
-    gramB::TV
-    activeMask::TM
-    trace::TTrace
+    mvps:: Integer
 end
+
+# Create an array of same type as X filled with zeros, minimizing the number
+# of allocations.
+# This is mostly for GPU compatibility, as we sometimes want to build an array of zeros
+# with the same array type as another, ie do zeros(similar(X, dims...)).
+function zeros_like(X::AbstractArray, T::Type=eltype(X), dims::Integer...=size(X)...)
+    Z = similar(X, T, dims...)
+    Z .= 0
+    Z
+end
+zeros_like(X::AbstractArray, dims::Integer...) = zeros_like(X, eltype(X), dims...)
+zeros_like(X::Array, T::Type=eltype(X), dims::Integer...=size(X)...) = zeros(T, dims...)
 
 """
-    LOBPCGIterator(A, largest::Bool, X, P=nothing, C=nothing) -> iterator
-
-# Arguments
-
-- `A`: linear operator;
-- `X`: initial guess of the Ritz vectors; to be overwritten by the eigenvectors;
-- `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `P`: preconditioner of residual vectors, must overload `ldiv!`;
-- `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `mul!`.
+Simple wrapper to represent a matrix formed by the concatenation of column blocks:
+it is mostly equivalent to hcat, but doesn't allocate the full matrix.
+LazyHcat only supports a few multiplication routines: furthermore, a multiplication
+involving this structure will always yield a plain array (and not a LazyHcat structure).
+LazyHcat is a lightweight subset of BlockArrays.jl's functionalities, but has the
+advantage to be able to store GPU Arrays (BlockArrays is heavily built on Julia's CPU Array).
 """
-LOBPCGIterator(A, largest::Bool, X, P=nothing, C=nothing) = LOBPCGIterator(A, nothing, largest, X, P, C)
-
-"""
-    LOBPCGIterator(A, B, largest::Bool, X, P=nothing, C=nothing) -> iterator
-
-# Arguments
-
-- `A`: linear operator;
-- `B`: linear operator;
-- `X`: initial guess of the Ritz vectors; to be overwritten by the eigenvectors;
-- `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `P`: preconditioner of residual vectors, must overload `ldiv!`;
-- `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `mul!`;
-"""
-function LOBPCGIterator(A, B, largest::Bool, X, P=nothing, C=nothing)
-    precond! = RPreconditioner(P, X)
-    constr! = Constraint(C, B, X)
-    return LOBPCGIterator(A, B, largest, X, precond!, constr!)
+struct LazyHcat{T <: Number, D <: Tuple} <: AbstractMatrix{T}
+    blocks::D
 end
-function LOBPCGIterator(A, B, largest::Bool, X, precond!::RPreconditioner, constr!::Constraint)
-    T = eltype(X)
-    nev = size(X, 2)
-    if B isa Nothing
-        XBlocks = Blocks(X, similar(X))
-        tempXBlocks = Blocks(copy(X), similar(X))
-        RBlocks = Blocks(similar(X), similar(X))
-        activeRBlocks = Blocks(similar(X), similar(X))
-        PBlocks = Blocks(similar(X), similar(X))
-        activePBlocks = Blocks(similar(X), similar(X))
+
+function LazyHcat(arrays::AbstractArray...)
+    @assert length(arrays) != 0
+    n_ref = size(arrays[1], 1)
+    @assert  all(size.(arrays, 1) .== n_ref)
+
+    T = promote_type(map(eltype, arrays)...)
+
+    LazyHcat{T, typeof(arrays)}(arrays)
+end
+
+function Base.size(A::LazyHcat)
+    n = size(A.blocks[1], 1)
+    m = sum(size(block, 2) for block in A.blocks)
+    (n,m)
+end
+
+Base.Array(A::LazyHcat)  = hcat(A.blocks...)
+
+Base.adjoint(A::LazyHcat) = Adjoint(A)
+
+@views function Base.:*(Aadj::Adjoint{T, <: LazyHcat}, B::LazyHcat) where {T}
+    A = Aadj.parent
+    rows = size(A)[2]
+    cols = size(B)[2]
+    ret = similar(A.blocks[1], rows, cols)
+
+    orow = 0  # row offset
+    for (iA, blA) in enumerate(A.blocks)
+        ocol = 0  # column offset
+        for (iB, blB) in enumerate(B.blocks)
+            ret[orow .+ (1:size(blA, 2)), ocol .+ (1:size(blB, 2))] .= blA' * blB
+            ocol += size(blB, 2)
+        end
+        orow += size(blA, 2)
+    end
+    ret
+end
+
+Base.:*(Aadj::Adjoint{T, <: LazyHcat}, B::AbstractMatrix) where {T} = Aadj * LazyHcat(B)
+
+@views function *(Ablock::LazyHcat, B::AbstractMatrix)
+    res = Ablock.blocks[1] * B[1:size(Ablock.blocks[1], 2), :]  # First multiplication
+    offset = size(Ablock.blocks[1], 2)
+    for block in Ablock.blocks[2:end]
+        mul!(res, block, B[offset .+ (1:size(block, 2)), :], 1, 1)
+        offset += size(block, 2)
+    end
+    res
+end
+
+function LinearAlgebra.mul!(res::AbstractMatrix, Ablock::LazyHcat,
+                            B::AbstractVecOrMat, α::Number, β::Number)
+    mul!(res, Ablock*B, I, α, β)
+end
+
+# Perform a Rayleigh-Ritz for the first (or last) N eigenvectors.
+function rayleigh_ritz(X, AX, N, largest)
+    XAX = X' * AX
+    @assert all(!isnan, XAX)
+    F = eigen(Hermitian(XAX))
+    if largest
+        start = size(XAX, 1) - N + 1
+        F.vectors[:,start:end], F.values[start:end]
     else
-        XBlocks = Blocks(X, similar(X), similar(X))
-        tempXBlocks = Blocks(copy(X), similar(X), similar(X))
-        RBlocks = Blocks(similar(X), similar(X), similar(X))
-        activeRBlocks = Blocks(similar(X), similar(X), similar(X))
-        PBlocks = Blocks(similar(X), similar(X), similar(X))
-        activePBlocks = Blocks(similar(X), similar(X), similar(X))
+        F.vectors[:,1:N], F.values[1:N]
     end
-    ritz_values = zeros(T, nev*3)
-    λ = zeros(T, nev)
-    λperm = zeros(Int, nev*3)
-    V = zeros(T, nev*3, nev*3)
-    residuals = fill(real(T)(NaN), nev)
-    iteration = Ref(1)
-    currentBlockSize = Ref(nev)
-    generalized = !(B isa Nothing)
-    ortho! = CholQR(zeros(T, nev, nev))
-
-    gramABlock = BlockGram(XBlocks)
-    gramBBlock = BlockGram(XBlocks)
-
-    gramA = zeros(T, 3*nev, 3*nev)
-    gramB = zeros(T, 3*nev, 3*nev)
-
-    activeMask = ones(Bool, nev)
-    trace = LOBPCGTrace{Vector{real(T)},Vector{T}}()
-
-    return LOBPCGIterator{generalized, T, typeof(A), typeof(B), typeof(λ), typeof(residuals), typeof(λperm), typeof(V), typeof(XBlocks), typeof(ortho!), typeof(precond!), typeof(constr!), typeof(gramABlock), typeof(activeMask), typeof(trace)}(A, B, ritz_values, λperm, λ, V, residuals, largest, XBlocks, tempXBlocks, PBlocks, activePBlocks, RBlocks, activeRBlocks, iteration, currentBlockSize, ortho!, precond!, constr!, gramABlock, gramBBlock, gramA, gramB, activeMask, trace)
-end
-function LOBPCGIterator(A, largest::Bool, X, nev::Int, P=nothing, C=nothing)
-    LOBPCGIterator(A, nothing, largest, X, nev, P, C)
-end
-function LOBPCGIterator(A, B, largest::Bool, X, nev::Int, P=nothing, C=nothing)
-    T = eltype(X)
-    n = size(X, 1)
-    sizeX = size(X, 2)
-    if C isa Nothing
-        sizeC = 0
-        new_C = typeof(X)(undef, n, (nev÷sizeX)*sizeX)
-    else
-        sizeC = size(C,2)
-        new_C = typeof(C)(undef, n, sizeC+(nev÷sizeX)*sizeX)
-        new_C[:,1:sizeC] .= C
-    end
-    if B isa Nothing
-        new_BC = new_C
-    else
-        new_BC = similar(new_C)
-    end
-    Y = @view new_C[:, 1:sizeC]
-    BY = @view new_BC[:, 1:sizeC]
-    if !(B isa Nothing)
-        mul!(BY, B, Y)
-    end
-    constr! = Constraint(Y, BY, X, NotBWrapper())
-    precond! = RPreconditioner(P, X)
-    return LOBPCGIterator(A, B, largest, X, precond!, constr!)
 end
 
-function ortho_AB_mul_X!(blocks::Blocks, ortho!, A, B, bs=-1)
-    # Finds BX
-    bs == -1 ? B_mul_X!(blocks, B) : B_mul_X!(blocks, B, bs)
-    # Orthonormalizes X and updates BX
-    bs == -1 ? ortho!(blocks, update_BX=true) : ortho!(blocks, bs, update_BX=true)
-    # Updates AX
-    bs == -1 ? A_mul_X!(blocks, A) : A_mul_X!(blocks, A, bs)
-    return
-end
-function residuals!(iterator)
-    sizeX = size(iterator.XBlocks.block, 2)
-    @views mul!(iterator.RBlocks.block, iterator.XBlocks.B_block, Diagonal(iterator.ritz_values[1:sizeX]))
-    @inbounds iterator.RBlocks.block .= iterator.XBlocks.A_block .- iterator.RBlocks.block
-    # Finds residual norms
-    @inbounds for j in 1:size(iterator.RBlocks.block, 2)
-        iterator.residuals[j] = 0
-        for i in 1:size(iterator.RBlocks.block, 1)
-            x = iterator.RBlocks.block[i,j]
-            iterator.residuals[j] += real(x*conj(x))
-        end
-        iterator.residuals[j] = sqrt(iterator.residuals[j])
-    end
-    return
+# B-orthogonalize X (in place) using only one B apply.
+# This uses an unstable method which is only OK if X is already
+# orthogonal (not B-orthogonal) and B is relatively well-conditioned
+# (which implies that X'BX is relatively well-conditioned, and
+# therefore that it is safe to cholesky it and reuse the B apply)
+function B_ortho!(X, BX)
+    O = Hermitian(X'*BX)
+    U = cholesky(O).U
+    @assert all(!isnan, U)
+    rdiv!(X, U)
+    rdiv!(BX, U)
 end
 
-function update_mask!(iterator, residualTolerance)
-    sizeX = size(iterator.XBlocks.block, 2)
-    # Update active vectors mask
-    @inbounds @views iterator.activeMask .= iterator.residuals[1:sizeX] .> residualTolerance
-    iterator.currentBlockSize[] = sum(iterator.activeMask)
-    return
-end
+normest(M) = maximum(abs.(diag(M))) + norm(M - Diagonal(diag(M)))
+# Orthogonalizes X to tol
+# Returns the new X, the number of Cholesky factorizations algorithm, and the
+# growth factor by which small perturbations of X can have been
+# magnified
+function ortho!(X::AbstractArray{T}; tol=2eps(real(T))) where {T}
+    local R
 
-function update_active!(mask, bs::Int, blockPairs...)
-    @inbounds @views for (activeblock, block) in blockPairs
-        activeblock[:, 1:bs] .= block[:, mask]
-    end
-    return
-end
+    # # Uncomment for "gold standard"
+    # U,S,V = svd(X)
+    # return U*V', 1, 1
 
-function precond_constr!(block, temp_block, bs, precond!, constr!)
-    @views precond!(block[:, 1:bs])
-    # Constrain the active residual vectors to be B-orthogonal to Y
-    @views constr!(block[:, 1:bs], temp_block[:, 1:bs])
-    return
-end
-function block_grams_1x1!(iterator)
-    # Finds gram matrix X'AX
-    XAX!(iterator.gramABlock, iterator.XBlocks)
-    return
-end
-function block_grams_2x2!(iterator, bs)
-    sizeX = size(iterator.XBlocks.block, 2)
-    #XAX!(iterator.gramABlock, iterator.XBlocks)
-    XAR!(iterator.gramABlock, iterator.XBlocks, iterator.activeRBlocks, bs)
-    RAR!(iterator.gramABlock, iterator.activeRBlocks, bs)
-    XBR!(iterator.gramBBlock, iterator.XBlocks, iterator.activeRBlocks, bs)
-    @views iterator.gramABlock(iterator.gramA, iterator.ritz_values[1:sizeX], sizeX, bs, 0)
-    iterator.gramBBlock(iterator.gramB, sizeX, bs, 0, true)
+    growth_factor = 1
 
-    return
-end
-function block_grams_3x3!(iterator, bs)
-    # Find R'AR, P'AP, X'AR, X'AP and R'AP
-    sizeX = size(iterator.XBlocks.block, 2)
-    #XAX!(iterator.gramABlock, iterator.XBlocks)
-    XAR!(iterator.gramABlock, iterator.XBlocks, iterator.activeRBlocks, bs)
-    XAP!(iterator.gramABlock, iterator.XBlocks, iterator.activePBlocks, bs)
-    RAR!(iterator.gramABlock, iterator.activeRBlocks, bs)
-    RAP!(iterator.gramABlock, iterator.activeRBlocks, iterator.activePBlocks, bs)
-    PAP!(iterator.gramABlock, iterator.activePBlocks, bs)
-    # Find X'BR, X'BP and P'BR
-    XBR!(iterator.gramBBlock, iterator.XBlocks, iterator.activeRBlocks, bs)
-    XBP!(iterator.gramBBlock, iterator.XBlocks, iterator.activePBlocks, bs)
-    RBP!(iterator.gramBBlock, iterator.activeRBlocks, iterator.activePBlocks, bs)
-    # Update the gram matrix [X R P]' A [X R P]
-    @views iterator.gramABlock(iterator.gramA, iterator.ritz_values[1:sizeX], sizeX, bs, bs)
-    # Update the gram matrix [X R P]' B [X R P]
-    iterator.gramBBlock(iterator.gramB, sizeX, bs, bs, true)
-
-    return
-end
-
-function sub_problem!(iterator, sizeX, bs1, bs2)
-    subdim = sizeX+bs1+bs2
-    @views if bs1 == 0
-        gramAview = iterator.gramABlock.XAX[1:subdim, 1:subdim]
-        # Source of type instability
-        realdiag!(gramAview)
-        eigf = eigen!(Hermitian(gramAview))
-    else
-        gramAview = iterator.gramA[1:subdim, 1:subdim]
-        gramBview = iterator.gramB[1:subdim, 1:subdim]
-        # Source of type instability
-        realdiag!(gramAview)
-        realdiag!(gramBview)
-        eigf = eigen!(Hermitian(gramAview), Hermitian(gramBview))
-    end
-    # Selects extremal eigenvalues and corresponding vectors
-    @views partialsortperm!(iterator.λperm[1:subdim], eigf.values, 1:subdim; rev=iterator.largest)
-    @inbounds @views iterator.ritz_values[1:sizeX] .= eigf.values[iterator.λperm[1:sizeX]]
-    @inbounds @views iterator.V[1:subdim, 1:sizeX] .= eigf.vectors[:, iterator.λperm[1:sizeX]]
-    return
-end
-
-function update_X_P!(iterator::LOBPCGIterator{Generalized}, bs1, bs2) where Generalized
-    sizeX = size(iterator.XBlocks.block, 2)
-    @views begin
-        x_eigview = iterator.V[1:sizeX, 1:sizeX]
-        r_eigview = iterator.V[sizeX+1:sizeX+bs1, 1:sizeX]
-        p_eigview = iterator.V[sizeX+bs1+1:sizeX+bs1+bs2, 1:sizeX]
-        r_blockview = iterator.activeRBlocks.block[:, 1:bs1]
-        ra_blockview = iterator.activeRBlocks.A_block[:, 1:bs1]
-        p_blockview = iterator.activePBlocks.block[:, 1:bs2]
-        pa_blockview = iterator.activePBlocks.A_block[:, 1:bs2]
-        if Generalized
-            rb_blockview = iterator.activeRBlocks.B_block[:, 1:bs1]
-            pb_blockview = iterator.activePBlocks.B_block[:, 1:bs2]
-        end
-    end
-    if bs1 > 0
-        mul!(iterator.PBlocks.block, r_blockview, r_eigview)
-        mul!(iterator.PBlocks.A_block, ra_blockview, r_eigview)
-        if Generalized
-            mul!(iterator.PBlocks.B_block, rb_blockview, r_eigview)
-        end
-    end
-    if bs2 > 0
-        mul!(iterator.tempXBlocks.block, p_blockview, p_eigview)
-        mul!(iterator.tempXBlocks.A_block, pa_blockview, p_eigview)
-        if Generalized
-            mul!(iterator.tempXBlocks.B_block, pb_blockview, p_eigview)
-        end
-        @inbounds iterator.PBlocks.block .= iterator.PBlocks.block .+ iterator.tempXBlocks.block
-        @inbounds iterator.PBlocks.A_block .= iterator.PBlocks.A_block .+ iterator.tempXBlocks.A_block
-        if Generalized
-            @inbounds iterator.PBlocks.B_block .= iterator.PBlocks.B_block .+ iterator.tempXBlocks.B_block
-        end
-    end
-    block = iterator.XBlocks.block
-    tempblock = iterator.tempXBlocks.block
-    mul!(tempblock, block, x_eigview)
-    block = iterator.XBlocks.A_block
-    tempblock = iterator.tempXBlocks.A_block
-    mul!(tempblock, block, x_eigview)
-    if Generalized
-        block = iterator.XBlocks.B_block
-        tempblock = iterator.tempXBlocks.B_block
-        mul!(tempblock, block, x_eigview)
-    end
-    @inbounds begin
-        if bs1 > 0
-            iterator.XBlocks.block .= iterator.tempXBlocks.block .+ iterator.PBlocks.block
-            iterator.XBlocks.A_block .= iterator.tempXBlocks.A_block .+ iterator.PBlocks.A_block
-            if Generalized
-                iterator.XBlocks.B_block .= iterator.tempXBlocks.B_block .+ iterator.PBlocks.B_block
+    success = false
+    nchol = 0
+    while true
+        O = Hermitian(X'X)
+        try
+            R = cholesky(O).U
+            nchol += 1
+            success = true
+        catch err
+            @assert isa(err, PosDefException)
+            vprintln("fail")
+            # see https://arxiv.org/pdf/1809.11085.pdf for a nice analysis
+            # We are not being very clever here; but this should very rarely happen
+            # so it should be OK
+            α = 100
+            nbad = 0
+            while true
+                O += α*eps(real(T))*norm(X)^2*I
+                α *= 10
+                try
+                    R = cholesky(O).U
+                    nchol += 1
+                    break
+                catch err
+                    @assert isa(err, PosDefException)
+                end
+                nbad += 1
+                if nbad > 10
+                    error("Cholesky shifting is failing badly, this should never happen")
+                end
             end
-        else
-            iterator.XBlocks.block .= iterator.tempXBlocks.block
-            iterator.XBlocks.A_block .= iterator.tempXBlocks.A_block
-            if Generalized
-                iterator.XBlocks.B_block .= iterator.tempXBlocks.B_block
-            end
+            success = false
         end
+        invR = inv(R)
+        @assert all(!isnan, invR)
+        rmul!(X, invR)  # we do not use X/R because we use invR next
+
+        # We would like growth_factor *= opnorm(inv(R)) but it's too
+        # expensive, so we use an upper bound which is sharp enough to
+        # be close to 1 when R is close to I, which we need for the
+        # outer loop to terminate
+        # ||invR|| = ||D + E|| ≤ ||D|| + ||E|| ≤ ||D|| + ||E||_F,
+        # where ||.|| is the 2-norm and ||.||_F the Frobenius
+
+        norminvR = normest(invR)
+        growth_factor *= norminvR
+
+        # condR = 1/LAPACK.trcon!('I', 'U', 'N', Array(R))
+        condR = normest(R)*norminvR  # in practice this seems to be an OK estimate
+
+        vprintln("Ortho(X) success? $success ", eps(real(T))*condR^2, " < $tol")
+
+        # a good a posteriori error is that X'X - I is eps()*κ(R)^2;
+        # in practice this seems to be sometimes very overconservative
+        success && eps(real(T))*condR^2 < tol && break
+
+        nchol > 10 && error("Ortho(X) is failing badly, this should never happen")
     end
-    return
+
+    # @assert norm(X'X - I) < tol
+
+    X, nchol, growth_factor
 end
 
-function (iterator::LOBPCGIterator{Generalized})(residualTolerance, log) where {Generalized}
-    sizeX = size(iterator.XBlocks.block, 2)
-    iteration = iterator.iteration[]
-    if iteration == 1
-        ortho_AB_mul_X!(iterator.XBlocks, iterator.ortho!, iterator.A, iterator.B)
-        # Finds gram matrix X'AX
-        block_grams_1x1!(iterator)
-        sub_problem!(iterator, sizeX, 0, 0)
-        # Updates Ritz vectors X and updates AX and BX accordingly
-        update_X_P!(iterator, 0, 0)
-        residuals!(iterator)
-        update_mask!(iterator, residualTolerance)
-    elseif iteration == 2
-        bs = iterator.currentBlockSize[]
-        # Update active R blocks
-        update_active!(iterator.activeMask, bs, (iterator.activeRBlocks.block, iterator.RBlocks.block))
-        # Precondition and constrain the active residual vectors
-        precond_constr!(iterator.activeRBlocks.block, iterator.tempXBlocks.block, bs, iterator.precond!, iterator.constr!)
-        # Orthonormalizes R[:,1:bs] and finds AR[:,1:bs] and BR[:,1:bs]
-        ortho_AB_mul_X!(iterator.activeRBlocks, iterator.ortho!, iterator.A, iterator.B, bs)
-        # Find [X R] A [X R] and [X R]' B [X R]
-        block_grams_2x2!(iterator, bs)
-        # Solve the Rayleigh-Ritz sub-problem
-        sub_problem!(iterator, sizeX, bs, 0)
-        update_X_P!(iterator, bs, 0)
-        residuals!(iterator)
-        update_mask!(iterator, residualTolerance)
-    else
-        # Update active blocks
-        bs = iterator.currentBlockSize[]
-        # Update active R and P blocks
-        update_active!(iterator.activeMask, bs,
-            (iterator.activeRBlocks.block, iterator.RBlocks.block),
-            (iterator.activePBlocks.block, iterator.PBlocks.block),
-            (iterator.activePBlocks.A_block, iterator.PBlocks.A_block),
-            (iterator.activePBlocks.B_block, iterator.PBlocks.B_block))
-        # Precondition and constrain the active residual vectors
-        precond_constr!(iterator.activeRBlocks.block, iterator.tempXBlocks.block, bs, iterator.precond!, iterator.constr!)
-        # Orthonormalizes R[:,1:bs] and finds AR[:,1:bs] and BR[:,1:bs]
-        ortho_AB_mul_X!(iterator.activeRBlocks, iterator.ortho!, iterator.A, iterator.B, bs)
-        # Orthonormalizes P and updates AP
-        iterator.ortho!(iterator.activePBlocks, bs, update_AX=true, update_BX=true)
-        # Update the gram matrix [X R P]' A [X R P] and [X R P]' B [X R P]
-        block_grams_3x3!(iterator, bs)
-        # Solve the Rayleigh-Ritz sub-problem
-        sub_problem!(iterator, sizeX, bs, bs)
-        # Updates Ritz vectors X and updates AX and BX accordingly
-        # And updates P, AP and BP
-        update_X_P!(iterator, bs, bs)
-        residuals!(iterator)
-        update_mask!(iterator, residualTolerance)
+# Randomize the columns of X if the norm is below tol
+function drop!(X::AbstractArray{T}, tol=2eps(real(T))) where {T}
+    dropped = Int[]
+    for i=1:size(X,2)
+        n = norm(@views X[:,i])
+        if n <= tol
+            X[:,i] = randn(T, size(X,1))
+            push!(dropped, i)
+        end
     end
-    if log
-        return LOBPCGState(iteration, iterator.residuals[1:sizeX], iterator.ritz_values[1:sizeX])
-    else
-        return LOBPCGState(iteration, nothing, nothing)
+    dropped
+end
+
+# Find X that is orthogonal, and B-orthogonal to Y, up to a tolerance tol.
+function ortho!(X::AbstractArray{T}, Y, BY; tol=2eps(real(T))) where {T}
+    # normalize to try to cheaply improve conditioning
+    Threads.@threads for i=1:size(X,2)
+        n = norm(@views X[:,i])
+        @views X[:,i] ./= n
     end
+
+    niter = 1
+    ninners = zeros(Int,0)
+    while true
+        BYX = BY' * X
+        mul!(X, Y, BYX, -1, 1)  # X -= Y*BY'X
+        # If the orthogonalization has produced results below 2eps, we drop them
+        # This is to be able to orthogonalize eg [1;0] against [e^iθ;0],
+        # as can happen in extreme cases in the ortho!(cP, cX)
+        dropped = drop!(X)
+        if dropped != []
+            X[:, dropped] .-= Y * (BY' * X[:, dropped])
+        end
+
+        if norm(BYX) < tol && niter > 1
+            push!(ninners, 0)
+            break
+        end
+        X, ninner, growth_factor = ortho!(X, tol=tol)
+        push!(ninners, ninner)
+
+        # norm(BY'X) < tol && break should be the proper check, but
+        # usually unnecessarily costly. Instead, we predict the error
+        # according to the growth factor of the orthogonalization.
+        # Assuming BY'Y = 0 to machine precision, after the
+        # Y-orthogonalization, BY'X is O(eps), so BY'X will be bounded
+        # by O(eps * growth_factor).
+
+        # If we're at a fixed point, growth_factor is 1 and if tol >
+        # eps(), the loop will terminate, even if BY'Y != 0
+        growth_factor*eps(real(T)) < tol && break
+
+        niter > 10 && error("Ortho(X,Y) is failing badly, this should never happen")
+        niter += 1
+    end
+    vprintln("ortho choleskys: ", ninners)  # get how many Choleskys are performed
+
+    # @assert (norm(BY'X)) < tol
+    # @assert (norm(X'X-I)) < tol
+
+    X
+end
+
+# Return the results of the computations in a nicer struct.
+function final_retval(X, AX, tolerance, resid_history, niter, maxiter, converged,
+    largest, n_matvec)
+    λ = real(diag(X' * AX))
+    residuals = AX .- X*Diagonal(λ)
+    LOBPCGResults(
+        λ,
+        X,
+        tolerance,
+        [norm(residuals[:, i]) for i in 1:size(residuals, 2)],
+        resid_history[:, 1:niter+1],
+        niter,
+        maxiter,
+        converged,
+        largest,
+        n_matvec
+    )
 end
 
 default_tolerance(::Type{T}) where {T<:Number} = eps(real(T))^(real(T)(3)/10)
+default_tolerance(::Type{Float64}) = 1e-10
 
-"""
-The Locally Optimal Block Preconditioned Conjugate Gradient Method (LOBPCG)
-
-Finds the `nev` extremal eigenvalues and their corresponding eigenvectors satisfying `AX = λBX`.
-
-`A` and `B` may be generic types but `Base.mul!(C, AorB, X)` must be defined for vectors and strided matrices `X` and `C`. `size(A, i::Int)` and `eltype(A)` must also be defined for `A`.
-
-    lobpcg(A, [B,] largest, nev; kwargs...) -> results
-
-# Arguments
-
-- `A`: linear operator;
-- `B`: linear operator;
-- `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `nev`: number of eigenvalues desired.
-
-## Keywords
-
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
-    states; if `false` only `results.trace` will be empty;
-
-- `P`: preconditioner of residual vectors, must overload `ldiv!`;
-
-- `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `mul!`;
-
-- `maxiter`: maximum number of iterations; default is 200;
-
-- `tol::Real`: tolerance to which residual vector norms must be under.
-
-# Output
-
-- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
-"""
 function lobpcg(A, largest::Bool, nev::Int; kwargs...)
-    lobpcg(A, nothing, largest, nev; kwargs...)
+    lobpcg(A, I, largest, nev; kwargs...)
 end
+
 function lobpcg(A, B, largest::Bool, nev::Int; kwargs...)
     lobpcg(A, B, largest, rand(eltype(A), size(A, 1), nev); not_zeros=true, kwargs...)
 end
 
-"""
-    lobpcg(A, [B,] largest, X0; kwargs...) -> results
-
-# Arguments
-
-- `A`: linear operator;
-- `B`: linear operator;
-- `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `X0`: Initial guess, will not be modified. The number of columns is the number of eigenvectors desired.
-
-## Keywords
-
-- `not_zeros`: default is `false`. If `true`, `X0` will be assumed to not have any all-zeros column.
-
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
-    states; if `false` only `results.trace` will be empty;
-
-- `P`: preconditioner of residual vectors, must overload `ldiv!`;
-
-- `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `mul!`;
-
-- `maxiter`: maximum number of iterations; default is 200;
-
-- `tol::Real`: tolerance to which residual vector norms must be under.
-
-# Output
-
-- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
-"""
 function lobpcg(A, largest::Bool, X0; kwargs...)
-    lobpcg(A, nothing, largest, X0; kwargs...)
-end
-function lobpcg(A, B, largest, X0;
-                not_zeros=false, log=false, P=nothing, maxiter=200,
-                C=nothing, tol::Real=default_tolerance(eltype(X0)))
-    X = copy(X0)
-    n = size(X, 1)
-    sizeX = size(X, 2)
-    sizeX > n && throw("X column dimension exceeds the row dimension")
-    3*sizeX > n && throw("The LOBPCG algorithms is not stable to use when the matrix size is less than 3 times the block size. Please use a dense solver instead.")
-
-    iterator = LOBPCGIterator(A, B, largest, X, P, C)
-
-    return lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
+    lobpcg(A, I, largest, X0; kwargs...)
 end
 
-"""
-    lobpcg!(iterator::LOBPCGIterator; kwargs...) -> results
+### The algorithm is Xn+1 = rayleigh_ritz(hcat(Xn, A*Xn, Xn-Xn-1))
+### We follow the strategy of Hetmaniuk and Lehoucq, and maintain a B-orthonormal basis Y = (X,R,P)
+### After each rayleigh_ritz step, the B-orthonormal X and P are deduced by an orthogonal rotation from Y
+### R is then recomputed, and orthonormalized explicitly wrt BX and BP
+### We reuse applications of A/B when it is safe to do so, ie only with orthogonal transformations
+function lobpcg(A, B, largest, X;
+                precon=I, maxiter=200, miniter=1, tol::Real=default_tolerance(eltype(X)),
+                ortho_tol=2eps(real(eltype(X))), n_conv_check=nothing, display_progress=false)
+    N, M = size(X)
 
-# Arguments
+    # If N is too small, we will likely get in trouble
+    error_message(verb) = "The eigenproblem is too small, and the iterative " *
+                           "eigensolver $verb fail; increase the number of " *
+                           "degrees of freedom, or use a dense eigensolver."
+    N > 3M    || error(error_message("will"))
+    N >= 3M+5 || @warn error_message("might")
 
-- `iterator::LOBPCGIterator`: a struct having all the variables required
-    for the LOBPCG algorithm.
+    n_conv_check === nothing && (n_conv_check = M)
+    resid_history = zeros(real(eltype(X)), M, maxiter+1)
 
-## Keywords
+    # B-orthogonalize X
+    X = ortho!(copy(X), tol=ortho_tol)[1]
+    if B != I
+        BX = similar(X)
+        BX = mul!(BX, B, X)
+        B_ortho!(X, BX)
+    end
 
-- `not_zeros`: default is `false`. If `true`, the initial Ritz vectors will be assumed to not have any all-zeros column.
+    n_matvec = M  # Count number of matrix-vector products
+    AX = similar(X)
+    AX = mul!(AX, A, X)
+    @assert all(!isnan, AX)
+    # full_X/AX/BX will always store the full (including locked) X.
+    # X/AX/BX only point to the active part
+    P = zero(X)
+    AP = zero(X)
+    R = zero(X)
+    AR = zero(X)
+    if B != I
+        BR = zero(X)
+        # BX was already computed
+        BP = zero(X)
+    else
+        # The B arrays are just pointers to the same data
+        BR = R
+        BX = X
+        BP = P
+    end
+    nlocked = 0
+    niter = 0  # the first iteration is fake
+    λs = @views [(X[:, n]'*AX[:, n]) / (X[:, n]'BX[:, n]) for n=1:M]
+    λs = oftype(X[:, 1], λs)  # GPU computation only: offload to GPU
+    new_X = X
+    new_AX = AX
+    new_BX = BX
+    full_X = X
+    full_AX = AX
+    full_BX = BX
 
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
-    states; if `false` only `results.trace` will be empty;
+    while true
+        if niter > 0  # first iteration is just to compute the residuals (no X update)
+            ###  Perform the Rayleigh-Ritz
+            mul!(AR, A, R)
+            n_matvec += size(R, 2)
 
-- `maxiter`: maximum number of iterations; default is 200;
+            # Form Rayleigh-Ritz subspace
+            if niter > 1
+                Y = LazyHcat(X, R, P)
+                AY = LazyHcat(AX, AR, AP)
+                BY = LazyHcat(BX, BR, BP)  # data shared with (X, R, P) in non-general case
+            else
+                Y  = LazyHcat(X, R)
+                AY = LazyHcat(AX, AR)
+                BY = LazyHcat(BX, BR)  # data shared with (X, R) in non-general case
+            end
+            cX, λs = rayleigh_ritz(Y, AY, M-nlocked, largest)
 
-- `tol::Real`: tolerance to which residual vector norms must be under.
+            # Update X. By contrast to some other implementations, we
+            # wait on updating P because we have to know which vectors
+            # to lock (and therefore the residuals) before computing P
+            # only for the unlocked vectors. This results in better convergence.
+            new_X  = Y * cX
+            new_AX = AY * cX  # no accuracy loss, since cX orthogonal
+            new_BX = (B == I) ? new_X : BY * cX
+        end
 
-# Output
+        ### Compute new residuals
+        new_R = new_AX .- new_BX .* λs'
+        # it is actually a good question of knowing when to
+        # precondition. Here seems sensible, but it could plausibly be
+        # done before or after
+        @views for i=1:size(X,2)
+            resid_history[i + nlocked, niter+1] = norm(new_R[:, i])
+        end
+        vprintln(niter, "   ", resid_history[:, niter+1])
+        if precon !== I
+            ldiv!(precon, new_R)
+        end
 
-- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
-
-"""
-function lobpcg!(iterator::LOBPCGIterator; log=false, maxiter=200, not_zeros=false,
-                 tol::Real=default_tolerance(eltype(iterator.XBlocks.block)))
-    X = iterator.XBlocks.block
-    iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
-    if !not_zeros
-        @views for j in 1:size(X,2)
-            if all(x -> x==0, X[:, j])
-                @inbounds X[:,j] .= rand.()
+        ### Compute number of locked vectors
+        prev_nlocked = nlocked
+        if niter ≥ miniter  # No locking if below miniter
+            for i=nlocked+1:M
+                if resid_history[i, niter+1] < tol
+                    nlocked += 1
+                    vprintln("locked $nlocked")
+                else
+                    # We lock in order, assuming that the lowest
+                    # eigenvectors converge first; might be tricky otherwise
+                    break
+                end
             end
         end
-        iterator.constr!(iterator.XBlocks.block, iterator.tempXBlocks.block)
-    end
-    n = size(X, 1)
-    sizeX = size(X, 2)
-    iterator.iteration[] = 1
-    while iterator.iteration[] <= maxiter 
-        state = iterator(tol, log)
-        if log
-            push!(iterator.trace, state)
+
+        if display_progress
+            println("Iter $niter, converged $(nlocked)/$(n_conv_check), resid ",
+                    norm(resid_history[1:n_conv_check, niter+1]))
         end
-        iterator.currentBlockSize[] == 0 && break
-        iterator.iteration[] += 1
-    end
-    @inbounds @views iterator.λ .= iterator.ritz_values[1:sizeX]
 
-    @views results = LOBPCGResults(iterator.λ, X, tol, iterator.residuals, iterator.iteration[], maxiter, all((x)->(norm(x)<=tol), iterator.residuals[1:sizeX]), iterator.trace)
+        if nlocked >= n_conv_check  # Converged!
+            X .= new_X  # Update the part of X which is still active
+            AX .= new_AX
+            return final_retval(full_X, full_AX, tol, resid_history, niter, maxiter, true,
+                                largest,n_matvec)
+        end
+        newly_locked = nlocked - prev_nlocked
+        active = newly_locked+1:size(X,2)  # newly active vectors
 
-    return results
-end
+        if niter > 0
+            ### compute P = Y*cP only for the newly active vectors
+            Xn_indices = newly_locked+1:M-prev_nlocked
+            # TODO understand this for a potential save of an
+            # orthogonalization, see Hetmaniuk & Lehoucq, and Duersch et. al.
+            # cP = copy(cX)
+            # cP[Xn_indices,:] .= 0
 
-"""
-lobpcg(A, [B,] largest, X0, nev; kwargs...) -> results
+            lenXn = length(Xn_indices)
+            e = zeros_like(X, size(cX, 1), M - prev_nlocked)
+            lower_diag = one(similar(X, lenXn, lenXn))
+            # e has zeros everywhere except on one of its lower diagonal
+            e[Xn_indices[1]:last(Xn_indices), 1:lenXn] = lower_diag
 
-# Arguments
+            cP = cX .- e
+            cP = cP[:, Xn_indices]
+            # orthogonalize against all Xn (including newly locked)
+            ortho!(cP, cX, cX, tol=ortho_tol)
 
-- `A`: linear operator;
-- `B`: linear operator;
-- `largest`: `true` if largest eigenvalues are desired and false if smallest;
-- `X0`: block vectors such that the eigenvalues will be found size(X0, 2) at a time;
-    the columns are also used to initialize the first batch of Ritz vectors;
-- `nev`: number of eigenvalues desired.
+            # Get new P
+            new_P  = Y * cP
+            new_AP = AY * cP
+            if B != I
+                new_BP = BY * cP
+            else
+                new_BP = new_P
+            end
+        end
 
-## Keywords
+        # Update all X, even newly locked
+        X  .= new_X
+        AX .= new_AX
+        if B != I
+            BX .= new_BX
+        end
 
-- `log::Bool`: default is `false`; if `true`, `results.trace` will store iterations
-    states; if `false` only `results.trace` will be empty;
+        # Quick sanity check
+        for i = 1:size(X, 2)
+            @views if abs(BX[:, i]'X[:, i] - 1) >= sqrt(eps(real(eltype(X))))
+                error("lobpcg is badly failing to keep the vectors normalized; this should never happen")
+            end
+        end
 
-- `P`: preconditioner of residual vectors, must overload `ldiv!`;
+        # Restrict all views to active
+        @views begin
+            X = X[:, active]
+            AX = AX[:, active]
+            BX = BX[:, active]
+            R = new_R[:, active]
+            AR = AR[:, active]
+            BR = BR[:, active]
+            P = P[:, active]
+            AP = AP[:, active]
+            BP = BP[:, active]
+            λs = λs[active]
+        end
 
-- `C`: constraint to deflate the residual and solution vectors orthogonal
-    to a subspace; must overload `mul!`;
+        # Update newly active P
+        if niter > 0
+            P .= new_P
+            AP .= new_AP
+            if B != I
+                BP .= new_BP
+            end
+        end
 
-- `maxiter`: maximum number of iterations; default is 200;
-
-- `tol::Real`: tolerance to which residual vector norms must be under.
-
-# Output
-
-- `results`: a `LOBPCGResults` struct. `r.λ` and `r.X` store the eigenvalues and eigenvectors.
-"""
-function lobpcg(A, largest::Bool, X0, nev::Int; kwargs...)
-    lobpcg(A, nothing, largest, X0, nev; kwargs...)
-end
-function lobpcg(A, B, largest::Bool, X0, nev::Int;
-                not_zeros=false, log=false, P=nothing, maxiter=200,
-                C=nothing, tol::Real=default_tolerance(eltype(X0)))
-    n = size(X0, 1)
-    sizeX = size(X0, 2)
-    nev > n && throw("Number of eigenvectors desired exceeds the row dimension.")
-    3*sizeX > n && throw("The LOBPCG algorithms is not stable to use when the matrix size is less than 3 times the block size. Please use a dense solver instead.")
-
-    sizeX = min(nev, sizeX)
-    X = X0[:, 1:sizeX]
-    iterator = LOBPCGIterator(A, B, largest, X, nev, P, C)
-
-    r = EmptyLOBPCGResults(X, nev, tol, maxiter)
-    rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=not_zeros)
-    append!(r, rnext, 0)
-    converged_x = sizeX
-    while converged_x < nev
-        @views if nev-converged_x < sizeX
-            cutoff = sizeX-(nev-converged_x)
-            update!(iterator.constr!, iterator.XBlocks.block[:, 1:cutoff], iterator.XBlocks.B_block[:, 1:cutoff])
-            X[:, 1:sizeX-cutoff] .= X[:, cutoff+1:sizeX]
-            rand!(X[:, cutoff+1:sizeX])
-            rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
-            append!(r, rnext, converged_x, sizeX-cutoff)
-            converged_x += sizeX-cutoff
+        # Orthogonalize R wrt all X, newly active P
+        if niter > 0
+            Z  = LazyHcat(full_X, P)
+            BZ = LazyHcat(full_BX, BP)  # data shared with (full_X, P) in non-general case
         else
-            update!(iterator.constr!, iterator.XBlocks.block, iterator.XBlocks.B_block)
-            rand!(X)
-            rnext = lobpcg!(iterator, log=log, tol=tol, maxiter=maxiter, not_zeros=true)
-            append!(r, rnext, converged_x)
-            converged_x += sizeX
+            Z  = full_X
+            BZ = full_BX
         end
+        ortho!(R, Z, BZ; tol=ortho_tol)
+        if B != I
+            mul!(BR, B, R)
+            B_ortho!(R, BR)
+        end
+
+        niter < maxiter || break
+        niter = niter + 1
     end
-    return r
+
+    final_retval(full_X, full_AX, tol, resid_history, maxiter, maxiter, false,
+                largest, n_matvec)
 end
