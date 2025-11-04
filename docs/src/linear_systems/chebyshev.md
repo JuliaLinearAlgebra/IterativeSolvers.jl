@@ -2,7 +2,7 @@
 
 Chebyshev iteration solves the problem $Ax=b$ approximately for $x$ where $A$ is a symmetric, definite linear operator and $b$ the right-hand side vector. The methods assumes the interval $[\lambda_{min}, \lambda_{max}]$ containing all eigenvalues of $A$ is known, so that $x$ can be iteratively constructed via a Chebyshev polynomial with zeros in this interval. This polynomial ultimately acts as a filter that removes components in the direction of the eigenvectors from the initial residual.
 
-The main advantage with respect to Conjugate Gradients is that BLAS1 operations such as inner products are avoided.
+The main advantage with respect to Conjugate Gradient is that BLAS1 operations such as inner products are avoided.
 
 ## Usage
 
