@@ -28,16 +28,16 @@ function max_err(R)
 end
 
 @testset "Locally Optimal Block Preconditioned Conjugate Gradient" begin
-    Random.seed!(1234323)
+    rng = Random.MersenneTwister(1234)
     @testset "Single eigenvalue" begin
         n = 10
         @testset "Small full system" begin
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
-                        b = rand(T, n, 1)
+                        b = rand(rng, T, n, 1)
                         tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
                         λ, X = r.λ, r.X
@@ -52,11 +52,11 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
-                        B = rand(T, n, n)
+                        B = rand(rng, T, n, n)
                         B = B' + B + 20I
-                        b = rand(T, n, 1)
+                        b = rand(rng, T, n, 1)
                         tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
@@ -86,8 +86,8 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        Random.seed!(23) # Issue #316 (test sensitive to the rng)
-                        A = rand(T, n, n)
+                        rng_temp = Random.MersenneTwister(1234) # Issue #316 (test sensitive to the rng)
+                        A = rand(rng_temp, T, n, n)
                         A = A' + A + 20I
                         b = zeros(T, n, 1)
                         tol = IterativeSolvers.default_tolerance(T)
@@ -100,10 +100,10 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        Random.seed!(123) # Issue #316 (test sensitive to the rng)
-                        A = rand(T, n, n)
+                        rng_temp = Random.MersenneTwister(1234) # Issue #316 (test sensitive to the rng)
+                        A = rand(rng_temp, T, n, n)
                         A = A' + A + 20I
-                        B = rand(T, n, n)
+                        B = rand(rng_temp, T, n, n)
                         B = B' + B + 20I
                         b = zeros(T, n, 1)
                         tol = IterativeSolvers.default_tolerance(T)
@@ -119,7 +119,7 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
                         tol = IterativeSolvers.default_tolerance(T)
 
@@ -132,9 +132,9 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
-                        B = rand(T, n, n)
+                        B = rand(rng, T, n, n)
                         B = B' + B + 20I
                         tol = IterativeSolvers.default_tolerance(T)
 
@@ -149,10 +149,10 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
                         tol = IterativeSolvers.default_tolerance(T)
-                        b = rand(T, n, 1)
+                        b = rand(rng, T, n, 1)
                         itr = LOBPCGIterator(A, largest, b)
 
                         r = lobpcg!(itr; tol=tol, maxiter=Inf, log=false)
@@ -164,11 +164,11 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
-                        B = rand(T, n, n)
+                        B = rand(rng, T, n, n)
                         B = B' + B + 20I
-                        b = rand(T, n, 1)
+                        b = rand(rng, T, n, 1)
                         tol = IterativeSolvers.default_tolerance(T)
                         itr = LOBPCGIterator(A, B, largest, b)
 
@@ -183,7 +183,7 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
                         tol = IterativeSolvers.default_tolerance(T)
                         P = JacobiPrec(diag(A))
@@ -196,10 +196,10 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
                         P = JacobiPrec(diag(A))
-                        B = rand(T, n, n)
+                        B = rand(rng, T, n, n)
                         B = B' + B + 20I
                         tol = IterativeSolvers.default_tolerance(T)
 
@@ -214,7 +214,7 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
                         tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, largest, 1; tol=tol, maxiter=Inf, log=false)
@@ -229,9 +229,9 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
-                        B = rand(T, n, n)
+                        B = rand(rng, T, n, n)
                         B = B' + B + 20I
                         tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, 1; tol=tol, maxiter=Inf, log=false)
@@ -251,9 +251,9 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
-                        b = rand(T, n, 2)
+                        b = rand(rng, T, n, 2)
                         tol = IterativeSolvers.default_tolerance(T)
 
                         r  = lobpcg(A, largest, b; tol=tol, maxiter=Inf, log=false)
@@ -269,12 +269,12 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        Random.seed!(123) # Issue #316 (test sensitive to the rng)
-                        A = rand(T, n, n)
+                        rng_temp = Random.MersenneTwister(123) # Issue #316 (test sensitive to the rng)
+                        A = rand(rng_temp, T, n, n)
                         A = A' + A + 20I
-                        B = rand(T, n, n)
+                        B = rand(rng_temp, T, n, n)
                         B = B' + B + 20I
-                        b = rand(T, n, 2)
+                        b = rand(rng_temp, T, n, 2)
                         tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, b; tol=tol, maxiter=Inf, log=true)
                         λ, X = r.λ, r.X
@@ -293,10 +293,10 @@ end
         @testset "Simple eigenvalue problem" begin
             @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                 @testset "largest = $largest" for largest in (true, false)
-                    A = rand(T, n, n)
+                    A = rand(rng, T, n, n)
                     A = A' + A + 20I
                     tol = IterativeSolvers.default_tolerance(T)
-                    X0 = rand(T, n, block_size)
+                    X0 = rand(rng, T, n, block_size)
                     r = lobpcg(A, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
                     @test max_err(A*X - X*Matrix(Diagonal(λ))) ≤ tol
@@ -307,13 +307,13 @@ end
         @testset "Generalized eigenvalue problem" begin
             @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                 @testset "largest = $largest" for largest in (true, false)
-                    Random.seed!(123) # Issue #316 (test sensitive to the rng)
-                    A = rand(T, n, n)
+                    rng_temp = Random.MersenneTwister(123) # Issue #316 (test sensitive to the rng)
+                    A = rand(rng_temp, T, n, n)
                     A = A' + A + 20I
-                    B = rand(T, n, n)
+                    B = rand(rng_temp, T, n, n)
                     B = B' + B + 20I
                     tol = IterativeSolvers.default_tolerance(T)
-                    X0 = rand(T, n, block_size)
+                    X0 = rand(rng_temp, T, n, block_size)
                     r = lobpcg(A, B, largest, X0, 3, tol=tol, maxiter=Inf, log=true)
                     λ, X = r.λ, r.X
                     @test max_err(A*X - B*X*Matrix(Diagonal(λ))) ≤ tol
@@ -325,13 +325,13 @@ end
             @testset "Simple eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
                         tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ1, X1 = r.λ, r.X
 
-                        X0 = rand(T, n, block_size)
+                        X0 = rand(rng, T, n, block_size)
                         r = lobpcg(A, largest, X0, 3, C=copy(r.X), tol=tol, maxiter=Inf, log=true)
                         λ2, X2 = r.λ, r.X
                         @test max_err(A*X2 - X2*Matrix(Diagonal(λ2))) ≤ tol
@@ -343,15 +343,15 @@ end
             @testset "Generalized eigenvalue problem" begin
                 @testset "Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
                     @testset "largest = $largest" for largest in (true, false)
-                        A = rand(T, n, n)
+                        A = rand(rng, T, n, n)
                         A = A' + A + 20I
-                        B = rand(T, n, n)
+                        B = rand(rng, T, n, n)
                         B = B' + B + 20I
                         tol = IterativeSolvers.default_tolerance(T)
                         r = lobpcg(A, B, largest, 1; tol=tol, maxiter=Inf, log=false)
                         λ1, X1 = r.λ, r.X
 
-                        X0 = rand(T, n, block_size)
+                        X0 = rand(rng, T, n, block_size)
                         r = lobpcg(A, B, largest, X0, 2, C=copy(r.X), tol=tol, maxiter=Inf, log=true)
                         λ2, X2 = r.λ, r.X
                         @test max_err(A*X2 - B*X2*Matrix(Diagonal(λ2))) ≤ tol
