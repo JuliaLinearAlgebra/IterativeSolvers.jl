@@ -1,12 +1,16 @@
-# [Conjugate Gradients (CG)](@id CG)
+# [Conjugate Gradient (CG)](@id CG)
 
-Conjugate Gradients solves $Ax = b$ approximately for $x$ where $A$ is a symmetric, positive-definite linear operator and $b$ the right-hand side vector. The method uses short recurrences and therefore has fixed memory costs and fixed computational costs per iteration.
+CG solves $Ax = b$ approximately for $x$ where $A$ is a Hermitian, positive-definite linear operator and $b$ the right-hand side vector. The method uses short recurrences and therefore has fixed memory costs and fixed computational costs per iteration.
+
+A simple variant called Conjugate Orthogonal Conjugate Gradient (COCG) is obtained by replacing the dot product ($x^*y$) in the CG algorithm with the unconjugated dot product ($xᵀy$). For complex symmetric matrices ($A = Aᵀ$), COCG is equivalent to Biconjugate Gradient (BiCG) but takes only one matrix-vector multiplication per iteration rather than two of BiCG.  Therefore, COCG converges twice as fast in time as BiCG. Also, like in BiCG, $A$ in COCG does not need to be positive-definite.
 
 ## Usage
 
 ```@docs
 cg
 cg!
+cocg
+cocg!
 ```
 
 ## On the GPU
