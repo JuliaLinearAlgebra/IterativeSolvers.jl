@@ -112,8 +112,8 @@ function lsqr_method!(log::ConvergenceHistory, x, A, b;
     Anorm = Acond = ddnorm = res2 = xnorm = xxnorm = z = sn2 = zero(Tr)
     cs2 = -one(Tr)
     dampsq = abs2(damp)
-    tmpm = similar(b, T, m)
-    tmpn = similar(x, T, n)
+    tmpm = similar(b)
+    tmpn = similar(x)
 
     log[:atol] = atol
     log[:btol] = btol
