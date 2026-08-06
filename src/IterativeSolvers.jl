@@ -13,6 +13,10 @@ include("history.jl")
 # Factorizations
 include("hessenberg.jl")
 
+# Krylov subspace methods
+include("limited_memory_matrices.jl")
+include("lal.jl")
+
 # Linear solvers
 include("stationary.jl")
 include("stationary_sparse.jl")
