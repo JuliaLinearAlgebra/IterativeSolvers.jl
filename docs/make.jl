@@ -23,9 +23,12 @@ makedocs(
 			"BiCGStab(l)" => "linear_systems/bicgstabl.md",
 			"IDR(s)" => "linear_systems/idrs.md",
 			"Restarted GMRES" => "linear_systems/gmres.md",
+			"QMR" => "linear_systems/qmr.md",
+			"LALQMR" => "linear_systems/lalqmr.md",
 			"LSMR" => "linear_systems/lsmr.md",
 			"LSQR" => "linear_systems/lsqr.md",
-			"Stationary methods" => "linear_systems/stationary.md"
+			"Stationary methods" => "linear_systems/stationary.md",
+			"LAL" => "linear_systems/lal.md"
 		],
 		"Eigenproblems" => [
 			"Power method" => "eigenproblems/power_method.md",

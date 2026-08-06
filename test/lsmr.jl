@@ -62,11 +62,11 @@ function sol_matrix(m, n)
 end
 
 @testset "LSMR" begin
-    Random.seed!(1234321)
+    rng = Random.MersenneTwister(1234)
 
     @testset "Small dense matrix" for T = (Float32, Float64)
-        A = rand(T, 10, 5)
-        b = rand(T, 10)
+        A = rand(rng, T, 10, 5)
+        b = rand(rng, T, 10)
         x, history = lsmr(A, b, log = true)
         @test isa(history, ConvergenceHistory)
         @test norm(x - A\b) ≤ √eps(T)

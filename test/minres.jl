@@ -10,7 +10,7 @@ using LinearMaps
 @testset "MINRES" begin
 
 function hermitian_problem(T, n)
-    B = rand(T, n, n) + n * I
+    B = rand(rng, T, n, n) + n * I
     A = B + B'
     x = ones(T, n)
     b = B * x
@@ -18,21 +18,21 @@ function hermitian_problem(T, n)
 end
 
 function skew_hermitian_problem(T, n)
-    B = rand(T, n, n) + n * I
+    B = rand(rng, T, n, n) + n * I
     A = B - B'
     x = ones(T, n)
     b = A * x
     A, x, b
 end
 
-Random.seed!(123)
+rng = Random.MersenneTwister(1234)
 n = 15
 
 
 @testset "Hermitian Matrix{$T}" for T in (Float32, Float64, ComplexF32, ComplexF64)
     A, x, b = hermitian_problem(T, n)
     reltol = sqrt(eps(real(T)))
-    x0 = rand(T, n)
+    x0 = rand(rng, T, n)
 
     x1, hist1 = minres(A, b, maxiter = 10n, reltol = reltol, log = true)
     x2, hist2 = minres!(x0, A, b, maxiter = 10n, reltol = reltol, log = true)
