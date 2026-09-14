@@ -66,6 +66,49 @@ Random.seed!(1234321)
     end
 end
 
+@testset "Residuals match the Chebyshev polynomial" begin
+    # r_k = T_k((μI - A) / ρ) r_0 / T_k(μ / ρ) with μ = (λ_max + λ_min) / 2 and
+    # ρ = (λ_max - λ_min) / 2. For a diagonal A (and diagonal Pl) this can be evaluated
+    # exactly per eigenvalue, so the residual history is checked against it directly.
+    function exact_resnorms(λ, r0, λ_min, λ_max, K)
+        μ = (λ_max + λ_min) / 2
+        ρ = (λ_max - λ_min) / 2
+        t = (μ .- λ) ./ ρ
+        s = μ / ρ
+        Tprev, Tcur = one.(t), copy(t)
+        Sprev, Scur = one(s), s
+        out = [norm(r0 .* Tcur ./ Scur)]
+        for k in 2:K
+            Tprev, Tcur = Tcur, 2 .* t .* Tcur .- Tprev
+            Sprev, Scur = Scur, 2 * s * Scur - Sprev
+            push!(out, norm(r0 .* Tcur ./ Scur))
+        end
+        out
+    end
+
+    n = 100
+    K = 40
+    for T in (Float32, Float64, ComplexF32, ComplexF64)
+        λ = collect(range(one(real(T)), real(T)(100), length = n))
+        A = Diagonal(T.(λ))
+        b = ones(T, n)
+        λ_min, λ_max = one(real(T)), real(T)(100)
+        rtol = 200 * eps(real(T))
+
+        x, history = chebyshev(A, b, λ_min, λ_max, maxiter = K, reltol = zero(real(T)), log = true)
+        @test history[:resnorm] ≈ exact_resnorms(λ, b, λ_min, λ_max, K) rtol = rtol
+
+        # Left preconditioner: the residual polynomial is applied to Pl \ A
+        p = collect(range(real(T)(0.5), real(T)(2), length = n))
+        Pl = Diagonal(T.(p))
+        λp = λ ./ p
+        λ_min, λ_max = minimum(λp), maximum(λp)
+        x, history = chebyshev(A, b, λ_min, λ_max, Pl = Pl, maxiter = K, reltol = zero(real(T)), log = true)
+        # `resnorm` is the unpreconditioned residual, which for diagonal Pl is p .* (Pl \ r)
+        @test history[:resnorm] ≈ exact_resnorms(λp, one.(λp), λ_min, λ_max, K) rtol = rtol
+    end
+end
+
 @testset "Termination criterion" begin
     for T in (Float32, Float64, ComplexF32, ComplexF64)
         A = T[ 2 -1  0
