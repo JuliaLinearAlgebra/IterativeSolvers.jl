@@ -12,6 +12,7 @@ mutable struct ChebyshevIterable{precT, matT, solT, vecT, realT <: Real}
     c::vecT
 
     α::realT
+    ζ::realT
 
     λ_avg::realT
     λ_diff::realT
@@ -32,17 +33,24 @@ function iterate(cheb::ChebyshevIterable, iteration::Int=start(cheb))
         return nothing
     end
 
-    T = eltype(cheb.x)
-
+    # Coupled two-term form of the Chebyshev recurrence. With μ = λ_avg, ρ = λ_diff
+    # and γ_k = T_k(μ / ρ), the residuals satisfy r_k = T_k((μI - A) / ρ) r_0 / γ_k.
+    # ζ holds the ratio γ_k / γ_{k-1}, which follows the Chebyshev three-term recurrence
+    # ζ_{k+1} = 2μ/ρ - 1/ζ_k, and the direction u_k = c_k + β_k u_{k-1} with β_k = 1/ζ_k².
     ldiv!(cheb.c, cheb.Pl, cheb.r)
 
-    if iteration == 1
-        cheb.α = T(2) / cheb.λ_avg
+    if iteration == 0
+        # First step is a Richardson step: r_1 = (I - A/μ) r_0.
+        cheb.ζ = cheb.λ_avg / cheb.λ_diff
+        cheb.α = inv(cheb.λ_avg)
         copyto!(cheb.u, cheb.c)
     else
-        β = (cheb.λ_diff * cheb.α / 2) ^ 2
-        cheb.α = inv(cheb.λ_avg - β)
+        # The three-term recurrence T_{k+1} = 2xT_k - T_{k-1} starts from T_{-1} = T_1,
+        # not T_0, so the second step uses half of the generic β.
+        β = iteration == 1 ? inv(2 * cheb.ζ^2) : inv(cheb.ζ^2)
         cheb.u .= cheb.c .+ β .* cheb.u
+        cheb.ζ = 2 * cheb.λ_avg / cheb.λ_diff - inv(cheb.ζ)
+        cheb.α = 2 / (cheb.λ_diff * cheb.ζ)
     end
 
     mul!(cheb.c, cheb.A, cheb.u)
@@ -84,7 +92,7 @@ function chebyshev_iterable!(x, A, b, λmin::Real, λmax::Real;
     tolerance = max(reltol * resnorm, abstol)
 
     ChebyshevIterable(Pl, A, x, r, u, c,
-        zero(real(T)),
+        zero(real(T)), zero(real(T)),
         λ_avg, λ_diff,
         resnorm, tolerance, maxiter, mv_products
     )
@@ -122,7 +130,7 @@ Solve Ax = b for symmetric, definite matrices A using Chebyshev iteration.
   tolerance for the stopping condition
   `|r_k| ≤ max(reltol * |r_0|, abstol)`, where `r_k = A * x_k - b`
   is the residual in the `k`th iteration;
-- `maxiter::Int = size(A, 2)`: maximum number of inner iterations of GMRES;
+- `maxiter::Int = size(A, 2)`: maximum number of iterations;
 - `Pl = Identity()`: left preconditioner;
 - `log::Bool = false`: keep track of the residual norm in each iteration;
 - `verbose::Bool = false`: print convergence information during the iterations.
